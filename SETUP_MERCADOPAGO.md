@@ -48,7 +48,7 @@ http://localhost:3000/api/mercadopago/callback
 
 **Producción:**
 \`\`\`
-https://arsound.vercel.app/api/mercadopago/callback
+https://arsound.com.ar/api/mercadopago/callback
 \`\`\`
 
 ### 4. Permisos requeridos

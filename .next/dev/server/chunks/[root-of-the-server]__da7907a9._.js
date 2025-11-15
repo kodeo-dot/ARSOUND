@@ -97,7 +97,7 @@ async function POST(request) {
         }
         console.log("[v0] MP Connect: User authenticated:", user.id);
         const appId = process.env.MERCADO_PAGO_APP_ID;
-        const baseUrl = ("TURBOPACK compile-time value", "https://localhost:3000") || 'https://arsound.vercel.app';
+        const baseUrl = ("TURBOPACK compile-time value", "https://arsound.com.ar") || 'https://arsound.com.ar';
         const redirectUri = `${baseUrl}/api/mercadopago/callback`;
         console.log("[v0] MP Connect: App ID configured:", !!appId);
         console.log("[v0] MP Connect: Base URL:", baseUrl);
