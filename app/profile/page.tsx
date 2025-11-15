@@ -34,6 +34,7 @@ import type { PlanType } from "@/lib/plans"
 import { ProfileLimitsCard } from "@/components/profile-limits-card"
 import { PLAN_FEATURES } from "@/lib/plans" // Added for commission calculation
 import { toast } from "@/components/ui/use-toast" // Added for toast notifications
+import { ProfilePurchasesTab } from "@/components/profile-purchases-tab"
 
 interface Profile {
   id: string
@@ -636,34 +637,36 @@ export default function ProfilePage() {
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
 
-      <main className="flex-1 container mx-auto px-4 py-12">
-        {/* Profile Header */}
-        <Card className="p-8 rounded-3xl border-border mb-8">
-          <div className="flex flex-col md:flex-row gap-8">
+      <main className="flex-1 container mx-auto px-3 md:px-4 py-6 md:py-12">
+        {/* Profile Header - RESPONSIVE IMPROVEMENTS */}
+        <Card className="p-6 md:p-8 rounded-3xl border-border mb-6 md:mb-8">
+          <div className="flex flex-col md:flex-row gap-6 md:gap-8">
             {/* Avatar */}
-            <div className="flex-shrink-0">
+            <div className="flex-shrink-0 flex justify-center md:justify-start">
               {avatarPreview || profile?.avatar_url ? (
                 <img
                   src={avatarPreview || profile?.avatar_url || "/placeholder.svg"}
                   alt="Avatar"
-                  className="w-32 h-32 rounded-full object-cover border-4 border-primary/20"
+                  className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-4 border-primary/20"
                 />
               ) : (
-                <div className="w-32 h-32 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-5xl font-black text-white">
+                <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-3xl md:text-5xl font-black text-white">
                   {getAvatarInitials()}
                 </div>
               )}
             </div>
 
-            {/* Info */}
-            <div className="flex-1 space-y-4">
+            {/* Info - RESPONSIVE IMPROVEMENTS */}
+            <div className="flex-1 space-y-4 text-center md:text-left">
               {!isEditing ? (
                 <>
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                    <div>
-                      <h1 className="text-4xl font-black text-foreground mb-2">{profile?.username || "Usuario"}</h1>
-                      <div className="flex items-center gap-3 mb-3">
-                        <Badge variant="secondary" className="px-4 py-1.5 rounded-full font-bold uppercase text-xs">
+                    <div className="w-full">
+                      <h1 className="text-3xl md:text-4xl font-black text-foreground mb-2">
+                        {profile?.username || "Usuario"}
+                      </h1>
+                      <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-2 md:gap-3 mb-3 flex-wrap">
+                        <Badge variant="secondary" className="px-3 md:px-4 py-1 md:py-1.5 rounded-full font-bold uppercase text-xs">
                           {userPlan === "free" && "Plan Gratuito"}
                           {userPlan === "de_0_a_hit" && "De 0 a Hit"}
                           {userPlan === "studio_plus" && "Studio Plus"}
@@ -681,15 +684,15 @@ export default function ProfilePage() {
                           Recargar
                         </Button>
                       </div>
-                      <p className="text-muted-foreground text-lg mb-3">
+                      <p className="text-sm md:text-base text-muted-foreground mb-3">
                         {profile?.bio || <span className="text-muted-foreground/60 italic">Sin descripción</span>}
                       </p>
-                      <div className="flex flex-wrap gap-3 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-2">
+                      <div className="flex flex-col sm:flex-row flex-wrap gap-2 md:gap-3 text-xs md:text-sm text-muted-foreground justify-center md:justify-start">
+                        <div className="flex items-center gap-2 justify-center md:justify-start">
                           <MapPin className="h-4 w-4" />
                           <span>Argentina</span>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 justify-center md:justify-start">
                           <Calendar className="h-4 w-4" />
                           <span>
                             Miembro desde{" "}
@@ -700,32 +703,38 @@ export default function ProfilePage() {
                           </span>
                         </div>
                       </div>
-                      <div className="text-sm text-muted-foreground mt-2">{user?.email}</div>
+                      <div className="text-xs md:text-sm text-muted-foreground mt-2">{user?.email}</div>
                     </div>
 
-                    <div className="flex gap-2">
-                      <Button onClick={() => setIsEditing(true)} className="gap-2 rounded-full h-11 px-6">
+                    <div className="flex flex-col gap-2 w-full md:w-auto">
+                      <Button onClick={() => setIsEditing(true)} className="gap-2 rounded-full h-10 md:h-11 px-4 md:px-6 text-sm md:text-base w-full md:w-auto">
                         <Settings className="h-4 w-4" />
-                        Editar Perfil
+                        <span className="hidden sm:inline">Editar Perfil</span>
+                        <span className="sm:hidden">Editar</span>
                       </Button>
                       <LogoutButton />
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap gap-6 pt-4">
-                    <div>
-                      <div className="text-3xl font-black text-foreground">{profile?.packs_count || 0}</div>
-                      <div className="text-sm text-muted-foreground">Packs Subidos</div>
+                  {/* Stats cards - RESPONSIVE */}
+                  <div className="flex flex-col sm:flex-row flex-wrap gap-3 md:gap-6 pt-4 justify-center md:justify-start">
+                    <div className="text-center md:text-left">
+                      <div className="text-2xl md:text-3xl font-black text-foreground">
+                        {profile?.packs_count || 0}
+                      </div>
+                      <div className="text-xs md:text-sm text-muted-foreground">Packs Subidos</div>
                     </div>
-                    <div>
-                      <div className="text-3xl font-black text-foreground">
+                    <div className="text-center md:text-left">
+                      <div className="text-2xl md:text-3xl font-black text-foreground">
                         {formatLikes(profile?.total_likes_received || 0)}
                       </div>
-                      <div className="text-sm text-muted-foreground">Likes</div>
+                      <div className="text-xs md:text-sm text-muted-foreground">Likes</div>
                     </div>
-                    <div>
-                      <div className="text-3xl font-black text-foreground">{profile?.followers_count || 0}</div>
-                      <div className="text-sm text-muted-foreground">Seguidores</div>
+                    <div className="text-center md:text-left">
+                      <div className="text-2xl md:text-3xl font-black text-foreground">
+                        {profile?.followers_count || 0}
+                      </div>
+                      <div className="text-xs md:text-sm text-muted-foreground">Seguidores</div>
                     </div>
                   </div>
                 </>
@@ -902,38 +911,38 @@ export default function ProfilePage() {
           </div>
         </Card>
 
-        {/* Tabs */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Tabs - RESPONSIVE IMPROVEMENTS */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
           <div className="lg:col-span-2">
-            <Tabs defaultValue="packs" className="space-y-6">
-              <TabsList className="bg-accent rounded-full p-1 h-auto flex flex-wrap justify-center md:justify-start">
+            <Tabs defaultValue="packs" className="space-y-4 md:space-y-6">
+              <TabsList className="bg-accent rounded-full p-1 h-auto flex flex-wrap justify-center md:justify-start gap-1 overflow-x-auto">
                 <TabsTrigger
                   value="packs"
-                  className="rounded-full px-4 md:px-6 py-2 md:py-3 text-xs md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-semibold whitespace-nowrap"
+                  className="rounded-full px-3 md:px-6 py-2 md:py-3 text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-semibold whitespace-nowrap flex-shrink-0"
                 >
-                  Mis Packs ({profile?.packs_count || 0})
+                  Packs ({profile?.packs_count || 0})
                 </TabsTrigger>
                 <TabsTrigger
                   value="stats"
-                  className="rounded-full px-4 md:px-6 py-2 md:py-3 text-xs md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-semibold whitespace-nowrap"
+                  className="rounded-full px-3 md:px-6 py-2 md:py-3 text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-semibold whitespace-nowrap flex-shrink-0"
                 >
                   Estadísticas
                 </TabsTrigger>
                 <TabsTrigger
                   value="likes"
-                  className="rounded-full px-4 md:px-6 py-2 md:py-3 text-xs md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-semibold whitespace-nowrap"
+                  className="rounded-full px-3 md:px-6 py-2 md:py-3 text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-semibold whitespace-nowrap flex-shrink-0"
                 >
                   Me Gusta
                 </TabsTrigger>
                 <TabsTrigger
                   value="purchases"
-                  className="rounded-full px-4 md:px-6 py-2 md:py-3 text-xs md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-semibold whitespace-nowrap"
+                  className="rounded-full px-3 md:px-6 py-2 md:py-3 text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-semibold whitespace-nowrap flex-shrink-0"
                 >
                   Compras
                 </TabsTrigger>
                 <TabsTrigger
                   value="settings"
-                  className="rounded-full px-4 md:px-6 py-2 md:py-3 text-xs md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-semibold whitespace-nowrap"
+                  className="rounded-full px-3 md:px-6 py-2 md:py-3 text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-semibold whitespace-nowrap flex-shrink-0"
                 >
                   <Settings className="h-4 w-4 mr-1 md:mr-2 inline" />
                   <span className="hidden sm:inline">Configuración</span>
@@ -1279,150 +1288,7 @@ export default function ProfilePage() {
               </TabsContent>
 
               <TabsContent value="purchases">
-                {(() => {
-                  const [purchasesLoading, setPurchasesLoading] = useState(false)
-                  const [purchasesData, setPurchasesData] = useState<any[]>([])
-
-                  useEffect(() => {
-                    const loadPurchases = async () => {
-                      try {
-                        setPurchasesLoading(true)
-                        const { data: purchases, error } = await supabase
-                          .from("purchases")
-                          .select(`
-                            id,
-                            pack_id,
-                            amount,
-                            status,
-                            created_at,
-                            packs (
-                              id,
-                              title,
-                              cover_image_url,
-                              price,
-                              user_id
-                            )
-                          `)
-                          .eq("buyer_id", profile?.id)
-                          .order("created_at", { ascending: false })
-
-                        if (!error && purchases) {
-                          setPurchasesData(purchases as any)
-                        }
-                      } catch (err) {
-                        console.error("[v0] Error loading purchases:", err)
-                      } finally {
-                        setPurchasesLoading(false)
-                      }
-                    }
-
-                    if (profile?.id) {
-                      loadPurchases()
-                    }
-                  }, [profile?.id])
-
-                  if (purchasesLoading) {
-                    return (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {[1, 2, 3].map((i) => (
-                          <Card key={i} className="overflow-hidden border-border rounded-2xl animate-pulse">
-                            <div className="aspect-square bg-muted" />
-                            <div className="p-5 space-y-3">
-                              <div className="h-6 bg-muted rounded" />
-                              <div className="h-10 bg-muted rounded" />
-                            </div>
-                          </Card>
-                        ))}
-                      </div>
-                    )
-                  }
-
-                  if (purchasesData.length === 0) {
-                    return (
-                      <Card className="p-12 text-center rounded-3xl border-2 border-dashed border-border">
-                        <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                        <h3 className="text-xl font-bold text-foreground mb-2">No realizaste compras todavía</h3>
-                        <p className="text-muted-foreground mb-6">Explorá packs y realiza tu primer compra</p>
-                        <Link href="/">
-                          <Button className="gap-2 rounded-full h-12 px-8">
-                            <Package className="h-5 w-5" />
-                            Explorar Packs
-                          </Button>
-                        </Link>
-                      </Card>
-                    )
-                  }
-
-                  return (
-                    <div className="space-y-4">
-                      {purchasesData.map((purchase) => (
-                        <Card key={purchase.id} className="p-4 md:p-6 rounded-2xl border-border hover:border-primary/40 transition-all">
-                          <div className="flex flex-col md:flex-row gap-4 md:gap-6">
-                            <div className="flex-shrink-0">
-                              <img
-                                src={purchase.packs?.cover_image_url || "/placeholder.svg?height=120&width=120"}
-                                alt={purchase.packs?.title}
-                                className="w-24 h-24 rounded-xl object-cover"
-                              />
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
-                                <div>
-                                  <Link href={`/pack/${purchase.pack_id}`}>
-                                    <h3 className="font-bold text-lg text-foreground hover:text-primary transition-colors">
-                                      {purchase.packs?.title}
-                                    </h3>
-                                  </Link>
-                                  <p className="text-sm text-muted-foreground">
-                                    Comprado el{" "}
-                                    {new Date(purchase.created_at).toLocaleDateString("es-AR", {
-                                      day: "numeric",
-                                      month: "long",
-                                      year: "numeric",
-                                    })}
-                                  </p>
-                                </div>
-                                <div className="flex items-end justify-between md:flex-col md:items-end gap-2">
-                                  <div>
-                                    <div className="text-2xl font-black text-foreground">${formatPrice(purchase.amount)}</div>
-                                    <div className="text-xs text-muted-foreground">ARS</div>
-                                  </div>
-                                  <Badge
-                                    variant="secondary"
-                                    className={`text-xs font-bold ${
-                                      purchase.status === "completed"
-                                        ? "bg-green-500/10 text-green-600"
-                                        : "bg-yellow-500/10 text-yellow-600"
-                                    }`}
-                                  >
-                                    {purchase.status === "completed" ? "Completado" : "Pendiente"}
-                                  </Badge>
-                                </div>
-                              </div>
-                              <div className="mt-4 flex flex-col sm:flex-row gap-2">
-                                <Link href={`/pack/${purchase.pack_id}`} className="flex-1">
-                                  <Button variant="outline" className="w-full rounded-full bg-transparent" size="sm">
-                                    Ver Pack
-                                  </Button>
-                                </Link>
-                                <a
-                                  href={`/api/packs/${purchase.pack_id}/download`}
-                                  download
-                                  className="flex-1"
-                                >
-                                  <Button className="w-full rounded-full" size="sm">
-                                    <Download className="h-4 w-4 mr-2" />
-                                    Descargar
-                                  </Button>
-                                </a>
-                              </div>
-                            </div>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  )
-                })()}
+                <ProfilePurchasesTab profile={profile} />
               </TabsContent>
 
               <TabsContent value="settings" className="space-y-6">
@@ -1582,8 +1448,10 @@ export default function ProfilePage() {
             </Tabs>
           </div>
 
-          {/* Sidebar with profile limits card */}
-          <div className="space-y-6">{profile && <ProfileLimitsCard userId={profile.id} userPlan={userPlan} />}</div>
+          {/* Sidebar - RESPONSIVE */}
+          <div className="space-y-4 md:space-y-6">
+            {profile && <ProfileLimitsCard userId={profile.id} userPlan={userPlan} />}
+          </div>
         </div>
       </main>
 

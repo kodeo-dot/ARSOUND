@@ -35,16 +35,36 @@ export default function SuccessContent() {
           return
         }
 
-        await new Promise(resolve => setTimeout(resolve, 3000))
+        await new Promise(resolve => setTimeout(resolve, 5000))
 
         if (externalReference?.includes('plan_')) {
           setStatus('success')
           setMessage('¡Plan actualizado exitosamente! Redirigiendo...')
           setTimeout(() => router.push('/profile'), 3000)
         } else if (externalReference?.includes('pack_')) {
-          // Extract pack ID from external reference
           const packIdFromRef = externalReference.split('_')[2]
           setPackId(packIdFromRef)
+          
+          try {
+            console.log('[v0] Recording purchase via API as fallback:', { packIdFromRef, paymentId })
+            const recordResponse = await fetch('/api/payments/record', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                packId: packIdFromRef,
+                paymentId: paymentId,
+              }),
+            })
+
+            if (recordResponse.ok) {
+              const recordData = await recordResponse.json()
+              console.log('[v0] Purchase recorded via API:', recordData)
+            } else {
+              console.error('[v0] Failed to record purchase via API:', recordResponse.status)
+            }
+          } catch (err) {
+            console.error('[v0] Error recording purchase via API:', err)
+          }
           
           setStatus('success')
           setMessage('¡Pack comprado exitosamente! Preparando descarga...')
@@ -76,14 +96,11 @@ export default function SuccessContent() {
               } else {
                 const error = await response.json()
                 console.error('[v0] Download failed with status:', response.status, error)
-                // Still redirect even if download failed
               }
             } catch (err) {
               console.error('[v0] Download error:', err)
-              // Still redirect even if download failed
             }
             
-            // Always redirect to profile after 2 seconds
             console.log('[v0] Redirecting to profile')
             router.push('/profile')
           }, 2000)
@@ -118,11 +135,11 @@ export default function SuccessContent() {
               <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-green-500" />
               <h1 className="text-2xl font-bold mb-2 text-green-600">¡Éxito!</h1>
               <p className="text-muted-foreground mb-6">{message}</p>
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => router.push('/profile')} className="flex-1">
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button variant="outline" onClick={() => router.push('/profile')} className="flex-1 rounded-full">
                   Mi perfil
                 </Button>
-                <Button onClick={() => router.push('/')} className="flex-1">
+                <Button onClick={() => router.push('/')} className="flex-1 rounded-full">
                   Explorar más
                 </Button>
               </div>
@@ -136,11 +153,11 @@ export default function SuccessContent() {
               </div>
               <h1 className="text-2xl font-bold mb-2 text-red-600">Error</h1>
               <p className="text-muted-foreground mb-6">{message}</p>
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => router.back()} className="flex-1">
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <Button variant="outline" onClick={() => router.back()} className="flex-1 rounded-full">
                   Volver
                 </Button>
-                <Button onClick={() => router.push('/profile')} className="flex-1">
+                <Button onClick={() => router.push('/profile')} className="flex-1 rounded-full">
                   Mi perfil
                 </Button>
               </div>
