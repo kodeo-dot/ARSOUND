@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     console.log("[v0] MP Connect: User authenticated:", user.id)
 
     const appId = process.env.MERCADO_PAGO_APP_ID
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://arsound.vercel.app'
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://arsound.com.ar'
     const redirectUri = `${baseUrl}/api/mercadopago/callback`
     
     console.log("[v0] MP Connect: App ID configured:", !!appId)
