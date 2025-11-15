@@ -51,13 +51,15 @@ export default function SuccessContent() {
           
           setTimeout(async () => {
             try {
+              console.log('[v0] Attempting to download pack:', packIdFromRef)
               const response = await fetch(`/api/packs/${packIdFromRef}/download`)
+              
               if (response.ok) {
-                // Trigger download
                 const blob = await response.blob()
                 const url = window.URL.createObjectURL(blob)
                 const a = document.createElement("a")
                 a.href = url
+                
                 const { data: pack } = await supabase
                   .from("packs")
                   .select("title")
@@ -69,12 +71,20 @@ export default function SuccessContent() {
                 a.click()
                 window.URL.revokeObjectURL(url)
                 document.body.removeChild(a)
+                
+                console.log('[v0] Download completed successfully')
+              } else {
+                const error = await response.json()
+                console.error('[v0] Download failed with status:', response.status, error)
+                // Still redirect even if download failed
               }
             } catch (err) {
-              console.error('[v0] Download failed:', err)
+              console.error('[v0] Download error:', err)
+              // Still redirect even if download failed
             }
             
-            // Redirect to profile
+            // Always redirect to profile after 2 seconds
+            console.log('[v0] Redirecting to profile')
             router.push('/profile')
           }, 2000)
         } else {

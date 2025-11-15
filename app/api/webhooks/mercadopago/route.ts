@@ -69,56 +69,71 @@ export async function POST(request: Request) {
       const discountAmount = metadata.original_price ? metadata.original_price - metadata.final_price : 0
 
       // Create purchase record
-      const { error: purchaseError, data: purchaseData } = await supabase.from("purchases").insert({
+      console.log("[v0] Creating purchase record with data:", {
         buyer_id: metadata.buyer_id,
         pack_id: metadata.pack_id,
         amount: metadata.final_price,
-        discount_amount: discountAmount,
-        platform_commission: metadata.commission_amount || 0,
-        creator_earnings: metadata.seller_earnings || 0,
-        status: "completed",
-        payment_method: "mercado_pago",
-        mercado_pago_payment_id: paymentId,
-      }).select()
+        status: "completed"
+      })
+
+      const { error: purchaseError, data: purchaseData } = await supabase
+        .from("purchases")
+        .insert({
+          buyer_id: metadata.buyer_id,
+          pack_id: metadata.pack_id,
+          amount: metadata.final_price,
+          discount_amount: discountAmount,
+          platform_commission: metadata.commission_amount || 0,
+          creator_earnings: metadata.seller_earnings || 0,
+          status: "completed",
+          payment_method: "mercado_pago",
+          mercado_pago_payment_id: paymentId,
+        })
+        .select()
 
       if (purchaseError) {
-        console.error("[v0] Error creating purchase record:", purchaseError)
+        console.error("[v0] Error creating purchase record:", purchaseError.message, purchaseError.details)
+        // Continue anyway - don't fail the webhook
       } else {
-        console.log("[v0] Pack purchase recorded successfully")
-
-        // Record pack download
-        if (!purchaseError) {
-          const { error: downloadError } = await supabase.from("pack_downloads").insert({
-            user_id: metadata.buyer_id,
-            pack_id: metadata.pack_id,
-            downloaded_at: new Date().toISOString(),
-          })
-
-          if (downloadError) {
-            console.log("[v0] Download record already exists or error:", downloadError)
-          }
-        }
+        console.log("[v0] Pack purchase recorded successfully:", purchaseData)
 
         // Increment downloads_count for pack
-        const { data: updatedPack } = await supabase
+        const { data: currentPack } = await supabase
           .from("packs")
           .select("downloads_count")
           .eq("id", metadata.pack_id)
           .single()
 
-        const newDownloadCount = (updatedPack?.downloads_count || 0) + 1
+        const newDownloadCount = (currentPack?.downloads_count || 0) + 1
 
-        await supabase
+        const { error: updateError } = await supabase
           .from("packs")
           .update({ downloads_count: newDownloadCount })
           .eq("id", metadata.pack_id)
-          .catch((err) => {
-            console.error("[v0] Error updating pack downloads_count:", err)
+
+        if (updateError) {
+          console.error("[v0] Error updating pack downloads_count:", updateError.message)
+        } else {
+          console.log("[v0] Pack downloads_count updated to:", newDownloadCount)
+        }
+
+        // Record pack download
+        const { error: downloadError } = await supabase
+          .from("pack_downloads")
+          .insert({
+            user_id: metadata.buyer_id,
+            pack_id: metadata.pack_id,
+            downloaded_at: new Date().toISOString(),
           })
 
+        if (downloadError) {
+          console.log("[v0] Download record info:", downloadError.message)
+        } else {
+          console.log("[v0] Download record created successfully")
+        }
+
         // Update seller statistics
-        if (pack.price > 0) {
-          // Get current seller stats
+        if (pack.price > 0 && metadata.seller_earnings) {
           const { data: sellerProfile } = await supabase
             .from("profiles")
             .select("total_sales")
@@ -127,15 +142,16 @@ export async function POST(request: Request) {
 
           const newTotalSales = (sellerProfile?.total_sales || 0) + (metadata.seller_earnings || 0)
 
-          await supabase
+          const { error: profileError } = await supabase
             .from("profiles")
             .update({ total_sales: newTotalSales })
             .eq("id", pack.user_id)
-            .catch((err) => {
-              console.error("[v0] Error updating seller total_sales:", err)
-            })
 
-          console.log("[v0] Seller stats updated:", { pack_id: metadata.pack_id, seller_earnings: metadata.seller_earnings })
+          if (profileError) {
+            console.error("[v0] Error updating seller total_sales:", profileError.message)
+          } else {
+            console.log("[v0] Seller stats updated - total_sales:", newTotalSales)
+          }
         }
       }
     }

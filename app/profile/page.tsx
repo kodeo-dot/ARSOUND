@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Settings, MapPin, Calendar, Package, Check, X, Loader2, Upload, TrendingUp, Heart, Play, DollarSign, Users, Zap, Camera, AlertCircle } from 'lucide-react'
+import { Settings, MapPin, Calendar, Package, Check, X, Loader2, Upload, TrendingUp, Heart, Play, DollarSign, Users, Zap, Camera, AlertCircle, Download } from 'lucide-react'
 import Link from "next/link"
 import { LogoutButton } from "@/components/logout-button"
 // import { AvatarUpload } from "@/components/avatar-upload" // Removed AvatarUpload component
@@ -1279,9 +1279,150 @@ export default function ProfilePage() {
               </TabsContent>
 
               <TabsContent value="purchases">
-                <Card className="p-12 text-center rounded-3xl">
-                  <p className="text-muted-foreground">No realizaste compras todavía</p>
-                </Card>
+                {(() => {
+                  const [purchasesLoading, setPurchasesLoading] = useState(false)
+                  const [purchasesData, setPurchasesData] = useState<any[]>([])
+
+                  useEffect(() => {
+                    const loadPurchases = async () => {
+                      try {
+                        setPurchasesLoading(true)
+                        const { data: purchases, error } = await supabase
+                          .from("purchases")
+                          .select(`
+                            id,
+                            pack_id,
+                            amount,
+                            status,
+                            created_at,
+                            packs (
+                              id,
+                              title,
+                              cover_image_url,
+                              price,
+                              user_id
+                            )
+                          `)
+                          .eq("buyer_id", profile?.id)
+                          .order("created_at", { ascending: false })
+
+                        if (!error && purchases) {
+                          setPurchasesData(purchases as any)
+                        }
+                      } catch (err) {
+                        console.error("[v0] Error loading purchases:", err)
+                      } finally {
+                        setPurchasesLoading(false)
+                      }
+                    }
+
+                    if (profile?.id) {
+                      loadPurchases()
+                    }
+                  }, [profile?.id])
+
+                  if (purchasesLoading) {
+                    return (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {[1, 2, 3].map((i) => (
+                          <Card key={i} className="overflow-hidden border-border rounded-2xl animate-pulse">
+                            <div className="aspect-square bg-muted" />
+                            <div className="p-5 space-y-3">
+                              <div className="h-6 bg-muted rounded" />
+                              <div className="h-10 bg-muted rounded" />
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    )
+                  }
+
+                  if (purchasesData.length === 0) {
+                    return (
+                      <Card className="p-12 text-center rounded-3xl border-2 border-dashed border-border">
+                        <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
+                        <h3 className="text-xl font-bold text-foreground mb-2">No realizaste compras todavía</h3>
+                        <p className="text-muted-foreground mb-6">Explorá packs y realiza tu primer compra</p>
+                        <Link href="/">
+                          <Button className="gap-2 rounded-full h-12 px-8">
+                            <Package className="h-5 w-5" />
+                            Explorar Packs
+                          </Button>
+                        </Link>
+                      </Card>
+                    )
+                  }
+
+                  return (
+                    <div className="space-y-4">
+                      {purchasesData.map((purchase) => (
+                        <Card key={purchase.id} className="p-4 md:p-6 rounded-2xl border-border hover:border-primary/40 transition-all">
+                          <div className="flex flex-col md:flex-row gap-4 md:gap-6">
+                            <div className="flex-shrink-0">
+                              <img
+                                src={purchase.packs?.cover_image_url || "/placeholder.svg?height=120&width=120"}
+                                alt={purchase.packs?.title}
+                                className="w-24 h-24 rounded-xl object-cover"
+                              />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-4">
+                                <div>
+                                  <Link href={`/pack/${purchase.pack_id}`}>
+                                    <h3 className="font-bold text-lg text-foreground hover:text-primary transition-colors">
+                                      {purchase.packs?.title}
+                                    </h3>
+                                  </Link>
+                                  <p className="text-sm text-muted-foreground">
+                                    Comprado el{" "}
+                                    {new Date(purchase.created_at).toLocaleDateString("es-AR", {
+                                      day: "numeric",
+                                      month: "long",
+                                      year: "numeric",
+                                    })}
+                                  </p>
+                                </div>
+                                <div className="flex items-end justify-between md:flex-col md:items-end gap-2">
+                                  <div>
+                                    <div className="text-2xl font-black text-foreground">${formatPrice(purchase.amount)}</div>
+                                    <div className="text-xs text-muted-foreground">ARS</div>
+                                  </div>
+                                  <Badge
+                                    variant="secondary"
+                                    className={`text-xs font-bold ${
+                                      purchase.status === "completed"
+                                        ? "bg-green-500/10 text-green-600"
+                                        : "bg-yellow-500/10 text-yellow-600"
+                                    }`}
+                                  >
+                                    {purchase.status === "completed" ? "Completado" : "Pendiente"}
+                                  </Badge>
+                                </div>
+                              </div>
+                              <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                                <Link href={`/pack/${purchase.pack_id}`} className="flex-1">
+                                  <Button variant="outline" className="w-full rounded-full bg-transparent" size="sm">
+                                    Ver Pack
+                                  </Button>
+                                </Link>
+                                <a
+                                  href={`/api/packs/${purchase.pack_id}/download`}
+                                  download
+                                  className="flex-1"
+                                >
+                                  <Button className="w-full rounded-full" size="sm">
+                                    <Download className="h-4 w-4 mr-2" />
+                                    Descargar
+                                  </Button>
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
+                      ))}
+                    </div>
+                  )
+                })()}
               </TabsContent>
 
               <TabsContent value="settings" className="space-y-6">
