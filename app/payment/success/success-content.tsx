@@ -3,13 +3,16 @@
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, Loader2 } from 'lucide-react'
+import { CheckCircle2, Loader2, Download } from 'lucide-react'
+import { createBrowserClient } from '@/lib/supabase/client'
 
 export default function SuccessContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
+  const supabase = createBrowserClient()
   const [status, setStatus] = useState<'processing' | 'success' | 'error'>('processing')
   const [message, setMessage] = useState('Procesando tu pago...')
+  const [packId, setPackId] = useState<string | null>(null)
 
   useEffect(() => {
     const processPayment = async () => {
@@ -32,16 +35,48 @@ export default function SuccessContent() {
           return
         }
 
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        await new Promise(resolve => setTimeout(resolve, 3000))
 
         if (externalReference?.includes('plan_')) {
           setStatus('success')
           setMessage('¡Plan actualizado exitosamente! Redirigiendo...')
           setTimeout(() => router.push('/profile'), 3000)
         } else if (externalReference?.includes('pack_')) {
+          // Extract pack ID from external reference
+          const packIdFromRef = externalReference.split('_')[2]
+          setPackId(packIdFromRef)
+          
           setStatus('success')
-          setMessage('¡Pack comprado exitosamente! Redirigiendo...')
-          setTimeout(() => router.push('/profile'), 3000)
+          setMessage('¡Pack comprado exitosamente! Preparando descarga...')
+          
+          setTimeout(async () => {
+            try {
+              const response = await fetch(`/api/packs/${packIdFromRef}/download`)
+              if (response.ok) {
+                // Trigger download
+                const blob = await response.blob()
+                const url = window.URL.createObjectURL(blob)
+                const a = document.createElement("a")
+                a.href = url
+                const { data: pack } = await supabase
+                  .from("packs")
+                  .select("title")
+                  .eq("id", packIdFromRef)
+                  .single()
+                
+                a.download = `${(pack?.title || 'pack').replace(/[^a-zA-Z0-9]/g, "_")}.zip`
+                document.body.appendChild(a)
+                a.click()
+                window.URL.revokeObjectURL(url)
+                document.body.removeChild(a)
+              }
+            } catch (err) {
+              console.error('[v0] Download failed:', err)
+            }
+            
+            // Redirect to profile
+            router.push('/profile')
+          }, 2000)
         } else {
           setStatus('error')
           setMessage('No se pudo identificar el tipo de compra')
@@ -54,7 +89,7 @@ export default function SuccessContent() {
     }
 
     processPayment()
-  }, [searchParams, router])
+  }, [searchParams, router, supabase])
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-muted p-4">
@@ -73,9 +108,14 @@ export default function SuccessContent() {
               <CheckCircle2 className="w-16 h-16 mx-auto mb-4 text-green-500" />
               <h1 className="text-2xl font-bold mb-2 text-green-600">¡Éxito!</h1>
               <p className="text-muted-foreground mb-6">{message}</p>
-              <Button onClick={() => router.push('/profile')} className="w-full">
-                Ir a mi perfil
-              </Button>
+              <div className="flex gap-3">
+                <Button variant="outline" onClick={() => router.push('/profile')} className="flex-1">
+                  Mi perfil
+                </Button>
+                <Button onClick={() => router.push('/')} className="flex-1">
+                  Explorar más
+                </Button>
+              </div>
             </>
           )}
 

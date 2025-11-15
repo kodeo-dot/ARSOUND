@@ -6,7 +6,7 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { type, data } = body
 
-    console.log("[v0] Mercado Pago webhook received:", type, data)
+    console.log("[v0] Mercado Pago webhook received:", type, data?.id)
 
     if (type !== "payment") {
       return NextResponse.json({ received: true })
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     const metadata = paymentData.metadata
     const externalReference = paymentData.external_reference
 
-    console.log("[v0] Processing payment:", { externalReference, metadata })
+    console.log("[v0] Processing payment:", { externalReference, type: metadata?.type })
 
     if (metadata?.type === "pack_purchase") {
       const { data: pack } = await supabase
@@ -66,41 +66,76 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Pack not found" }, { status: 404 })
       }
 
-      const discountAmount = metadata.original_price - metadata.final_price
+      const discountAmount = metadata.original_price ? metadata.original_price - metadata.final_price : 0
 
-      const { error: purchaseError } = await supabase.from("purchases").insert({
+      // Create purchase record
+      const { error: purchaseError, data: purchaseData } = await supabase.from("purchases").insert({
         buyer_id: metadata.buyer_id,
         pack_id: metadata.pack_id,
         amount: metadata.final_price,
         discount_amount: discountAmount,
-        platform_commission: metadata.commission_amount,
-        creator_earnings: metadata.seller_earnings,
+        platform_commission: metadata.commission_amount || 0,
+        creator_earnings: metadata.seller_earnings || 0,
         status: "completed",
         payment_method: "mercado_pago",
         mercado_pago_payment_id: paymentId,
-      })
+      }).select()
 
       if (purchaseError) {
         console.error("[v0] Error creating purchase record:", purchaseError)
       } else {
         console.log("[v0] Pack purchase recorded successfully")
 
-        if (pack.price > 0) {
-          await supabase.rpc("increment", {
-            table_name: "packs",
-            row_id: metadata.pack_id,
-            column_name: "downloads_count",
-          }).catch((err) => {
-            console.error("[v0] Error incrementing downloads count:", err)
+        // Record pack download
+        if (!purchaseError) {
+          const { error: downloadError } = await supabase.from("pack_downloads").insert({
+            user_id: metadata.buyer_id,
+            pack_id: metadata.pack_id,
+            downloaded_at: new Date().toISOString(),
           })
 
-          await supabase.rpc("increment", {
-            table_name: "profiles",
-            row_id: pack.user_id,
-            column_name: "total_sales",
-          }).catch((err) => {
-            console.error("[v0] Error incrementing total sales:", err)
+          if (downloadError) {
+            console.log("[v0] Download record already exists or error:", downloadError)
+          }
+        }
+
+        // Increment downloads_count for pack
+        const { data: updatedPack } = await supabase
+          .from("packs")
+          .select("downloads_count")
+          .eq("id", metadata.pack_id)
+          .single()
+
+        const newDownloadCount = (updatedPack?.downloads_count || 0) + 1
+
+        await supabase
+          .from("packs")
+          .update({ downloads_count: newDownloadCount })
+          .eq("id", metadata.pack_id)
+          .catch((err) => {
+            console.error("[v0] Error updating pack downloads_count:", err)
           })
+
+        // Update seller statistics
+        if (pack.price > 0) {
+          // Get current seller stats
+          const { data: sellerProfile } = await supabase
+            .from("profiles")
+            .select("total_sales")
+            .eq("id", pack.user_id)
+            .single()
+
+          const newTotalSales = (sellerProfile?.total_sales || 0) + (metadata.seller_earnings || 0)
+
+          await supabase
+            .from("profiles")
+            .update({ total_sales: newTotalSales })
+            .eq("id", pack.user_id)
+            .catch((err) => {
+              console.error("[v0] Error updating seller total_sales:", err)
+            })
+
+          console.log("[v0] Seller stats updated:", { pack_id: metadata.pack_id, seller_earnings: metadata.seller_earnings })
         }
       }
     }
@@ -120,6 +155,7 @@ export async function POST(request: Request) {
       const expiresAt = new Date()
       expiresAt.setMonth(expiresAt.getMonth() + 1)
 
+      // Update user plan
       const { error: profileError } = await supabase
         .from("profiles")
         .update({ plan: planType })
@@ -131,6 +167,7 @@ export async function POST(request: Request) {
         console.log("[v0] User plan updated to:", planType)
       }
 
+      // Record plan subscription
       const { error: planError } = await supabase.from("user_plans").upsert(
         {
           user_id: userId,

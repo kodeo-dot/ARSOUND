@@ -9,12 +9,15 @@ export async function GET(request: Request) {
     const state = searchParams.get("state") // user_id
     const error = searchParams.get("error")
 
+    console.log("[v0] OAuth callback received:", { code: !!code, state, error })
+
     if (error) {
       console.error("[v0] OAuth error:", error)
       return redirect("/profile?mp_error=denied")
     }
 
     if (!code || !state) {
+      console.error("[v0] Missing code or state parameters")
       return redirect("/profile?mp_error=invalid")
     }
 
@@ -23,7 +26,17 @@ export async function GET(request: Request) {
     // Exchange code for access token
     const appId = process.env.MERCADO_PAGO_APP_ID
     const clientSecret = process.env.MERCADO_PAGO_CLIENT_SECRET
-    const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/mercadopago/callback`
+    
+    let baseUrl = process.env.NEXT_PUBLIC_APP_URL
+    const headers = request.headers
+    const forwardedProto = headers.get('x-forwarded-proto') || 'https'
+    const forwardedHost = headers.get('x-forwarded-host') || headers.get('host')
+    
+    if (forwardedHost && !forwardedHost.includes('localhost')) {
+      baseUrl = `${forwardedProto}://${forwardedHost}`
+    }
+    
+    const redirectUri = `${baseUrl}/api/mercadopago/callback`
 
     if (!appId || !clientSecret) {
       console.error("[v0] Mercado Pago credentials not configured")
@@ -34,6 +47,7 @@ export async function GET(request: Request) {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": "ARSOUND/1.0"
       },
       body: new URLSearchParams({
         client_id: appId,
@@ -41,17 +55,26 @@ export async function GET(request: Request) {
         grant_type: "authorization_code",
         code,
         redirect_uri: redirectUri,
-      }),
+      }).toString(),
     })
 
+    console.log("[v0] Token exchange response status:", tokenResponse.status)
+
     if (!tokenResponse.ok) {
-      const errorData = await tokenResponse.json()
+      const errorData = await tokenResponse.text()
       console.error("[v0] Token exchange error:", errorData)
       return redirect("/profile?mp_error=token")
     }
 
     const tokenData = await tokenResponse.json()
     const { access_token, user_id } = tokenData
+
+    if (!access_token) {
+      console.error("[v0] No access token in response:", tokenData)
+      return redirect("/profile?mp_error=token")
+    }
+
+    console.log("[v0] Access token obtained, user_id:", user_id)
 
     // Save to Supabase
     const { error: updateError } = await supabase
@@ -68,6 +91,7 @@ export async function GET(request: Request) {
       return redirect("/profile?mp_error=save")
     }
 
+    console.log("[v0] MP credentials saved successfully for user:", state)
     return redirect("/profile?mp_success=true")
   } catch (error: any) {
     console.error("[v0] OAuth callback error:", error)

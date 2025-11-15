@@ -906,37 +906,38 @@ export default function ProfilePage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2">
             <Tabs defaultValue="packs" className="space-y-6">
-              <TabsList className="bg-accent rounded-full p-1 h-auto">
+              <TabsList className="bg-accent rounded-full p-1 h-auto flex flex-wrap justify-center md:justify-start">
                 <TabsTrigger
                   value="packs"
-                  className="rounded-full px-6 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-semibold"
+                  className="rounded-full px-4 md:px-6 py-2 md:py-3 text-xs md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-semibold whitespace-nowrap"
                 >
                   Mis Packs ({profile?.packs_count || 0})
                 </TabsTrigger>
                 <TabsTrigger
                   value="stats"
-                  className="rounded-full px-6 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-semibold"
+                  className="rounded-full px-4 md:px-6 py-2 md:py-3 text-xs md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-semibold whitespace-nowrap"
                 >
                   Estadísticas
                 </TabsTrigger>
                 <TabsTrigger
                   value="likes"
-                  className="rounded-full px-6 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-semibold"
+                  className="rounded-full px-4 md:px-6 py-2 md:py-3 text-xs md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-semibold whitespace-nowrap"
                 >
                   Me Gusta
                 </TabsTrigger>
                 <TabsTrigger
                   value="purchases"
-                  className="rounded-full px-6 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-semibold"
+                  className="rounded-full px-4 md:px-6 py-2 md:py-3 text-xs md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-semibold whitespace-nowrap"
                 >
                   Compras
                 </TabsTrigger>
                 <TabsTrigger
                   value="settings"
-                  className="rounded-full px-6 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-semibold"
+                  className="rounded-full px-4 md:px-6 py-2 md:py-3 text-xs md:text-base data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-semibold whitespace-nowrap"
                 >
-                  <Settings className="h-4 w-4 mr-2 inline" />
-                  Configuración
+                  <Settings className="h-4 w-4 mr-1 md:mr-2 inline" />
+                  <span className="hidden sm:inline">Configuración</span>
+                  <span className="sm:hidden">Config</span>
                 </TabsTrigger>
               </TabsList>
 

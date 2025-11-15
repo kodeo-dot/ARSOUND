@@ -14,7 +14,7 @@ MERCADO_PAGO_APP_ID=tu_app_id_de_mercadopago
 MERCADO_PAGO_CLIENT_SECRET=tu_client_secret_de_mercadopago
 
 # URL de tu aplicación (para callbacks de OAuth)
-NEXT_PUBLIC_APP_URL=https://tu-dominio.vercel.app
+NEXT_PUBLIC_APP_URL=https://arsound.com.ar
 
 # Token de acceso de la plataforma (para recibir comisiones)
 MERCADO_PAGO_ACCESS_TOKEN=tu_access_token
