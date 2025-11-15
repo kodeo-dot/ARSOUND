@@ -1,4 +1,4 @@
-import { createServerClient } from "@/lib/supabase/server-client"
+import { createAdminClient } from "@/lib/supabase/server-client"
 import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ received: true })
     }
 
-    const supabase = await createServerClient()
+    const supabase = await createAdminClient()
     const metadata = paymentData.metadata
     const externalReference = paymentData.external_reference
 
