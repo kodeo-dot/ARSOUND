@@ -49,12 +49,16 @@ export default function SuccessContent() {
             console.log('[v0] Recording purchase via API as fallback:', { packIdFromRef, paymentId })
             const recordResponse = await fetch('/api/payments/record', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',     // <--- ESTO ES LO QUE FALTABA
+              headers: {
+                'Content-Type': 'application/json',
+              },
               body: JSON.stringify({
                 packId: packIdFromRef,
                 paymentId: paymentId,
               }),
             })
+
 
             if (recordResponse.ok) {
               const recordData = await recordResponse.json()
