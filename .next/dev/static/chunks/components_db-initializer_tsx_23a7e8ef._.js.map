@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "sources": [],
+  "sections": [
+    {"offset": {"line": 4, "column": 0}, "map": {"version":3,"sources":["file:///C:/Users/benii/Downloads/ARSOUND%20-%20DEMO%20WEB/components/db-initializer.tsx"],"sourcesContent":["\"use client\"\n\nimport { useEffect } from \"react\"\n\nexport function DbInitializer() {\n  useEffect(() => {\n    const initializeDatabase = async () => {\n      try {\n        const response = await fetch(\"/api/init\", {\n          method: \"GET\",\n          cache: \"no-store\",\n        })\n\n        if (response.ok) {\n          const data = await response.json()\n          console.log(\"[v0] Database ready:\", data.message)\n        }\n      } catch (error) {\n        console.error(\"[v0] Database init error:\", error)\n        // Silently fail - database may already be initialized\n      }\n    }\n\n    initializeDatabase()\n  }, [])\n\n  return null\n}\n"],"names":[],"mappings":";;;;AAEA;;AAFA;;AAIO,SAAS;;IACd,IAAA,0KAAS;mCAAC;YACR,MAAM;8DAAqB;oBACzB,IAAI;wBACF,MAAM,WAAW,MAAM,MAAM,aAAa;4BACxC,QAAQ;4BACR,OAAO;wBACT;wBAEA,IAAI,SAAS,EAAE,EAAE;4BACf,MAAM,OAAO,MAAM,SAAS,IAAI;4BAChC,QAAQ,GAAG,CAAC,wBAAwB,KAAK,OAAO;wBAClD;oBACF,EAAE,OAAO,OAAO;wBACd,QAAQ,KAAK,CAAC,6BAA6B;oBAC3C,sDAAsD;oBACxD;gBACF;;YAEA;QACF;kCAAG,EAAE;IAEL,OAAO;AACT;GAvBgB;KAAA","debugId":null}}]
+}

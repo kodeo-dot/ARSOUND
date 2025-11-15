@@ -1,0 +1,3 @@
+{
+  "/api/mercadopago/callback/route": "app/api/mercadopago/callback/route.js"
+}

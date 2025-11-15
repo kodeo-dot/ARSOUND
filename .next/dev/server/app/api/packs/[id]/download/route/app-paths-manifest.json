@@ -1,0 +1,3 @@
+{
+  "/api/packs/[id]/download/route": "app/api/packs/[id]/download/route.js"
+}

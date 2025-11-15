@@ -1,0 +1,3 @@
+{
+  "/api/mercadopago/connect/route": "app/api/mercadopago/connect/route.js"
+}

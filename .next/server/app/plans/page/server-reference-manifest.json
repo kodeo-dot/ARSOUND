@@ -1,0 +1,20 @@
+{
+  "node": {
+    "4093ab23840374829a2fdad1cb52a047582f4894f4": {
+      "workers": {
+        "app/plans/page": {
+          "moduleId": 24905,
+          "async": false,
+          "exportedName": "selectPlan",
+          "filename": "app/plans/actions.ts"
+        }
+      },
+      "layer": {
+        "app/plans/page": "action-browser"
+      },
+      "exportedName": "selectPlan",
+      "filename": "app/plans/actions.ts"
+    }
+  },
+  "edge": {}
+}
