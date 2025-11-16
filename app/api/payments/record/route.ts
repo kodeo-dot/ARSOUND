@@ -1,4 +1,4 @@
-import { createAdminClient } from "@/lib/supabase/server-client"
+import { createAdminClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 import { recordUserActionServer } from "@/lib/user-actions"
 
