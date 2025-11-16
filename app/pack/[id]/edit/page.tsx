@@ -122,6 +122,19 @@ export default function EditPackPage() {
     }
   }
 
+  const getMaxDiscount = () => {
+    switch (userPlan) {
+      case "free":
+        return 10
+      case "hit":
+        return 50
+      case "studio_plus":
+        return 100
+      default:
+        return 10
+    }
+  }
+
   const uploadCoverToStorage = async (file: File) => {
     const fileExt = file.name.split(".").pop()
     const fileName = `${user.id}/covers/${Date.now()}.${fileExt}`
@@ -146,6 +159,7 @@ export default function EditPackPage() {
 
       const priceNum = Number.parseInt(price)
       const discountNum = Number.parseInt(discountPercent) || 0
+      const maxDiscount = getMaxDiscount()
 
       if (priceNum < 0 || priceNum > MAX_PRICE) {
         toast({
@@ -156,10 +170,10 @@ export default function EditPackPage() {
         return
       }
 
-      if (discountNum < 0 || discountNum > 50) {
+      if (discountNum < 0 || discountNum > maxDiscount) {
         toast({
           title: "Error",
-          description: "El descuento debe estar entre 0% y 50%",
+          description: `El descuento máximo permitido para tu plan es ${maxDiscount}%`,
           variant: "destructive",
         })
         return
@@ -369,16 +383,17 @@ export default function EditPackPage() {
                 value={discountPercent}
                 onChange={(e) => {
                   const val = Number.parseFloat(e.target.value) || 0
-                  setDiscountPercent(Math.min(val, 50).toString())
+                  const maxDiscount = getMaxDiscount()
+                  setDiscountPercent(Math.min(val, maxDiscount).toString())
                 }}
                 className="text-base h-14 rounded-xl bg-card border-border text-lg font-semibold"
                 min="0"
-                max="50"
+                max={getMaxDiscount()}
                 step="5"
                 disabled={saving}
               />
               <p className="text-sm text-muted-foreground">
-                Descuento máximo: 50%. Dejá en 0 para no aplicar descuento.
+                Descuento máximo para tu plan ({userPlan}): {getMaxDiscount()}%. Dejá en 0 para no aplicar descuento.
               </p>
             </div>
 

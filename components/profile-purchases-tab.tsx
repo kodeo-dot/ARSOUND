@@ -14,7 +14,11 @@ interface Purchase {
   id: string
   pack_id: string
   amount: number
+  amount_paid: number
   discount_amount: number | null
+  discount_percent: number | null
+  platform_commission: number | null
+  commission_percent: number | null
   status: string
   created_at: string
   payment_method: string | null
@@ -190,7 +194,7 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
                   <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
                     <div>
                       <div className="text-xl md:text-2xl font-black text-foreground">
-                        ${formatPrice(purchase.amount)}
+                        ${formatPrice(purchase.amount_paid || purchase.amount)}
                       </div>
                       {purchase.discount_amount && purchase.discount_amount > 0 && (
                         <div className="text-xs text-green-600 font-semibold">
@@ -284,7 +288,7 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
                 <div>
                   <div className="text-xs text-muted-foreground mb-1">Precio Final</div>
                   <div className="text-lg font-bold text-foreground">
-                    ${formatPrice(selectedPurchase.amount)}
+                    ${formatPrice(selectedPurchase.amount_paid || selectedPurchase.amount)}
                   </div>
                 </div>
                 <div>
@@ -303,6 +307,21 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
                   </div>
                 </div>
               )}
+
+              <div className="space-y-2 p-3 rounded-xl bg-accent/50 border border-border">
+                {selectedPurchase.platform_commission !== null && (
+                  <div className="flex justify-between">
+                    <span className="text-xs text-muted-foreground">Comisión de Plataforma</span>
+                    <span className="text-xs font-medium">-${formatPrice(selectedPurchase.platform_commission)}</span>
+                  </div>
+                )}
+                {selectedPurchase.commission_percent !== null && (
+                  <div className="flex justify-between">
+                    <span className="text-xs text-muted-foreground">% Comisión</span>
+                    <span className="text-xs font-medium">{parseFloat(String(selectedPurchase.commission_percent)).toFixed(1)}%</span>
+                  </div>
+                )}
+              </div>
 
               <div className="space-y-2">
                 <div className="flex justify-between">
