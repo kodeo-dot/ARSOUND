@@ -35,6 +35,7 @@ import { ProfileLimitsCard } from "@/components/profile-limits-card"
 import { PLAN_FEATURES } from "@/lib/plans" // Added for commission calculation
 import { toast } from "@/components/ui/use-toast" // Added for toast notifications
 import { ProfilePurchasesTab } from "@/components/profile-purchases-tab"
+import { StudioPlusAnalytics } from "@/components/studio-plus-analytics"
 
 interface Profile {
   id: string
@@ -1057,125 +1058,131 @@ export default function ProfilePage() {
                       </Card>
                     )}
 
-                    {/* Statistics Cards - Free: 2 cards, De 0 a Hit+: 4 cards */}
-                    <div
-                      className={`grid grid-cols-1 ${canShow4Cards ? "md:grid-cols-2 lg:grid-cols-4" : "md:grid-cols-2"} gap-4`}
-                    >
-                      <Card className="p-6 rounded-3xl border-border bg-gradient-to-br from-primary/10 to-primary/5">
-                        <div className="flex items-center justify-between mb-2">
-                          <DollarSign className="h-8 w-8 text-primary" />
-                          <TrendingUp className="h-5 w-5 text-primary/60" />
-                        </div>
-                        <div className="text-3xl font-black text-foreground">
-                          ${formatPrice(profile?.total_sales || 0)}
-                        </div>
-                        <div className="text-sm text-muted-foreground font-semibold mt-1">Total de Ventas</div>
-                      </Card>
-
-                      <Card className="p-6 rounded-3xl border-border bg-gradient-to-br from-secondary/10 to-secondary/5">
-                        <div className="flex items-center justify-between mb-2">
-                          <Play className="h-8 w-8 text-secondary" />
-                          <TrendingUp className="h-5 w-5 text-secondary/60" />
-                        </div>
-                        <div className="text-3xl font-black text-foreground">{profile?.total_plays_count || 0}</div>
-                        <div className="text-sm text-muted-foreground font-semibold mt-1">Reproducciones</div>
-                      </Card>
-
-                      {canShow4Cards && (
-                        <>
-                          <Card className="p-6 rounded-3xl border-border bg-gradient-to-br from-red-500/10 to-red-500/5">
+                    {canShowGraphs && profile?.id ? (
+                      <StudioPlusAnalytics userId={profile.id} />
+                    ) : (
+                      <>
+                        {/* Statistics Cards - Free: 2 cards, De 0 a Hit+: 4 cards */}
+                        <div
+                          className={`grid grid-cols-1 ${canShow4Cards ? "md:grid-cols-2 lg:grid-cols-4" : "md:grid-cols-2"} gap-4`}
+                        >
+                          <Card className="p-6 rounded-3xl border-border bg-gradient-to-br from-primary/10 to-primary/5">
                             <div className="flex items-center justify-between mb-2">
-                              <Heart className="h-8 w-8 text-red-500" />
-                              <TrendingUp className="h-5 w-5 text-red-500/60" />
+                              <DollarSign className="h-8 w-8 text-primary" />
+                              <TrendingUp className="h-5 w-5 text-primary/60" />
                             </div>
                             <div className="text-3xl font-black text-foreground">
-                              {profile?.total_likes_received || 0}
+                              ${formatPrice(profile?.total_sales || 0)}
                             </div>
-                            <div className="text-sm text-muted-foreground font-semibold mt-1">Likes Recibidos</div>
+                            <div className="text-sm text-muted-foreground font-semibold mt-1">Total de Ventas</div>
                           </Card>
 
-                          <Card className="p-6 rounded-3xl border-border bg-gradient-to-br from-blue-500/10 to-blue-500/5">
+                          <Card className="p-6 rounded-3xl border-border bg-gradient-to-br from-secondary/10 to-secondary/5">
                             <div className="flex items-center justify-between mb-2">
-                              <Users className="h-8 w-8 text-blue-500" />
-                              <TrendingUp className="h-5 w-5 text-blue-500/60" />
+                              <Play className="h-8 w-8 text-secondary" />
+                              <TrendingUp className="h-5 w-5 text-secondary/60" />
                             </div>
-                            <div className="text-3xl font-black text-foreground">{profile?.followers_count || 0}</div>
-                            <div className="text-sm text-muted-foreground font-semibold mt-1">Seguidores</div>
+                            <div className="text-3xl font-black text-foreground">{profile?.total_plays_count || 0}</div>
+                            <div className="text-sm text-muted-foreground font-semibold mt-1">Reproducciones</div>
                           </Card>
-                        </>
-                      )}
-                    </div>
 
-                    {/* Graphs - Only for Studio Plus */}
-                    {canShowGraphs && packStats.length > 0 && (
-                      <>
-                        <Card className="p-6 rounded-3xl border-border">
-                          <div className="flex items-center gap-3 mb-6">
-                            <Package className="h-6 w-6 text-primary" />
-                            <h3 className="text-2xl font-black text-foreground">Ventas por Pack</h3>
-                          </div>
-                          <ResponsiveContainer width="100%" height={300}>
-                            <BarChart data={packStats}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                              <XAxis
-                                dataKey="name"
-                                stroke="hsl(var(--muted-foreground))"
-                                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                              />
-                              <YAxis
-                                stroke="hsl(var(--muted-foreground))"
-                                tick={{ fill: "hsl(var(--muted-foreground))" }}
-                              />
-                              <Tooltip
-                                contentStyle={{
-                                  backgroundColor: "hsl(var(--card))",
-                                  border: "1px solid hsl(var(--border))",
-                                  borderRadius: "12px",
-                                }}
-                              />
-                              <Bar dataKey="sales" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]}>
-                                {packStats.map((entry: any, index: number) => (
-                                  <Cell key={`cell-${index}`} fill={`hsl(var(--primary))`} />
-                                ))}
-                              </Bar>
-                            </BarChart>
-                          </ResponsiveContainer>
-                        </Card>
+                          {canShow4Cards && (
+                            <>
+                              <Card className="p-6 rounded-3xl border-border bg-gradient-to-br from-red-500/10 to-red-500/5">
+                                <div className="flex items-center justify-between mb-2">
+                                  <Heart className="h-8 w-8 text-red-500" />
+                                  <TrendingUp className="h-5 w-5 text-red-500/60" />
+                                </div>
+                                <div className="text-3xl font-black text-foreground">
+                                  {profile?.total_likes_received || 0}
+                                </div>
+                                <div className="text-sm text-muted-foreground font-semibold mt-1">Likes Recibidos</div>
+                              </Card>
 
-                        <Card className="p-6 rounded-3xl border-border">
-                          <div className="flex items-center gap-3 mb-6">
-                            <Heart className="h-6 w-6 text-red-500" />
-                            <h3 className="text-2xl font-black text-foreground">Reproducciones</h3>
-                          </div>
-                          <ResponsiveContainer width="100%" height={300}>
-                            <LineChart data={followerStats}>
-                              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                              <XAxis
-                                dataKey="week"
-                                stroke="hsl(var(--muted-foreground))"
-                                tick={{ fill: "hsl(var(--muted-foreground))" }}
-                              />
-                              <YAxis
-                                stroke="hsl(var(--muted-foreground))"
-                                tick={{ fill: "hsl(var(--muted-foreground))" }}
-                              />
-                              <Tooltip
-                                contentStyle={{
-                                  backgroundColor: "hsl(var(--card))",
-                                  border: "1px solid hsl(var(--border))",
-                                  borderRadius: "12px",
-                                }}
-                              />
-                              <Line
-                                type="monotone"
-                                dataKey="plays"
-                                stroke="hsl(var(--secondary))"
-                                strokeWidth={3}
-                                dot={{ fill: "hsl(var(--secondary))", r: 6 }}
-                              />
-                            </LineChart>
-                          </ResponsiveContainer>
-                        </Card>
+                              <Card className="p-6 rounded-3xl border-border bg-gradient-to-br from-blue-500/10 to-blue-500/5">
+                                <div className="flex items-center justify-between mb-2">
+                                  <Users className="h-8 w-8 text-blue-500" />
+                                  <TrendingUp className="h-5 w-5 text-blue-500/60" />
+                                </div>
+                                <div className="text-3xl font-black text-foreground">{profile?.followers_count || 0}</div>
+                                <div className="text-sm text-muted-foreground font-semibold mt-1">Seguidores</div>
+                              </Card>
+                            </>
+                          )}
+                        </div>
+
+                        {/* Graphs - Only for Studio Plus */}
+                        {canShowGraphs && packStats.length > 0 && (
+                          <>
+                            <Card className="p-6 rounded-3xl border-border">
+                              <div className="flex items-center gap-3 mb-6">
+                                <Package className="h-6 w-6 text-primary" />
+                                <h3 className="text-2xl font-black text-foreground">Ventas por Pack</h3>
+                              </div>
+                              <ResponsiveContainer width="100%" height={300}>
+                                <BarChart data={packStats}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                  <XAxis
+                                    dataKey="name"
+                                    stroke="hsl(var(--muted-foreground))"
+                                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                                  />
+                                  <YAxis
+                                    stroke="hsl(var(--muted-foreground))"
+                                    tick={{ fill: "hsl(var(--muted-foreground))" }}
+                                  />
+                                  <Tooltip
+                                    contentStyle={{
+                                      backgroundColor: "hsl(var(--card))",
+                                      border: "1px solid hsl(var(--border))",
+                                      borderRadius: "12px",
+                                    }}
+                                  />
+                                  <Bar dataKey="sales" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]}>
+                                    {packStats.map((entry: any, index: number) => (
+                                      <Cell key={`cell-${index}`} fill={`hsl(var(--primary))`} />
+                                    ))}
+                                  </Bar>
+                                </BarChart>
+                              </ResponsiveContainer>
+                            </Card>
+
+                            <Card className="p-6 rounded-3xl border-border">
+                              <div className="flex items-center gap-3 mb-6">
+                                <Heart className="h-6 w-6 text-red-500" />
+                                <h3 className="text-2xl font-black text-foreground">Reproducciones</h3>
+                              </div>
+                              <ResponsiveContainer width="100%" height={300}>
+                                <LineChart data={followerStats}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                  <XAxis
+                                    dataKey="week"
+                                    stroke="hsl(var(--muted-foreground))"
+                                    tick={{ fill: "hsl(var(--muted-foreground))" }}
+                                  />
+                                  <YAxis
+                                    stroke="hsl(var(--muted-foreground))"
+                                    tick={{ fill: "hsl(var(--muted-foreground))" }}
+                                  />
+                                  <Tooltip
+                                    contentStyle={{
+                                      backgroundColor: "hsl(var(--card))",
+                                      border: "1px solid hsl(var(--border))",
+                                      borderRadius: "12px",
+                                    }}
+                                  />
+                                  <Line
+                                    type="monotone"
+                                    dataKey="plays"
+                                    stroke="hsl(var(--secondary))"
+                                    strokeWidth={3}
+                                    dot={{ fill: "hsl(var(--secondary))", r: 6 }}
+                                  />
+                                </LineChart>
+                              </ResponsiveContainer>
+                            </Card>
+                          </>
+                        )}
                       </>
                     )}
 

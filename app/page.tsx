@@ -5,6 +5,7 @@ import { Hero } from "@/components/hero"
 import { PackGrid } from "@/components/pack-grid"
 import { FeaturedProducers } from "@/components/featured-producers"
 import { AudioPlayer } from "@/components/audio-player"
+import { TopMonthlyPacks } from "@/components/top-monthly-packs"
 import { Footer } from "@/components/footer"
 import { Card } from "@/components/ui/card"
 import Link from "next/link"
@@ -43,6 +44,7 @@ export default function Home() {
       <Header />
       <Hero />
       <PackGrid />
+      <TopMonthlyPacks />
       <FeaturedProducers />
       <AudioPlayer />
       <Footer />

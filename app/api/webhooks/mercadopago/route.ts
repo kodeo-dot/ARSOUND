@@ -93,11 +93,14 @@ export async function POST(request: Request) {
           pack_id: metadata.pack_id,
           amount: metadata.final_price,
           discount_amount: discountAmount,
+          discount_code: metadata.discount_code,
+          discount_percent: metadata.discount_percent,
           platform_commission: metadata.commission_amount || 0,
           creator_earnings: metadata.seller_earnings || 0,
           status: "completed",
           payment_method: "mercado_pago",
           mercado_pago_payment_id: paymentId,
+          purchase_code: `ARSND-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
         })
         .select()
 
@@ -105,6 +108,21 @@ export async function POST(request: Request) {
         console.error("[v0] Error creating purchase record:", purchaseError.message, purchaseError.details)
       } else {
         console.log("[v0] Purchase created successfully:", purchaseData?.[0]?.id)
+
+        const { error: eventError } = await supabase
+          .from("user_track_events")
+          .upsert({
+            user_id: metadata.buyer_id,
+            track_id: metadata.pack_id,
+            played: false,
+            downloaded: true,
+            purchased: true,
+            liked: false,
+          }, { onConflict: 'user_id,track_id' })
+
+        if (!eventError) {
+          console.log("[v0] User track event recorded")
+        }
 
         const { data: currentPack } = await supabase
           .from("packs")

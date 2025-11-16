@@ -5,16 +5,24 @@ import { createClient } from "@/lib/supabase/client"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Package, Download } from 'lucide-react'
+import { Package, Download, ChevronDown, Copy, Check } from 'lucide-react'
 import Link from "next/link"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import type { Profile } from "@/types/profile"
 
 interface Purchase {
   id: string
   pack_id: string
   amount_paid: number
+  amount: number
   status: string
+  payment_status: string
   created_at: string
+  purchase_code: string
+  discount_code: string | null
+  discount_percent: number | null
+  discount_amount: number | null
+  payment_method: string | null
   packs: {
     id: string
     title: string
@@ -31,6 +39,10 @@ interface ProfilePurchasesTabProps {
 export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
   const [purchasesLoading, setPurchasesLoading] = useState(false)
   const [purchasesData, setPurchasesData] = useState<Purchase[]>([])
+  const [expandedPurchase, setExpandedPurchase] = useState<string | null>(null)
+  const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null)
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false)
+  const [copiedCode, setCopiedCode] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -46,8 +58,15 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
             id,
             pack_id,
             amount_paid,
+            amount,
             status,
+            payment_status,
             created_at,
+            purchase_code,
+            discount_code,
+            discount_percent,
+            discount_amount,
+            payment_method,
             packs (
               id,
               title,
@@ -66,14 +85,9 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
           error: error?.message || error?.details 
         })
 
-        if (error) {
-          console.error("[v0] Error details:", error)
-        }
-
         if (!error && purchases) {
           setPurchasesData(purchases as any)
         } else {
-          console.warn("[v0] No purchases found or error occurred")
           setPurchasesData([])
         }
       } catch (err) {
@@ -95,6 +109,22 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(price)
+  }
+
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString("es-AR", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }
+
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(code)
+    setCopiedCode(code)
+    setTimeout(() => setCopiedCode(null), 2000)
   }
 
   if (purchasesLoading) {
@@ -134,82 +164,173 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
   return (
     <div className="space-y-3 md:space-y-4">
       {purchasesData.map((purchase) => (
-        <Card
-          key={purchase.id}
-          className="p-3 md:p-6 rounded-2xl border-border hover:border-primary/40 transition-all"
-        >
-          <div className="flex flex-col md:flex-row gap-3 md:gap-6">
-            <div className="flex-shrink-0">
-              <img
-                src={purchase.packs?.cover_image_url || "/placeholder.svg?height=120&width=120"}
-                alt={purchase.packs?.title || "Pack"}
-                className="w-20 h-20 md:w-24 md:h-24 rounded-xl object-cover"
-              />
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <div className="flex flex-col gap-2 mb-3">
-                <div>
-                  <Link href={`/pack/${purchase.pack_id}`}>
-                    <h3 className="font-bold text-base md:text-lg text-foreground hover:text-primary transition-colors line-clamp-2">
-                      {purchase.packs?.title || "Pack deleted"}
-                    </h3>
-                  </Link>
-                  <p className="text-xs md:text-sm text-muted-foreground mt-1">
-                    Comprado el{" "}
-                    {new Date(purchase.created_at).toLocaleDateString("es-AR", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </p>
-                </div>
+        <div key={purchase.id}>
+          <Card
+            className="p-3 md:p-6 rounded-2xl border-border hover:border-primary/40 transition-all cursor-pointer"
+            onClick={() => {
+              setSelectedPurchase(purchase)
+              setDetailsModalOpen(true)
+            }}
+          >
+            <div className="flex flex-col md:flex-row gap-3 md:gap-6">
+              <div className="flex-shrink-0">
+                <img
+                  src={purchase.packs?.cover_image_url || "/placeholder.svg?height=120&width=120"}
+                  alt={purchase.packs?.title || "Pack"}
+                  className="w-20 h-20 md:w-24 md:h-24 rounded-xl object-cover"
+                />
               </div>
 
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <div>
-                  <div className="text-xl md:text-2xl font-black text-foreground">
-                    ${formatPrice(purchase.amount_paid)}
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-col gap-2 mb-3">
+                  <div>
+                    <Link href={`/pack/${purchase.pack_id}`} onClick={(e) => e.stopPropagation()}>
+                      <h3 className="font-bold text-base md:text-lg text-foreground hover:text-primary transition-colors line-clamp-2">
+                        {purchase.packs?.title || "Pack deleted"}
+                      </h3>
+                    </Link>
+                    <p className="text-xs md:text-sm text-muted-foreground mt-1">
+                      {formatDate(purchase.created_at)}
+                    </p>
                   </div>
-                  <div className="text-xs text-muted-foreground">ARS</div>
                 </div>
-                <Badge
-                  variant="secondary"
-                  className={`text-xs font-bold flex-shrink-0 ${
-                    purchase.status === "completed"
-                      ? "bg-green-500/10 text-green-600"
-                      : "bg-yellow-500/10 text-yellow-600"
-                  }`}
-                >
-                  {purchase.status === "completed" ? "✓ Completado" : "⏳ Pendiente"}
-                </Badge>
-              </div>
 
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Link href={`/pack/${purchase.pack_id}`} className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                  <div>
+                    <div className="text-xl md:text-2xl font-black text-foreground">
+                      ${formatPrice(purchase.amount || purchase.amount_paid)}
+                    </div>
+                    {purchase.discount_percent && purchase.discount_percent > 0 && (
+                      <div className="text-xs text-green-600 font-semibold">
+                        -{purchase.discount_percent}% ({purchase.discount_code})
+                      </div>
+                    )}
+                    <div className="text-xs text-muted-foreground">ARS</div>
+                  </div>
+                  <Badge
+                    variant="secondary"
+                    className={`text-xs font-bold flex-shrink-0 ${
+                      purchase.status === "completed"
+                        ? "bg-green-500/10 text-green-600"
+                        : "bg-yellow-500/10 text-yellow-600"
+                    }`}
+                  >
+                    {purchase.status === "completed" ? "✓ Completado" : "⏳ Pendiente"}
+                  </Badge>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Link href={`/pack/${purchase.pack_id}`} className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="outline"
+                      className="w-full rounded-full bg-transparent text-xs md:text-sm h-9 md:h-10"
+                      size="sm"
+                    >
+                      Ver Pack
+                    </Button>
+                  </Link>
+                  <a href={`/api/packs/${purchase.pack_id}/download`} download className="flex-1 min-w-0">
+                    <Button
+                      className="w-full rounded-full text-xs md:text-sm h-9 md:h-10 gap-1 md:gap-2"
+                      size="sm"
+                    >
+                      <Download className="h-3 w-3 md:h-4 md:w-4" />
+                      <span className="hidden sm:inline">Descargar</span>
+                      <span className="sm:hidden">DL</span>
+                    </Button>
+                  </a>
                   <Button
                     variant="outline"
-                    className="w-full rounded-full bg-transparent text-xs md:text-sm h-9 md:h-10"
+                    className="flex-1 rounded-full bg-transparent text-xs md:text-sm h-9 md:h-10"
                     size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setSelectedPurchase(purchase)
+                      setDetailsModalOpen(true)
+                    }}
                   >
-                    Ver Pack
+                    <ChevronDown className="h-3 w-3 md:h-4 md:w-4" />
+                    Detalles
                   </Button>
-                </Link>
-                <a href={`/api/packs/${purchase.pack_id}/download`} download className="flex-1 min-w-0">
-                  <Button
-                    className="w-full rounded-full text-xs md:text-sm h-9 md:h-10 gap-1 md:gap-2"
-                    size="sm"
-                  >
-                    <Download className="h-3 w-3 md:h-4 md:w-4" />
-                    <span className="hidden sm:inline">Descargar</span>
-                    <span className="sm:hidden">DL</span>
-                  </Button>
-                </a>
+                </div>
               </div>
             </div>
-          </div>
-        </Card>
+          </Card>
+        </div>
       ))}
+
+      <Dialog open={detailsModalOpen} onOpenChange={setDetailsModalOpen}>
+        <DialogContent className="sm:max-w-md rounded-3xl">
+          <DialogHeader>
+            <DialogTitle>Detalles de la Compra</DialogTitle>
+          </DialogHeader>
+          {selectedPurchase && (
+            <div className="space-y-4">
+              <div className="p-4 rounded-2xl bg-accent">
+                <div className="text-sm text-muted-foreground mb-1">Código de Compra</div>
+                <div className="flex items-center gap-2">
+                  <code className="text-lg font-bold text-foreground font-mono">
+                    {selectedPurchase.purchase_code || selectedPurchase.id.slice(0, 8).toUpperCase()}
+                  </code>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleCopyCode(selectedPurchase.purchase_code || selectedPurchase.id.slice(0, 8).toUpperCase())}
+                    className="h-7 w-7 p-0"
+                  >
+                    {copiedCode === (selectedPurchase.purchase_code || selectedPurchase.id.slice(0, 8).toUpperCase()) ? (
+                      <Check className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Precio Final</div>
+                  <div className="text-lg font-bold text-foreground">
+                    ${formatPrice(selectedPurchase.amount || selectedPurchase.amount_paid)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground mb-1">Estado</div>
+                  <Badge className={selectedPurchase.status === "completed" ? "bg-green-500/10 text-green-600" : "bg-yellow-500/10 text-yellow-600"}>
+                    {selectedPurchase.status === "completed" ? "Completado" : "Pendiente"}
+                  </Badge>
+                </div>
+              </div>
+
+              {selectedPurchase.discount_code && (
+                <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20">
+                  <div className="text-xs text-muted-foreground mb-1">Descuento Aplicado</div>
+                  <div className="text-sm font-bold text-green-600">
+                    {selectedPurchase.discount_code} - {selectedPurchase.discount_percent}% (-${formatPrice(selectedPurchase.discount_amount || 0)})
+                  </div>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Fecha</span>
+                  <span className="text-sm font-medium">{formatDate(selectedPurchase.created_at)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-muted-foreground">Método de Pago</span>
+                  <span className="text-sm font-medium capitalize">{selectedPurchase.payment_method || "No especificado"}</span>
+                </div>
+                {selectedPurchase.packs && (
+                  <div className="flex justify-between">
+                    <span className="text-sm text-muted-foreground">Vendedor</span>
+                    <span className="text-sm font-medium">{selectedPurchase.packs.user_id}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
