@@ -13,15 +13,10 @@ import type { Profile } from "@/types/profile"
 interface Purchase {
   id: string
   pack_id: string
-  amount_paid: number
   amount: number
-  status: string
-  payment_status: string
-  created_at: string
-  purchase_code: string
-  discount_code: string | null
-  discount_percent: number | null
   discount_amount: number | null
+  status: string
+  created_at: string
   payment_method: string | null
   packs: {
     id: string
@@ -39,7 +34,6 @@ interface ProfilePurchasesTabProps {
 export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
   const [purchasesLoading, setPurchasesLoading] = useState(false)
   const [purchasesData, setPurchasesData] = useState<Purchase[]>([])
-  const [expandedPurchase, setExpandedPurchase] = useState<string | null>(null)
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null)
   const [detailsModalOpen, setDetailsModalOpen] = useState(false)
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
@@ -57,15 +51,10 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
             `
             id,
             pack_id,
-            amount_paid,
             amount,
-            status,
-            payment_status,
-            created_at,
-            purchase_code,
-            discount_code,
-            discount_percent,
             discount_amount,
+            status,
+            created_at,
             payment_method,
             packs (
               id,
@@ -198,11 +187,11 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
                 <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
                   <div>
                     <div className="text-xl md:text-2xl font-black text-foreground">
-                      ${formatPrice(purchase.amount || purchase.amount_paid)}
+                      ${formatPrice(purchase.amount)}
                     </div>
-                    {purchase.discount_percent && purchase.discount_percent > 0 && (
+                    {purchase.discount_amount && purchase.discount_amount > 0 && (
                       <div className="text-xs text-green-600 font-semibold">
-                        -{purchase.discount_percent}% ({purchase.discount_code})
+                        -${formatPrice(purchase.discount_amount)}
                       </div>
                     )}
                     <div className="text-xs text-muted-foreground">ARS</div>
@@ -270,15 +259,15 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
                 <div className="text-sm text-muted-foreground mb-1">Código de Compra</div>
                 <div className="flex items-center gap-2">
                   <code className="text-lg font-bold text-foreground font-mono">
-                    {selectedPurchase.purchase_code || selectedPurchase.id.slice(0, 8).toUpperCase()}
+                    {selectedPurchase.id.slice(0, 8).toUpperCase()}
                   </code>
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => handleCopyCode(selectedPurchase.purchase_code || selectedPurchase.id.slice(0, 8).toUpperCase())}
+                    onClick={() => handleCopyCode(selectedPurchase.id.slice(0, 8).toUpperCase())}
                     className="h-7 w-7 p-0"
                   >
-                    {copiedCode === (selectedPurchase.purchase_code || selectedPurchase.id.slice(0, 8).toUpperCase()) ? (
+                    {copiedCode === selectedPurchase.id.slice(0, 8).toUpperCase() ? (
                       <Check className="h-4 w-4 text-green-600" />
                     ) : (
                       <Copy className="h-4 w-4" />
@@ -291,7 +280,7 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
                 <div>
                   <div className="text-xs text-muted-foreground mb-1">Precio Final</div>
                   <div className="text-lg font-bold text-foreground">
-                    ${formatPrice(selectedPurchase.amount || selectedPurchase.amount_paid)}
+                    ${formatPrice(selectedPurchase.amount)}
                   </div>
                 </div>
                 <div>
@@ -302,11 +291,11 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
                 </div>
               </div>
 
-              {selectedPurchase.discount_code && (
+              {selectedPurchase.discount_amount && selectedPurchase.discount_amount > 0 && (
                 <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20">
                   <div className="text-xs text-muted-foreground mb-1">Descuento Aplicado</div>
                   <div className="text-sm font-bold text-green-600">
-                    {selectedPurchase.discount_code} - {selectedPurchase.discount_percent}% (-${formatPrice(selectedPurchase.discount_amount || 0)})
+                    -${formatPrice(selectedPurchase.discount_amount)}
                   </div>
                 </div>
               )}

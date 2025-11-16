@@ -18,12 +18,9 @@ export async function GET() {
       .from("purchases")
       .select(`
         id,
-        purchase_code,
         pack_id,
         amount,
         discount_amount,
-        discount_code,
-        discount_percent,
         payment_method,
         status,
         created_at,
