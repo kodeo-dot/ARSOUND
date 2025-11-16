@@ -1,4 +1,4 @@
-import { createServerClient } from "@/lib/supabase/server-client"
+import { createServerClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
 
 // SQL scripts to initialize the database

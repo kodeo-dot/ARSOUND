@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { createServerClient } from "@/lib/supabase/server-client"
+import { createServerClient } from "@/lib/supabase/server"
 
 /**
  * Health check endpoint to verify all systems are operational

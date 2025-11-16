@@ -1,7 +1,5 @@
-import { createServerClient } from "@/lib/supabase/server-client"
-import { createAdminClient } from "@/lib/supabase/server-client"
+import { createServerClient } from "@/lib/supabase/server"
 import { NextResponse } from "next/server"
-import { recordUserActionServer } from "@/lib/user-actions"
 
 export async function GET(
   request: Request,
@@ -10,7 +8,6 @@ export async function GET(
   try {
     const { id: packId } = await context.params
     const supabase = await createServerClient()
-    const adminSupabase = await createAdminClient()
 
     console.log("[v0] Download request for pack:", packId)
 
@@ -44,7 +41,7 @@ export async function GET(
 
     console.log("[v0] Pack found:", { id: pack.id, price: pack.price, title: pack.title })
 
-    const { data: purchase, error: purchaseError } = await adminSupabase
+    const { data: purchase, error: purchaseError } = await supabase
       .from("purchases")
       .select("id")
       .eq("pack_id", packId)
@@ -61,29 +58,21 @@ export async function GET(
     }
     console.log("[v0] User has purchased pack:", purchase.id)
 
-    const wasRecorded = await recordUserActionServer(user.id, packId, 'download')
+    await supabase.from("pack_downloads").insert({
+      user_id: user.id,
+      pack_id: packId,
+      downloaded_at: new Date().toISOString(),
+    })
 
-    if (wasRecorded) {
-      // Record download
-      await adminSupabase.from("pack_downloads").insert({
-        user_id: user.id,
-        pack_id: packId,
-        downloaded_at: new Date().toISOString(),
-      })
+    await supabase.rpc("increment_counter", {
+      table_name: "packs",
+      row_id: packId,
+      column_name: "downloads_count",
+    }).catch((err) => {
+      console.error("[v0] Error incrementing downloads_count:", err)
+    })
 
-      // Increment counter
-      await adminSupabase.rpc("increment_counter", {
-        table_name: "packs",
-        row_id: packId,
-        column_name: "downloads_count",
-      }).catch((err) => {
-        console.error("[v0] Error incrementing downloads_count:", err)
-      })
-
-      console.log("[v0] Download recorded and counter incremented")
-    } else {
-      console.log("[v0] Download already recorded for this user, skipping counter increment")
-    }
+    console.log("[v0] Download recorded and counter incremented")
 
     // Extract file path from URL
     const url = new URL(pack.file_url)
@@ -92,7 +81,7 @@ export async function GET(
     console.log("[v0] Downloading file from path:", cleanPath)
 
     // Download file from storage - use admin client
-    const { data: fileData, error: downloadError } = await adminSupabase.storage
+    const { data: fileData, error: downloadError } = await supabase.storage
       .from("samplepacks")
       .download(cleanPath)
 

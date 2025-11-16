@@ -7,7 +7,6 @@ import { Play, Pause, SkipBack, SkipForward, Volume2, X } from 'lucide-react'
 import { useAudioPlayer } from "@/hooks/use-audio-player"
 import { useEffect, useState, useRef } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { recordUserAction } from "@/lib/user-actions"
 
 export function AudioPlayer() {
   const { currentPack, isPlaying, togglePlay, closePlayer } = useAudioPlayer()
@@ -82,16 +81,6 @@ export function AudioPlayer() {
         .single()
 
       if (pack?.user_id === user?.id) {
-        console.log("[v0] Play not registered: user is pack owner")
-        setPlayRegistered(true)
-        return
-      }
-
-      const userId = user?.id || 'anonymous'
-      const wasRecorded = await recordUserAction(userId, currentPack.id, 'play')
-
-      if (!wasRecorded) {
-        console.log("[v0] Play already registered for this user")
         setPlayRegistered(true)
         return
       }
@@ -106,8 +95,6 @@ export function AudioPlayer() {
         table_name: "packs",
         row_id: currentPack.id,
         column_name: "total_plays",
-      }).catch((err) => {
-        console.error("[v0] Error incrementing total_plays:", err)
       })
 
       if (pack?.user_id) {
@@ -115,15 +102,12 @@ export function AudioPlayer() {
           table_name: "profiles",
           row_id: pack.user_id,
           column_name: "total_plays_count",
-        }).catch((err) => {
-          console.error("[v0] Error incrementing total_plays_count:", err)
         })
       }
 
-      console.log("[v0] Play registered for pack:", currentPack.id)
       setPlayRegistered(true)
     } catch (error) {
-      console.error("[v0] Error registering play:", error)
+      console.error("Error registering play:", error)
     }
   }
 

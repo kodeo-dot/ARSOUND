@@ -1,6 +1,6 @@
 "use server"
 
-import { createServerClient } from "@/lib/supabase/server-client"
+import { createServerClient } from "@/lib/supabase/server"
 import type { PlanType } from "./plans"
 
 /**
@@ -86,10 +86,10 @@ export async function getUserPlan(userId: string): Promise<{ plan: PlanType; err
  * Server action to manually test plan changes (for development/testing)
  *
  * Usage in browser console or test script:
- * ```
+ * \`\`\`
  * import { testChangePlan } from '@/lib/plans-actions'
  * await testChangePlan('de_0_a_hit') // Changes current user's plan
- * ```
+ * \`\`\`
  */
 export async function testChangePlan(planType: PlanType): Promise<{ success: boolean; error?: string }> {
   try {

@@ -1,4 +1,4 @@
-import { createServerClient } from "@/lib/supabase/server-client"
+import { createServerClient } from "@/lib/supabase/server"
 import { getUserPlan } from "@/lib/plans-actions"
 import { PLAN_FEATURES, type PlanType } from "@/lib/plans"
 import { NextResponse } from "next/server"
