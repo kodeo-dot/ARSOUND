@@ -1,6 +1,7 @@
 import { createServerClient } from "@/lib/supabase/server-client"
 import { createAdminClient } from "@/lib/supabase/server-client"
 import { NextResponse } from "next/server"
+import { recordUserActionServer } from "@/lib/user-actions"
 
 export async function GET(
   request: Request,
@@ -43,9 +44,6 @@ export async function GET(
 
     console.log("[v0] Pack found:", { id: pack.id, price: pack.price, title: pack.title })
 
-    const isFree = !pack.price || pack.price === 0
-
-    // Check permissions for paid packs - use admin client to bypass RLS restrictions
     const { data: purchase, error: purchaseError } = await adminSupabase
       .from("purchases")
       .select("id")
@@ -55,13 +53,37 @@ export async function GET(
       .single()
 
     if (!purchase) {
-      console.log("[v0] User has not purchased this pack. Checking if pack is free...")
+      console.log("[v0] User has not purchased this pack")
       return NextResponse.json(
         { error: "Necesitás comprar este pack para descargarlo" },
         { status: 403 }
       )
     }
     console.log("[v0] User has purchased pack:", purchase.id)
+
+    const wasRecorded = await recordUserActionServer(user.id, packId, 'download')
+
+    if (wasRecorded) {
+      // Record download
+      await adminSupabase.from("pack_downloads").insert({
+        user_id: user.id,
+        pack_id: packId,
+        downloaded_at: new Date().toISOString(),
+      })
+
+      // Increment counter
+      await adminSupabase.rpc("increment_counter", {
+        table_name: "packs",
+        row_id: packId,
+        column_name: "downloads_count",
+      }).catch((err) => {
+        console.error("[v0] Error incrementing downloads_count:", err)
+      })
+
+      console.log("[v0] Download recorded and counter incremented")
+    } else {
+      console.log("[v0] Download already recorded for this user, skipping counter increment")
+    }
 
     // Extract file path from URL
     const url = new URL(pack.file_url)
@@ -83,34 +105,6 @@ export async function GET(
     }
 
     console.log("[v0] File downloaded successfully")
-
-    // Record download - use admin client
-    const { error: recordError } = await adminSupabase
-      .from("pack_downloads")
-      .insert({
-        user_id: user.id,
-        pack_id: packId,
-        downloaded_at: new Date().toISOString(),
-      })
-
-    if (recordError) {
-      console.error("[v0] Error recording download:", recordError)
-    } else {
-      console.log("[v0] Download recorded successfully")
-    }
-
-    // Increment counter - use admin client
-    const { error: incrementError } = await adminSupabase.rpc("increment", {
-      table_name: "packs",
-      row_id: packId,
-      column_name: "downloads_count",
-    })
-
-    if (incrementError) {
-      console.error("[v0] Error incrementing download counter:", incrementError)
-    } else {
-      console.log("[v0] Download counter incremented")
-    }
 
     // Return file
     const buffer = await fileData.arrayBuffer()

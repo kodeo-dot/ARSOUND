@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/server-client"
 import { NextResponse } from "next/server"
+import { recordUserActionServer } from "@/lib/user-actions"
 
 // Comisión por plan
 function getCommissionByPlan(plan: string) {
@@ -89,6 +90,8 @@ export async function POST(request: Request) {
       })
     }
 
+    await recordUserActionServer(buyerId, packId, 'purchase')
+
     // Create purchase with commission
     const { error: purchaseError, data: purchaseData } =
       await adminSupabase
@@ -115,11 +118,14 @@ export async function POST(request: Request) {
       )
     }
 
-    // Update downloads count
-    await adminSupabase
-      .from("packs")
-      .update({ downloads_count: (pack.downloads_count || 0) + 1 })
-      .eq("id", packId)
+    // Note: We use user_actions to prevent duplicate counts
+    const downloadRecorded = await recordUserActionServer(buyerId, packId, 'download')
+    if (downloadRecorded) {
+      await adminSupabase
+        .from("packs")
+        .update({ downloads_count: (pack.downloads_count || 0) + 1 })
+        .eq("id", packId)
+    }
 
     // Update seller total sales (earnings, no comisión)
     const { data: sellerPurchases } = await adminSupabase

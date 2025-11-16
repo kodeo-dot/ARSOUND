@@ -5,14 +5,20 @@ import { createClient } from "@/lib/supabase/client"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Package, Download } from 'lucide-react'
+import { Package, Download, Info } from 'lucide-react'
 import Link from "next/link"
 import type { Profile } from "@/types/profile"
+import { PurchaseDetailsModal } from "@/components/purchase-details-modal"
 
 interface Purchase {
   id: string
   pack_id: string
-  amount_paid: number
+  purchase_code: string | null
+  amount: number
+  discount_amount?: number | null
+  discount_code_used?: string | null
+  discount_percent_applied?: number | null
+  payment_method: string
   status: string
   created_at: string
   packs: {
@@ -31,6 +37,8 @@ interface ProfilePurchasesTabProps {
 export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
   const [purchasesLoading, setPurchasesLoading] = useState(false)
   const [purchasesData, setPurchasesData] = useState<Purchase[]>([])
+  const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null)
+  const [modalOpen, setModalOpen] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -45,7 +53,12 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
             `
             id,
             pack_id,
-            amount_paid,
+            purchase_code,
+            amount,
+            discount_amount,
+            discount_code_used,
+            discount_percent_applied,
+            payment_method,
             status,
             created_at,
             packs (
@@ -97,6 +110,11 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
     }).format(price)
   }
 
+  const handleViewDetails = (purchase: Purchase) => {
+    setSelectedPurchase(purchase)
+    setModalOpen(true)
+  }
+
   if (purchasesLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
@@ -132,84 +150,112 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
   }
 
   return (
-    <div className="space-y-3 md:space-y-4">
-      {purchasesData.map((purchase) => (
-        <Card
-          key={purchase.id}
-          className="p-3 md:p-6 rounded-2xl border-border hover:border-primary/40 transition-all"
-        >
-          <div className="flex flex-col md:flex-row gap-3 md:gap-6">
-            <div className="flex-shrink-0">
-              <img
-                src={purchase.packs?.cover_image_url || "/placeholder.svg?height=120&width=120"}
-                alt={purchase.packs?.title || "Pack"}
-                className="w-20 h-20 md:w-24 md:h-24 rounded-xl object-cover"
-              />
-            </div>
-
-            <div className="flex-1 min-w-0">
-              <div className="flex flex-col gap-2 mb-3">
-                <div>
-                  <Link href={`/pack/${purchase.pack_id}`}>
-                    <h3 className="font-bold text-base md:text-lg text-foreground hover:text-primary transition-colors line-clamp-2">
-                      {purchase.packs?.title || "Pack deleted"}
-                    </h3>
-                  </Link>
-                  <p className="text-xs md:text-sm text-muted-foreground mt-1">
-                    Comprado el{" "}
-                    {new Date(purchase.created_at).toLocaleDateString("es-AR", {
-                      day: "numeric",
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </p>
-                </div>
+    <>
+      <div className="space-y-3 md:space-y-4">
+        {purchasesData.map((purchase) => (
+          <Card
+            key={purchase.id}
+            className="p-3 md:p-6 rounded-2xl border-border hover:border-primary/40 transition-all"
+          >
+            <div className="flex flex-col md:flex-row gap-3 md:gap-6">
+              <div className="flex-shrink-0">
+                <img
+                  src={purchase.packs?.cover_image_url || "/placeholder.svg?height=120&width=120"}
+                  alt={purchase.packs?.title || "Pack"}
+                  className="w-20 h-20 md:w-24 md:h-24 rounded-xl object-cover"
+                />
               </div>
 
-              <div className="flex items-center justify-between gap-2 mb-3">
-                <div>
-                  <div className="text-xl md:text-2xl font-black text-foreground">
-                    ${formatPrice(purchase.amount_paid)}
+              <div className="flex-1 min-w-0">
+                <div className="flex flex-col gap-2 mb-3">
+                  <div>
+                    <Link href={`/pack/${purchase.pack_id}`}>
+                      <h3 className="font-bold text-base md:text-lg text-foreground hover:text-primary transition-colors line-clamp-2">
+                        {purchase.packs?.title || "Pack deleted"}
+                      </h3>
+                    </Link>
+                    <p className="text-xs md:text-sm text-muted-foreground mt-1">
+                      Comprado el{" "}
+                      {new Date(purchase.created_at).toLocaleDateString("es-AR", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                      })}
+                    </p>
+                    {purchase.purchase_code && (
+                      <p className="text-xs text-muted-foreground font-mono mt-1">
+                        Código: {purchase.purchase_code}
+                      </p>
+                    )}
                   </div>
-                  <div className="text-xs text-muted-foreground">ARS</div>
                 </div>
-                <Badge
-                  variant="secondary"
-                  className={`text-xs font-bold flex-shrink-0 ${
-                    purchase.status === "completed"
-                      ? "bg-green-500/10 text-green-600"
-                      : "bg-yellow-500/10 text-yellow-600"
-                  }`}
-                >
-                  {purchase.status === "completed" ? "✓ Completado" : "⏳ Pendiente"}
-                </Badge>
-              </div>
 
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Link href={`/pack/${purchase.pack_id}`} className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2 mb-3">
+                  <div>
+                    <div className="text-xl md:text-2xl font-black text-foreground">
+                      ${formatPrice(purchase.amount)}
+                    </div>
+                    <div className="text-xs text-muted-foreground">ARS</div>
+                    {purchase.discount_code_used && purchase.discount_percent_applied && (
+                      <Badge className="mt-1 bg-green-500/10 text-green-600 text-xs">
+                        -{purchase.discount_percent_applied}% descuento
+                      </Badge>
+                    )}
+                  </div>
+                  <Badge
+                    variant="secondary"
+                    className={`text-xs font-bold flex-shrink-0 ${
+                      purchase.status === "completed"
+                        ? "bg-green-500/10 text-green-600"
+                        : "bg-yellow-500/10 text-yellow-600"
+                    }`}
+                  >
+                    {purchase.status === "completed" ? "✓ Completado" : "⏳ Pendiente"}
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   <Button
                     variant="outline"
-                    className="w-full rounded-full bg-transparent text-xs md:text-sm h-9 md:h-10"
+                    className="rounded-full bg-transparent text-xs md:text-sm h-9 md:h-10 gap-1 md:gap-2"
                     size="sm"
+                    onClick={() => handleViewDetails(purchase)}
                   >
-                    Ver Pack
+                    <Info className="h-3 w-3 md:h-4 md:w-4" />
+                    <span className="hidden sm:inline">Ver Detalles</span>
+                    <span className="sm:hidden">Info</span>
                   </Button>
-                </Link>
-                <a href={`/api/packs/${purchase.pack_id}/download`} download className="flex-1 min-w-0">
-                  <Button
-                    className="w-full rounded-full text-xs md:text-sm h-9 md:h-10 gap-1 md:gap-2"
-                    size="sm"
-                  >
-                    <Download className="h-3 w-3 md:h-4 md:w-4" />
-                    <span className="hidden sm:inline">Descargar</span>
-                    <span className="sm:hidden">DL</span>
-                  </Button>
-                </a>
+                  <Link href={`/pack/${purchase.pack_id}`} className="flex-1 min-w-0">
+                    <Button
+                      variant="outline"
+                      className="w-full rounded-full bg-transparent text-xs md:text-sm h-9 md:h-10"
+                      size="sm"
+                    >
+                      Ver Pack
+                    </Button>
+                  </Link>
+                  <a href={`/api/packs/${purchase.pack_id}/download`} download className="flex-1 min-w-0">
+                    <Button
+                      className="w-full rounded-full text-xs md:text-sm h-9 md:h-10 gap-1 md:gap-2"
+                      size="sm"
+                    >
+                      <Download className="h-3 w-3 md:h-4 md:w-4" />
+                      <span className="hidden sm:inline">Descargar</span>
+                      <span className="sm:hidden">DL</span>
+                    </Button>
+                  </a>
+                </div>
               </div>
             </div>
-          </div>
-        </Card>
-      ))}
-    </div>
+          </Card>
+        ))}
+      </div>
+
+      <PurchaseDetailsModal
+        open={modalOpen}
+        onOpenChange={setModalOpen}
+        purchase={selectedPurchase}
+      />
+    </>
   )
 }
