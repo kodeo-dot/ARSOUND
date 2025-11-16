@@ -1,5 +1,5 @@
 import { createBrowserClient } from "@/lib/supabase/client"
-import { createServerClient, createAdminClient } from "@/lib/supabase/server-client"
+import { createServerClient, createAdminClient } from "@/lib/supabase/server"
 import type { UserAction } from "@/types/user-actions"
 
 /**

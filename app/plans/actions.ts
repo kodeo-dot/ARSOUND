@@ -1,6 +1,6 @@
 "use server"
 
-import { createServerClient } from "@/lib/supabase/server-client"
+import { createServerClient } from "@/lib/supabase/server"
 import { PLAN_FEATURES, type PlanType } from "@/lib/plans"
 import { headers } from "next/headers"
 
