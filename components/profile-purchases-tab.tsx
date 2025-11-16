@@ -315,12 +315,6 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
                     <span className="text-xs font-medium">-${formatPrice(selectedPurchase.platform_earnings)} ARS</span>
                   </div>
                 )}
-                {selectedPurchase.commission_percent !== null && (
-                  <div className="flex justify-between">
-                    <span className="text-xs text-muted-foreground">% Comisión</span>
-                    <span className="text-xs font-medium">{parseFloat(String(selectedPurchase.commission_percent)).toFixed(1)}%</span>
-                  </div>
-                )}
               </div>
 
               <div className="space-y-2">
