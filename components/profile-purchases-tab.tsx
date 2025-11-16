@@ -312,7 +312,7 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
                 {selectedPurchase.platform_earnings !== null && (
                   <div className="flex justify-between">
                     <span className="text-xs text-muted-foreground">Comisión de Plataforma</span>
-                    <span className="text-xs font-medium">-${formatPrice(selectedPurchase.platform_earnings)}</span>
+                    <span className="text-xs font-medium">-${formatPrice(selectedPurchase.platform_earnings)} ARS</span>
                   </div>
                 )}
                 {selectedPurchase.commission_percent !== null && (
