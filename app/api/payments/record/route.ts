@@ -7,7 +7,7 @@ function getCommissionByPlan(plan: string) {
     case "free": return 0.15
     case "de_0_a_hit": return 0.10
     case "studio_plus": return 0.3
-    default: return 0.20
+    default: return 0.15
   }
 }
 
