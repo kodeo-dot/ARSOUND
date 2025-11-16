@@ -50,7 +50,7 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
         const { data: purchases, error: purchasesError } = await supabase
           .from('purchases')
           .select('*')
-          .eq('user_id', profile?.id)
+          .eq('buyer_id', profile?.id)
           .order('created_at', { ascending: false })
 
         console.log("[v0] Purchases response:", { 
