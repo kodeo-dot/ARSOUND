@@ -1,21 +1,33 @@
 import { createAdminClient } from "@/lib/supabase/server-client"
 import { NextResponse } from "next/server"
 
+// Comisión por plan
+function getCommissionByPlan(plan: string) {
+  switch (plan) {
+    case "free": return 0.15
+    case "de_0_a_hit": return 0.10
+    case "studio_plus": return 0.3
+    default: return 0.20
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
     const { packId, paymentId, buyerId: providedBuyerId } = body
 
-    console.log("[v0] Recording purchase from success page:", { packId, paymentId, providedBuyerId })
+    console.log("[v0] Recording purchase:", { packId, paymentId })
 
     if (!packId || !paymentId) {
-      console.error("[v0] Missing packId or paymentId")
-      return NextResponse.json({ error: "Missing packId or paymentId" }, { status: 400 })
+      return NextResponse.json(
+        { error: "Missing packId or paymentId" },
+        { status: 400 }
+      )
     }
 
-    // Use admin client to bypass RLS
     const adminSupabase = await createAdminClient()
-    
+
+    // Get pack info
     const { data: pack, error: packError } = await adminSupabase
       .from("packs")
       .select("user_id, price, title, downloads_count")
@@ -23,13 +35,46 @@ export async function POST(request: Request) {
       .single()
 
     if (packError || !pack) {
-      console.error("[v0] Pack not found:", packError?.message)
       return NextResponse.json({ error: "Pack not found" }, { status: 404 })
     }
 
-    console.log("[v0] Found pack:", { packId, price: pack.price, userId: pack.user_id })
+    // Get seller profile (para el plan)
+    const { data: sellerProfile } = await adminSupabase
+      .from("profiles")
+      .select("plan")
+      .eq("id", pack.user_id)
+      .single()
 
-    // Check if purchase already exists
+    const commissionPercent = getCommissionByPlan(sellerProfile?.plan || "free")
+    const commissionAmount = pack.price * commissionPercent
+    const sellerEarnings = pack.price - commissionAmount
+
+    console.log("[v0] Commission data:", {
+      commissionPercent,
+      commissionAmount,
+      sellerEarnings
+    })
+
+    // Buyer
+    let buyerId = providedBuyerId || null
+
+    if (!buyerId) {
+      const authHeader = request.headers.get("authorization")
+      if (authHeader) {
+        const token = authHeader.replace("Bearer ", "")
+        const { data: { user } } = await adminSupabase.auth.getUser(token)
+        if (user?.id) buyerId = user.id
+      }
+    }
+
+    if (!buyerId) {
+      return NextResponse.json(
+        { error: "Could not identify buyer", code: "NO_BUYER_ID" },
+        { status: 401 }
+      )
+    }
+
+    // Prevent duplicates
     const { data: existingPurchase } = await adminSupabase
       .from("purchases")
       .select("id")
@@ -37,112 +82,71 @@ export async function POST(request: Request) {
       .single()
 
     if (existingPurchase) {
-      console.log("[v0] Purchase already recorded:", existingPurchase.id)
-      return NextResponse.json({ 
-        success: true, 
+      return NextResponse.json({
+        success: true,
         message: "Purchase already recorded",
-        purchaseId: existingPurchase.id 
+        purchaseId: existingPurchase.id
       })
     }
 
-    let buyerId: string | null = providedBuyerId || null
-
-    // Try to get buyer from auth header if not provided
-    if (!buyerId) {
-      const authHeader = request.headers.get("authorization")
-      
-      if (authHeader) {
-        const token = authHeader.replace("Bearer ", "")
-        try {
-          console.log("[v0] Attempting to extract user from token...")
-          const { data: { user }, error: userError } = await adminSupabase.auth.getUser(token)
-          if (user?.id) {
-            buyerId = user.id
-            console.log("[v0] Extracted buyer from token:", buyerId)
-          } else {
-            console.warn("[v0] Could not verify token:", userError?.message)
-          }
-        } catch (e) {
-          console.warn("[v0] Error processing authorization:", String(e))
-        }
-      }
-    }
-
-    if (!buyerId) {
-      console.error("[v0] Could not identify buyer - attempting to record without buyer_id")
-      console.error("[v0] Auth header present:", !!request.headers.get("authorization"))
-      return NextResponse.json({ 
-        error: "Could not identify buyer - please make sure you're logged in", 
-        code: "NO_BUYER_ID" 
-      }, { status: 401 })
-    }
-
-    console.log("[v0] Creating purchase record:", { buyerId, packId, paymentId, price: pack.price })
-
-    // Record the purchase
-  const { error: purchaseError, data: purchaseData } = await adminSupabase
-    .from("purchases")
-    .insert({
-      buyer_id: buyerId,
-      seller_id: pack.user_id,   // <---- 🔥 ESTA ES LA CLAVE
-      pack_id: packId,
-      amount_paid: pack.price,
-      status: "completed",
-      payment_method: "mercado_pago",
-      mercado_pago_payment_id: paymentId,
-    })
-    .select()
+    // Create purchase with commission
+    const { error: purchaseError, data: purchaseData } =
+      await adminSupabase
+        .from("purchases")
+        .insert({
+          buyer_id: buyerId,
+          seller_id: pack.user_id,
+          pack_id: packId,
+          amount_paid: pack.price,
+          commission_percent: commissionPercent,
+          commission_amount: commissionAmount,
+          seller_earnings: sellerEarnings,
+          platform_earnings: commissionAmount,
+          status: "completed",
+          payment_method: "mercado_pago",
+          mercado_pago_payment_id: paymentId
+        })
+        .select()
 
     if (purchaseError) {
-      console.error("[v0] Error creating purchase record:", {
-        message: purchaseError.message,
-        details: purchaseError.details,
-        hint: purchaseError.hint,
-        code: purchaseError.code
-      })
-      return NextResponse.json({ 
-        error: "Failed to record purchase", 
-        details: purchaseError.message,
-        code: purchaseError.code
-      }, { status: 400 })
+      return NextResponse.json(
+        { error: "Failed to record purchase", details: purchaseError.message },
+        { status: 400 }
+      )
     }
 
-    console.log("[v0] Purchase recorded successfully:", purchaseData?.[0]?.id)
-
-    // Update pack downloads count
-    const { error: updateError } = await adminSupabase
+    // Update downloads count
+    await adminSupabase
       .from("packs")
       .update({ downloads_count: (pack.downloads_count || 0) + 1 })
       .eq("id", packId)
 
-    if (updateError) {
-      console.warn("[v0] Warning updating downloads count:", updateError.message)
-    }
-
-    // Update seller's total_sales correctly by summing all their sales
-    const { data: sellerSales } = await adminSupabase
+    // Update seller total sales (earnings, no comisión)
+    const { data: sellerPurchases } = await adminSupabase
       .from("purchases")
-      .select("amount_paid", { count: "exact" })
-      .eq("pack_id", packId)
+      .select("seller_earnings")
+      .eq("seller_id", pack.user_id)
 
-    const totalSales = sellerSales?.reduce((sum: number, p: any) => sum + (p.amount_paid || 0), 0) || 0
+    const newTotalSales = sellerPurchases?.reduce(
+      (sum: number, p: any) => sum + (p.seller_earnings ?? 0),
+      0
+    ) || 0
 
-    const { error: sellerError } = await adminSupabase
+    await adminSupabase
       .from("profiles")
-      .update({ total_sales: totalSales })
+      .update({ total_sales: newTotalSales })
       .eq("id", pack.user_id)
 
-    if (sellerError) {
-      console.warn("[v0] Warning updating seller stats:", sellerError.message)
-    }
-
-    return NextResponse.json({ 
-      success: true, 
-      message: "Purchase recorded successfully",
-      purchaseId: purchaseData?.[0]?.id 
+    return NextResponse.json({
+      success: true,
+      purchaseId: purchaseData?.[0]?.id
     })
-  } catch (error) {
-    console.error("[v0] Error in record payment endpoint:", error)
-    return NextResponse.json({ error: "Internal server error", details: String(error) }, { status: 500 })
+
+  } catch (e) {
+    console.error("[v0] Fatal error:", e)
+    return NextResponse.json(
+      { error: "Internal server error", details: String(e) },
+      { status: 500 }
+    )
   }
 }
