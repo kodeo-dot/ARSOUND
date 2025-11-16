@@ -3,7 +3,7 @@
 import { useSearchParams, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { CheckCircle2, Loader2, Download } from 'lucide-react'
+import { CheckCircle2, Loader2 } from 'lucide-react'
 import { createBrowserClient } from '@/lib/supabase/client'
 
 export default function SuccessContent() {
@@ -35,7 +35,7 @@ export default function SuccessContent() {
           return
         }
 
-        await new Promise(resolve => setTimeout(resolve, 5000))
+        await new Promise(resolve => setTimeout(resolve, 2000))
 
         if (externalReference?.includes('plan_')) {
           setStatus('success')
@@ -45,29 +45,54 @@ export default function SuccessContent() {
           const packIdFromRef = externalReference.split('_')[2]
           setPackId(packIdFromRef)
           
+          const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+          
+          if (sessionError) {
+            console.warn('[v0] Session error:', sessionError)
+          }
+          
+          if (!session?.user?.id) {
+            console.error('[v0] No authenticated user found')
+            setStatus('error')
+            setMessage('Error de autenticación. Por favor, inicia sesión nuevamente.')
+            setTimeout(() => router.push('/login'), 3000)
+            return
+          }
+
+          const authToken = session.access_token
+          console.log('[v0] User authenticated:', session.user.id)
+          
           try {
-            console.log('[v0] Recording purchase via API as fallback:', { packIdFromRef, paymentId })
+            console.log('[v0] Recording purchase via API:', { packIdFromRef, paymentId })
+            
             const recordResponse = await fetch('/api/payments/record', {
               method: 'POST',
-              credentials: 'include',     // <--- ESTO ES LO QUE FALTABA
-              headers: {
+              headers: { 
                 'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
               },
               body: JSON.stringify({
                 packId: packIdFromRef,
                 paymentId: paymentId,
+                buyerId: session.user.id
               }),
             })
 
-
+            const recordData = await recordResponse.json()
+            
             if (recordResponse.ok) {
-              const recordData = await recordResponse.json()
-              console.log('[v0] Purchase recorded via API:', recordData)
+              console.log('[v0] Purchase recorded successfully:', recordData)
             } else {
-              console.error('[v0] Failed to record purchase via API:', recordResponse.status)
+              console.error('[v0] Failed to record purchase:', recordResponse.status, recordData)
+              if (recordResponse.status === 401) {
+                setStatus('error')
+                setMessage('Sesión expirada. Por favor, inicia sesión nuevamente.')
+                setTimeout(() => router.push('/login'), 3000)
+                return
+              }
             }
           } catch (err) {
-            console.error('[v0] Error recording purchase via API:', err)
+            console.error('[v0] Error recording purchase:', err)
           }
           
           setStatus('success')
@@ -75,7 +100,7 @@ export default function SuccessContent() {
           
           setTimeout(async () => {
             try {
-              console.log('[v0] Attempting to download pack:', packIdFromRef)
+              console.log('[v0] Starting download for pack:', packIdFromRef)
               const response = await fetch(`/api/packs/${packIdFromRef}/download`)
               
               if (response.ok) {
@@ -99,7 +124,7 @@ export default function SuccessContent() {
                 console.log('[v0] Download completed successfully')
               } else {
                 const error = await response.json()
-                console.error('[v0] Download failed with status:', response.status, error)
+                console.error('[v0] Download failed:', response.status, error)
               }
             } catch (err) {
               console.error('[v0] Download error:', err)

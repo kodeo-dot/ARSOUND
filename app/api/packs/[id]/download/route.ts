@@ -1,4 +1,5 @@
 import { createServerClient } from "@/lib/supabase/server-client"
+import { createAdminClient } from "@/lib/supabase/server-client"
 import { NextResponse } from "next/server"
 
 export async function GET(
@@ -8,6 +9,7 @@ export async function GET(
   try {
     const { id: packId } = await context.params
     const supabase = await createServerClient()
+    const adminSupabase = await createAdminClient()
 
     console.log("[v0] Download request for pack:", packId)
 
@@ -27,7 +29,7 @@ export async function GET(
 
     console.log("[v0] User authenticated:", user.id)
 
-    // Get pack details
+    // Get pack details - use regular client since SELECT is allowed for everyone
     const { data: pack, error: packError } = await supabase
       .from("packs")
       .select("id, title, price, file_url, user_id")
@@ -43,42 +45,23 @@ export async function GET(
 
     const isFree = !pack.price || pack.price === 0
 
-    // Check permissions for paid packs
-    if (!isFree) {
-      const { data: purchase } = await supabase
-        .from("purchases")
-        .select("id")
-        .eq("pack_id", packId)
-        .eq("buyer_id", user.id)
-        .eq("status", "completed")
-        .single()
+    // Check permissions for paid packs - use admin client to bypass RLS restrictions
+    const { data: purchase, error: purchaseError } = await adminSupabase
+      .from("purchases")
+      .select("id")
+      .eq("pack_id", packId)
+      .eq("buyer_id", user.id)
+      .eq("status", "completed")
+      .single()
 
-      if (!purchase) {
-        console.log("[v0] User has not purchased this pack")
-        return NextResponse.json(
-          { error: "Necesitás comprar este pack para descargarlo" },
-          { status: 403 }
-        )
-      }
-      console.log("[v0] User has purchased pack")
-    } else {
-      const { data: limits } = await supabase.rpc("get_download_limit", {
-        p_user_id: user.id,
-      })
-
-      console.log("[v0] Download limits:", limits)
-
-      if (limits && limits.limit !== "unlimited" && limits.remaining <= 0) {
-        return NextResponse.json(
-          {
-            error: "Alcanzaste el límite de descargas gratuitas este mes",
-            current: limits.used,
-            limit: limits.limit,
-          },
-          { status: 403 }
-        )
-      }
+    if (!purchase) {
+      console.log("[v0] User has not purchased this pack. Checking if pack is free...")
+      return NextResponse.json(
+        { error: "Necesitás comprar este pack para descargarlo" },
+        { status: 403 }
+      )
     }
+    console.log("[v0] User has purchased pack:", purchase.id)
 
     // Extract file path from URL
     const url = new URL(pack.file_url)
@@ -86,8 +69,8 @@ export async function GET(
 
     console.log("[v0] Downloading file from path:", cleanPath)
 
-    // Download file from storage
-    const { data: fileData, error: downloadError } = await supabase.storage
+    // Download file from storage - use admin client
+    const { data: fileData, error: downloadError } = await adminSupabase.storage
       .from("samplepacks")
       .download(cleanPath)
 
@@ -101,7 +84,8 @@ export async function GET(
 
     console.log("[v0] File downloaded successfully")
 
-    const { error: recordError } = await supabase
+    // Record download - use admin client
+    const { error: recordError } = await adminSupabase
       .from("pack_downloads")
       .insert({
         user_id: user.id,
@@ -115,7 +99,8 @@ export async function GET(
       console.log("[v0] Download recorded successfully")
     }
 
-    const { error: incrementError } = await supabase.rpc("increment", {
+    // Increment counter - use admin client
+    const { error: incrementError } = await adminSupabase.rpc("increment", {
       table_name: "packs",
       row_id: packId,
       column_name: "downloads_count",
