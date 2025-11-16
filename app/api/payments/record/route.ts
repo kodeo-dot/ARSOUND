@@ -80,17 +80,18 @@ export async function POST(request: Request) {
     console.log("[v0] Creating purchase record:", { buyerId, packId, paymentId, price: pack.price })
 
     // Record the purchase
-    const { error: purchaseError, data: purchaseData } = await adminSupabase
-      .from("purchases")
-      .insert({
-        buyer_id: buyerId,
-        pack_id: packId,
-        amount_paid: pack.price,
-        status: "completed",
-        payment_method: "mercado_pago",
-        mercado_pago_payment_id: paymentId,
-      })
-      .select()
+  const { error: purchaseError, data: purchaseData } = await adminSupabase
+    .from("purchases")
+    .insert({
+      buyer_id: buyerId,
+      seller_id: pack.user_id,   // <---- 🔥 ESTA ES LA CLAVE
+      pack_id: packId,
+      amount_paid: pack.price,
+      status: "completed",
+      payment_method: "mercado_pago",
+      mercado_pago_payment_id: paymentId,
+    })
+    .select()
 
     if (purchaseError) {
       console.error("[v0] Error creating purchase record:", {
