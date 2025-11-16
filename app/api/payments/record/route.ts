@@ -1,4 +1,4 @@
-import { createServerClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/server-client"
 import { NextResponse } from "next/server"
 
 // Comisión por plan
@@ -16,6 +16,8 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { packId, paymentId, buyerId: providedBuyerId } = body
 
+    console.log("[v0] Recording purchase:", { packId, paymentId })
+
     if (!packId || !paymentId) {
       return NextResponse.json(
         { error: "Missing packId or paymentId" },
@@ -23,10 +25,10 @@ export async function POST(request: Request) {
       )
     }
 
-    const supabase = await createServerClient()
+    const adminSupabase = await createAdminClient()
 
     // Get pack info
-    const { data: pack, error: packError } = await supabase
+    const { data: pack, error: packError } = await adminSupabase
       .from("packs")
       .select("user_id, price, title, downloads_count")
       .eq("id", packId)
@@ -37,7 +39,7 @@ export async function POST(request: Request) {
     }
 
     // Get seller profile (para el plan)
-    const { data: sellerProfile } = await supabase
+    const { data: sellerProfile } = await adminSupabase
       .from("profiles")
       .select("plan")
       .eq("id", pack.user_id)
@@ -47,6 +49,12 @@ export async function POST(request: Request) {
     const commissionAmount = pack.price * commissionPercent
     const sellerEarnings = pack.price - commissionAmount
 
+    console.log("[v0] Commission data:", {
+      commissionPercent,
+      commissionAmount,
+      sellerEarnings
+    })
+
     // Buyer
     let buyerId = providedBuyerId || null
 
@@ -54,7 +62,7 @@ export async function POST(request: Request) {
       const authHeader = request.headers.get("authorization")
       if (authHeader) {
         const token = authHeader.replace("Bearer ", "")
-        const { data: { user } } = await supabase.auth.getUser(token)
+        const { data: { user } } = await adminSupabase.auth.getUser(token)
         if (user?.id) buyerId = user.id
       }
     }
@@ -67,7 +75,7 @@ export async function POST(request: Request) {
     }
 
     // Prevent duplicates
-    const { data: existingPurchase } = await supabase
+    const { data: existingPurchase } = await adminSupabase
       .from("purchases")
       .select("id")
       .eq("mercado_pago_payment_id", paymentId)
@@ -83,7 +91,7 @@ export async function POST(request: Request) {
 
     // Create purchase with commission
     const { error: purchaseError, data: purchaseData } =
-      await supabase
+      await adminSupabase
         .from("purchases")
         .insert({
           buyer_id: buyerId,
@@ -107,13 +115,14 @@ export async function POST(request: Request) {
       )
     }
 
-    await supabase
+    // Update downloads count
+    await adminSupabase
       .from("packs")
       .update({ downloads_count: (pack.downloads_count || 0) + 1 })
       .eq("id", packId)
 
     // Update seller total sales (earnings, no comisión)
-    const { data: sellerPurchases } = await supabase
+    const { data: sellerPurchases } = await adminSupabase
       .from("purchases")
       .select("seller_earnings")
       .eq("seller_id", pack.user_id)
@@ -123,7 +132,7 @@ export async function POST(request: Request) {
       0
     ) || 0
 
-    await supabase
+    await adminSupabase
       .from("profiles")
       .update({ total_sales: newTotalSales })
       .eq("id", pack.user_id)
@@ -134,7 +143,7 @@ export async function POST(request: Request) {
     })
 
   } catch (e) {
-    console.error("Fatal error:", e)
+    console.error("[v0] Fatal error:", e)
     return NextResponse.json(
       { error: "Internal server error", details: String(e) },
       { status: 500 }

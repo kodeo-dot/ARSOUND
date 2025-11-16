@@ -81,6 +81,7 @@ export function AudioPlayer() {
         .single()
 
       if (pack?.user_id === user?.id) {
+        console.log("[v0] Play not registered: user is pack owner")
         setPlayRegistered(true)
         return
       }
@@ -94,20 +95,15 @@ export function AudioPlayer() {
       await supabase.rpc("increment_counter", {
         table_name: "packs",
         row_id: currentPack.id,
-        column_name: "total_plays",
+        column_name: "total_plays_count",
+      }).catch((err) => {
+        console.error("[v0] Error incrementing total_plays_count:", err)
       })
 
-      if (pack?.user_id) {
-        await supabase.rpc("increment_counter", {
-          table_name: "profiles",
-          row_id: pack.user_id,
-          column_name: "total_plays_count",
-        })
-      }
-
+      console.log("[v0] Play registered for pack:", currentPack.id)
       setPlayRegistered(true)
     } catch (error) {
-      console.error("Error registering play:", error)
+      console.error("[v0] Error registering play:", error)
     }
   }
 

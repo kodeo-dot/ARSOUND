@@ -6,7 +6,6 @@ import { PackGrid } from "@/components/pack-grid"
 import { FeaturedProducers } from "@/components/featured-producers"
 import { AudioPlayer } from "@/components/audio-player"
 import { Footer } from "@/components/footer"
-import { TopMonthlyPacks } from "@/components/top-monthly-packs"
 import { Card } from "@/components/ui/card"
 import Link from "next/link"
 import { useState, useEffect } from "react"
@@ -43,7 +42,6 @@ export default function Home() {
     <div className="min-h-screen">
       <Header />
       <Hero />
-      <TopMonthlyPacks />
       <PackGrid />
       <FeaturedProducers />
       <AudioPlayer />
