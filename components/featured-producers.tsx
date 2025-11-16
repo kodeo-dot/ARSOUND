@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Star, Package, Users } from "lucide-react"
+import { Star, Package, Users } from 'lucide-react'
 import Link from "next/link"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { Loader2 } from "lucide-react"
+import { Loader2 } from 'lucide-react'
 import { hasPlanBadge, getPlanBadge } from "@/lib/plans"
 
 interface ProducerWithPlan {

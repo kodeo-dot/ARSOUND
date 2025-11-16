@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
-import { Upload, ImageIcon, Loader2, Trash2, Save, Percent, AlertTriangle } from "lucide-react"
+import { Upload, ImageIcon, Loader2, Trash2, Save, Percent, AlertTriangle } from 'lucide-react'
 import { useState, useEffect } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { useRouter, useParams } from "next/navigation"
+import { useRouter, useParams } from 'next/navigation'
 import { toast } from "@/hooks/use-toast"
 import {
   AlertDialog,
