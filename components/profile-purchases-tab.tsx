@@ -18,13 +18,14 @@ interface Purchase {
   status: string
   created_at: string
   payment_method: string | null
-  packs: {
-    id: string
-    title: string
-    cover_image_url: string | null
-    price: number
-    user_id: string
-  } | null
+}
+
+interface Pack {
+  id: string
+  title: string
+  cover_image_url: string | null
+  price: number
+  user_id: string
 }
 
 interface ProfilePurchasesTabProps {
@@ -32,12 +33,13 @@ interface ProfilePurchasesTabProps {
 }
 
 export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
+  const supabase = createClient()
   const [purchasesLoading, setPurchasesLoading] = useState(false)
   const [purchasesData, setPurchasesData] = useState<Purchase[]>([])
+  const [packsMap, setPacksMap] = useState<Record<string, Pack>>({})
   const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null)
   const [detailsModalOpen, setDetailsModalOpen] = useState(false)
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
-  const supabase = createClient()
 
   useEffect(() => {
     const loadPurchases = async () => {
@@ -45,37 +47,36 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
         setPurchasesLoading(true)
         console.log("[v0] Loading purchases for user:", profile?.id)
 
-        const { data: purchases, error } = await supabase
-          .from("purchases")
-          .select(
-            `
-            id,
-            pack_id,
-            amount,
-            discount_amount,
-            status,
-            created_at,
-            payment_method,
-            packs (
-              id,
-              title,
-              cover_image_url,
-              price,
-              user_id
-            )
-          `
-          )
-          .eq("buyer_id", profile?.id)
-          .order("created_at", { ascending: false })
+        const { data: purchases, error: purchasesError } = await supabase
+          .from('purchases')
+          .select('*')
+          .eq('user_id', profile?.id)
+          .order('created_at', { ascending: false })
 
         console.log("[v0] Purchases response:", { 
-          success: !error, 
+          success: !purchasesError, 
           count: purchases?.length, 
-          error: error?.message || error?.details 
+          error: purchasesError?.message 
         })
 
-        if (!error && purchases) {
+        if (!purchasesError && purchases) {
           setPurchasesData(purchases as any)
+
+          if (purchases.length > 0) {
+            const packIds = [...new Set(purchases.map(p => p.pack_id))]
+            const { data: packs } = await supabase
+              .from('packs')
+              .select('id, title, cover_image_url, price, user_id')
+              .in('id', packIds)
+
+            if (packs) {
+              const mapPacks: Record<string, Pack> = {}
+              packs.forEach(pack => {
+                mapPacks[pack.id] = pack as Pack
+              })
+              setPacksMap(mapPacks)
+            }
+          }
         } else {
           setPurchasesData([])
         }
@@ -152,101 +153,104 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
 
   return (
     <div className="space-y-3 md:space-y-4">
-      {purchasesData.map((purchase) => (
-        <div key={purchase.id}>
-          <Card
-            className="p-3 md:p-6 rounded-2xl border-border hover:border-primary/40 transition-all cursor-pointer"
-            onClick={() => {
-              setSelectedPurchase(purchase)
-              setDetailsModalOpen(true)
-            }}
-          >
-            <div className="flex flex-col md:flex-row gap-3 md:gap-6">
-              <div className="flex-shrink-0">
-                <img
-                  src={purchase.packs?.cover_image_url || "/placeholder.svg?height=120&width=120"}
-                  alt={purchase.packs?.title || "Pack"}
-                  className="w-20 h-20 md:w-24 md:h-24 rounded-xl object-cover"
-                />
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-col gap-2 mb-3">
-                  <div>
-                    <Link href={`/pack/${purchase.pack_id}`} onClick={(e) => e.stopPropagation()}>
-                      <h3 className="font-bold text-base md:text-lg text-foreground hover:text-primary transition-colors line-clamp-2">
-                        {purchase.packs?.title || "Pack deleted"}
-                      </h3>
-                    </Link>
-                    <p className="text-xs md:text-sm text-muted-foreground mt-1">
-                      {formatDate(purchase.created_at)}
-                    </p>
-                  </div>
+      {purchasesData.map((purchase) => {
+        const pack = packsMap[purchase.pack_id]
+        return (
+          <div key={purchase.id}>
+            <Card
+              className="p-3 md:p-6 rounded-2xl border-border hover:border-primary/40 transition-all cursor-pointer"
+              onClick={() => {
+                setSelectedPurchase(purchase)
+                setDetailsModalOpen(true)
+              }}
+            >
+              <div className="flex flex-col md:flex-row gap-3 md:gap-6">
+                <div className="flex-shrink-0">
+                  <img
+                    src={pack?.cover_image_url || "/placeholder.svg?height=120&width=120"}
+                    alt={pack?.title || "Pack"}
+                    className="w-20 h-20 md:w-24 md:h-24 rounded-xl object-cover"
+                  />
                 </div>
 
-                <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
-                  <div>
-                    <div className="text-xl md:text-2xl font-black text-foreground">
-                      ${formatPrice(purchase.amount)}
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-col gap-2 mb-3">
+                    <div>
+                      <Link href={`/pack/${purchase.pack_id}`} onClick={(e) => e.stopPropagation()}>
+                        <h3 className="font-bold text-base md:text-lg text-foreground hover:text-primary transition-colors line-clamp-2">
+                          {pack?.title || "Pack deleted"}
+                        </h3>
+                      </Link>
+                      <p className="text-xs md:text-sm text-muted-foreground mt-1">
+                        {formatDate(purchase.created_at)}
+                      </p>
                     </div>
-                    {purchase.discount_amount && purchase.discount_amount > 0 && (
-                      <div className="text-xs text-green-600 font-semibold">
-                        -${formatPrice(purchase.discount_amount)}
-                      </div>
-                    )}
-                    <div className="text-xs text-muted-foreground">ARS</div>
                   </div>
-                  <Badge
-                    variant="secondary"
-                    className={`text-xs font-bold flex-shrink-0 ${
-                      purchase.status === "completed"
-                        ? "bg-green-500/10 text-green-600"
-                        : "bg-yellow-500/10 text-yellow-600"
-                    }`}
-                  >
-                    {purchase.status === "completed" ? "✓ Completado" : "⏳ Pendiente"}
-                  </Badge>
-                </div>
 
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Link href={`/pack/${purchase.pack_id}`} className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center justify-between gap-2 mb-3 flex-wrap">
+                    <div>
+                      <div className="text-xl md:text-2xl font-black text-foreground">
+                        ${formatPrice(purchase.amount)}
+                      </div>
+                      {purchase.discount_amount && purchase.discount_amount > 0 && (
+                        <div className="text-xs text-green-600 font-semibold">
+                          -${formatPrice(purchase.discount_amount)}
+                        </div>
+                      )}
+                      <div className="text-xs text-muted-foreground">ARS</div>
+                    </div>
+                    <Badge
+                      variant="secondary"
+                      className={`text-xs font-bold flex-shrink-0 ${
+                        purchase.status === "completed"
+                          ? "bg-green-500/10 text-green-600"
+                          : "bg-yellow-500/10 text-yellow-600"
+                      }`}
+                    >
+                      {purchase.status === "completed" ? "✓ Completado" : "⏳ Pendiente"}
+                    </Badge>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Link href={`/pack/${purchase.pack_id}`} className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="outline"
+                        className="w-full rounded-full bg-transparent text-xs md:text-sm h-9 md:h-10"
+                        size="sm"
+                      >
+                        Ver Pack
+                      </Button>
+                    </Link>
+                    <a href={`/api/packs/${purchase.pack_id}/download`} download className="flex-1 min-w-0">
+                      <Button
+                        className="w-full rounded-full text-xs md:text-sm h-9 md:h-10 gap-1 md:gap-2"
+                        size="sm"
+                      >
+                        <Download className="h-3 w-3 md:h-4 md:w-4" />
+                        <span className="hidden sm:inline">Descargar</span>
+                        <span className="sm:hidden">DL</span>
+                      </Button>
+                    </a>
                     <Button
                       variant="outline"
-                      className="w-full rounded-full bg-transparent text-xs md:text-sm h-9 md:h-10"
+                      className="flex-1 rounded-full bg-transparent text-xs md:text-sm h-9 md:h-10"
                       size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSelectedPurchase(purchase)
+                        setDetailsModalOpen(true)
+                      }}
                     >
-                      Ver Pack
+                      <ChevronDown className="h-3 w-3 md:h-4 md:w-4" />
+                      Detalles
                     </Button>
-                  </Link>
-                  <a href={`/api/packs/${purchase.pack_id}/download`} download className="flex-1 min-w-0">
-                    <Button
-                      className="w-full rounded-full text-xs md:text-sm h-9 md:h-10 gap-1 md:gap-2"
-                      size="sm"
-                    >
-                      <Download className="h-3 w-3 md:h-4 md:w-4" />
-                      <span className="hidden sm:inline">Descargar</span>
-                      <span className="sm:hidden">DL</span>
-                    </Button>
-                  </a>
-                  <Button
-                    variant="outline"
-                    className="flex-1 rounded-full bg-transparent text-xs md:text-sm h-9 md:h-10"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setSelectedPurchase(purchase)
-                      setDetailsModalOpen(true)
-                    }}
-                  >
-                    <ChevronDown className="h-3 w-3 md:h-4 md:w-4" />
-                    Detalles
-                  </Button>
+                  </div>
                 </div>
               </div>
-            </div>
-          </Card>
-        </div>
-      ))}
+            </Card>
+          </div>
+        )
+      })}
 
       <Dialog open={detailsModalOpen} onOpenChange={setDetailsModalOpen}>
         <DialogContent className="sm:max-w-md rounded-3xl">
@@ -309,10 +313,10 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
                   <span className="text-sm text-muted-foreground">Método de Pago</span>
                   <span className="text-sm font-medium capitalize">{selectedPurchase.payment_method || "No especificado"}</span>
                 </div>
-                {selectedPurchase.packs && (
+                {selectedPurchase.pack_id && (
                   <div className="flex justify-between">
                     <span className="text-sm text-muted-foreground">Vendedor</span>
-                    <span className="text-sm font-medium">{selectedPurchase.packs.user_id}</span>
+                    <span className="text-sm font-medium">{packsMap[selectedPurchase.pack_id]?.user_id || "No especificado"}</span>
                   </div>
                 )}
               </div>
