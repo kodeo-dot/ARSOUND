@@ -12,7 +12,7 @@ import type { Profile } from "@/types/profile"
 interface Purchase {
   id: string
   pack_id: string
-  amount: number
+  amount_paid: number
   status: string
   created_at: string
   packs: {
@@ -45,7 +45,7 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
             `
             id,
             pack_id,
-            amount,
+            amount_paid,
             status,
             created_at,
             packs (
@@ -60,14 +60,25 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
           .eq("buyer_id", profile?.id)
           .order("created_at", { ascending: false })
 
-        console.log("[v0] Purchases loaded:", purchases?.length || 0)
-        console.log("[v0] Purchase error:", error)
+        console.log("[v0] Purchases response:", { 
+          success: !error, 
+          count: purchases?.length, 
+          error: error?.message || error?.details 
+        })
+
+        if (error) {
+          console.error("[v0] Error details:", error)
+        }
 
         if (!error && purchases) {
           setPurchasesData(purchases as any)
+        } else {
+          console.warn("[v0] No purchases found or error occurred")
+          setPurchasesData([])
         }
       } catch (err) {
         console.error("[v0] Error loading purchases:", err)
+        setPurchasesData([])
       } finally {
         setPurchasesLoading(false)
       }
@@ -158,7 +169,7 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
               <div className="flex items-center justify-between gap-2 mb-3">
                 <div>
                   <div className="text-xl md:text-2xl font-black text-foreground">
-                    ${formatPrice(purchase.amount)}
+                    ${formatPrice(purchase.amount_paid)}
                   </div>
                   <div className="text-xs text-muted-foreground">ARS</div>
                 </div>

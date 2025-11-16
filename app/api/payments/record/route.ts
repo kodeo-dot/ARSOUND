@@ -85,10 +85,7 @@ export async function POST(request: Request) {
       .insert({
         buyer_id: buyerId,
         pack_id: packId,
-        amount: pack.price,
-        discount_amount: 0,
-        platform_commission: 0,
-        creator_earnings: pack.price,
+        amount_paid: pack.price,
         status: "completed",
         payment_method: "mercado_pago",
         mercado_pago_payment_id: paymentId,
@@ -121,10 +118,17 @@ export async function POST(request: Request) {
       console.warn("[v0] Warning updating downloads count:", updateError.message)
     }
 
-    // Update seller's total_sales
+    // Update seller's total_sales correctly by summing all their sales
+    const { data: sellerSales } = await adminSupabase
+      .from("purchases")
+      .select("amount_paid", { count: "exact" })
+      .eq("pack_id", packId)
+
+    const totalSales = sellerSales?.reduce((sum: number, p: any) => sum + (p.amount_paid || 0), 0) || 0
+
     const { error: sellerError } = await adminSupabase
       .from("profiles")
-      .update({ total_sales: (pack.price || 0) })
+      .update({ total_sales: totalSales })
       .eq("id", pack.user_id)
 
     if (sellerError) {
