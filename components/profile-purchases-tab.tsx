@@ -17,7 +17,7 @@ interface Purchase {
   amount_paid: number
   discount_amount: number | null
   discount_percent: number | null
-  platform_commission: number | null
+  platform_earnings: number | null
   commission_percent: number | null
   status: string
   created_at: string
@@ -309,10 +309,10 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
               )}
 
               <div className="space-y-2 p-3 rounded-xl bg-accent/50 border border-border">
-                {selectedPurchase.platform_commission !== null && (
+                {selectedPurchase.platform_earnings !== null && (
                   <div className="flex justify-between">
                     <span className="text-xs text-muted-foreground">Comisión de Plataforma</span>
-                    <span className="text-xs font-medium">-${formatPrice(selectedPurchase.platform_commission)}</span>
+                    <span className="text-xs font-medium">-${formatPrice(selectedPurchase.platform_earnings)}</span>
                   </div>
                 )}
                 {selectedPurchase.commission_percent !== null && (
