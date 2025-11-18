@@ -328,7 +328,7 @@ export function ProfilePurchasesTab({ profile }: ProfilePurchasesTabProps) {
                 </div>
                 {selectedPurchase.pack_id && (
                   <div className="flex justify-between">
-                    <span className="text-sm text-muted-foreground">Vendedor</span>
+                    <span className="text-sm text-muted-foreground">ID del vendedor</span>
                     <span className="text-sm font-medium">{packsMap[selectedPurchase.pack_id]?.user_id || "No especificado"}</span>
                   </div>
                 )}
