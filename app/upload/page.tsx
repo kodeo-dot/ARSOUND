@@ -769,6 +769,7 @@ export default function UploadPage() {
                   <input
                     id="packFile"
                     type="file"
+                    name="packFile"
                     accept=".zip,.rar"
                     onChange={handleZipChange}
                     className="hidden"
