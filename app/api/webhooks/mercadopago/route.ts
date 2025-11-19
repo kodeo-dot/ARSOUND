@@ -127,17 +127,20 @@ export async function POST(request: Request) {
         console.log("[v0] Purchase created successfully:", purchaseData?.[0]?.id)
 
         try {
-          const { data: buyer } = await supabase
+          const { data: buyer, error: buyerError } = await supabase
             .from("profiles")
-            .select("email, username")
+            .select("id, email, username")
             .eq("id", metadata.buyer_id)
             .single()
 
-          const { data: seller } = await supabase
+          const { data: seller, error: sellerError } = await supabase
             .from("profiles")
-            .select("email, username")
+            .select("id, email, username")
             .eq("id", pack.user_id)
             .single()
+
+          console.log("[v0] Buyer query error:", buyerError)
+          console.log("[v0] Seller query error:", sellerError)
 
           if (buyer?.email && seller?.email) {
             // Send email to buyer
@@ -183,6 +186,8 @@ export async function POST(request: Request) {
             })
 
             console.log("[v0] Notification emails sent successfully")
+          } else {
+            console.error("[v0] Missing email data - Buyer email:", buyer?.email, "Seller email:", seller?.email)
           }
         } catch (emailError) {
           console.error("[v0] Error sending notification emails:", emailError)
@@ -263,11 +268,13 @@ export async function POST(request: Request) {
       console.log("[v0] Processing plan subscription...")
 
       try {
-        const { data: userProfile } = await supabase
+        const { data: userProfile, error: profileError } = await supabase
           .from("profiles")
-          .select("email, username, plan")
+          .select("id, email, username, plan")
           .eq("id", metadata.user_id)
           .single()
+
+        console.log("[v0] Profile query error:", profileError)
 
         if (userProfile?.email && metadata.plan) {
           const planFeatures = PLAN_FEATURES[metadata.plan as PlanType]?.features || []
@@ -292,6 +299,8 @@ export async function POST(request: Request) {
           })
 
           console.log("[v0] Plan purchase email sent successfully")
+        } else {
+          console.error("[v0] Missing profile data or email for user:", metadata.user_id)
         }
       } catch (emailError) {
         console.error("[v0] Error sending plan purchase email:", emailError)

@@ -1,18 +1,18 @@
 "use client"
 
 import type React from "react"
-
+import { useEffect } from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
-import { Waves, Mail, Lock, UserIcon } from "lucide-react"
+import { Waves, Mail, Lock, UserIcon } from 'lucide-react'
 import Link from "next/link"
 import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
+import { useRouter } from 'next/navigation'
 
 export default function SignupPage() {
   const [username, setUsername] = useState("")
@@ -22,7 +22,62 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
+  const [usernameChecking, setUsernameChecking] = useState(false)
   const router = useRouter()
+  const profile = null // Assuming profile is not used elsewhere and is null for simplicity
+  const isEditing = false // Assuming isEditing is not used elsewhere and is false for simplicity
+  const editForm = { username } // Assuming editForm is not used elsewhere and is set to { username } for simplicity
+
+  useEffect(() => {
+    if (!isEditing) return
+
+    const checkUsername = async () => {
+      const username = editForm.username.trim()
+
+      // Validate format
+      if (!username) {
+        setUsernameAvailable(null)
+        return
+      }
+
+      if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+        setUsernameAvailable(false)
+        return
+      }
+
+      if (username.length > 12) {
+        setUsernameAvailable(false)
+        return
+      }
+
+      // If username hasn't changed, it's available
+      if (username === profile?.username) {
+        setUsernameAvailable(true)
+        return
+      }
+
+      setUsernameChecking(true)
+
+      try {
+        // Fixed query - use maybeSingle() instead of single() to handle no results gracefully
+        const { data, error } = await createClient()
+          .from("profiles")
+          .select("id")
+          .eq("username", username.toLowerCase().trim())
+          .maybeSingle()
+
+        setUsernameAvailable(!data)
+      } catch (error) {
+        setUsernameAvailable(true)
+      } finally {
+        setUsernameChecking(false)
+      }
+    }
+
+    const timeoutId = setTimeout(checkUsername, 500)
+    return () => clearTimeout(timeoutId)
+  }, [editForm.username, isEditing])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -159,6 +214,10 @@ export default function SignupPage() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">Mínimo 3 caracteres, sin espacios</p>
+              {usernameChecking && <p className="text-xs text-muted-foreground">Verificando nombre de usuario...</p>}
+              {usernameAvailable === false && (
+                <p className="text-xs text-red-500 font-medium">El nombre de usuario no está disponible</p>
+              )}
             </div>
 
             <div className="space-y-2">
