@@ -1,5 +1,12 @@
 import { createAdminClient } from "@/lib/supabase/server-client"
 import { NextResponse } from "next/server"
+import { sendBrevoEmail } from "@/lib/brevo/client"
+import {
+  generatePackPurchaseEmailBuyer,
+  generatePackSaleEmailSeller,
+  generatePlanPurchaseEmail,
+} from "@/lib/brevo/email-templates"
+import { PLAN_FEATURES, type PlanType } from "@/lib/plans"
 
 export async function POST(request: Request) {
   try {
@@ -119,6 +126,68 @@ export async function POST(request: Request) {
       } else {
         console.log("[v0] Purchase created successfully:", purchaseData?.[0]?.id)
 
+        try {
+          const { data: buyer } = await supabase
+            .from("profiles")
+            .select("email, username")
+            .eq("id", metadata.buyer_id)
+            .single()
+
+          const { data: seller } = await supabase
+            .from("profiles")
+            .select("email, username")
+            .eq("id", pack.user_id)
+            .single()
+
+          if (buyer?.email && seller?.email) {
+            // Send email to buyer
+            const buyerEmailHtml = generatePackPurchaseEmailBuyer({
+              buyerName: buyer.username || "Usuario",
+              packTitle: metadata.pack_title || "Pack",
+              sellerName: seller.username || "Creador",
+              amount: metadata.final_price,
+              discount: metadata.original_price ? metadata.original_price - metadata.final_price : undefined,
+              purchaseCode: purchaseData?.[0]?.purchase_code || "N/A",
+              downloadUrl: `${process.env.NEXT_PUBLIC_APP_URL}/pack/${metadata.pack_id}/download`,
+            })
+
+            await sendBrevoEmail({
+              to: [buyer.email],
+              subject: `Tu compra de ${metadata.pack_title || "Pack"} está lista para descargar`,
+              htmlContent: buyerEmailHtml,
+              sender: {
+                email: process.env.BREVO_SENDER_EMAIL || "noreply@arsound.com",
+                name: "ArSound",
+              },
+            })
+
+            // Send email to seller
+            const sellerEmailHtml = generatePackSaleEmailSeller({
+              sellerName: seller.username || "Creador",
+              buyerName: buyer.username || "Cliente",
+              packTitle: metadata.pack_title || "Pack",
+              amount: metadata.final_price,
+              commission: metadata.commission_amount || 0,
+              earnings: metadata.seller_earnings || 0,
+              purchaseCode: purchaseData?.[0]?.purchase_code || "N/A",
+            })
+
+            await sendBrevoEmail({
+              to: [seller.email],
+              subject: `¡Nueva venta! ${buyer.username || "Un cliente"} compró tu pack`,
+              htmlContent: sellerEmailHtml,
+              sender: {
+                email: process.env.BREVO_SENDER_EMAIL || "noreply@arsound.com",
+                name: "ArSound",
+              },
+            })
+
+            console.log("[v0] Notification emails sent successfully")
+          }
+        } catch (emailError) {
+          console.error("[v0] Error sending notification emails:", emailError)
+        }
+
         const { error: eventError } = await supabase
           .from("user_track_events")
           .upsert({
@@ -192,7 +261,41 @@ export async function POST(request: Request) {
 
     if (metadata?.type === "plan_subscription") {
       console.log("[v0] Processing plan subscription...")
-      // ... existing plan logic ...
+
+      try {
+        const { data: userProfile } = await supabase
+          .from("profiles")
+          .select("email, username, plan")
+          .eq("id", metadata.user_id)
+          .single()
+
+        if (userProfile?.email && metadata.plan) {
+          const planFeatures = PLAN_FEATURES[metadata.plan as PlanType]?.features || []
+          const planName = metadata.plan.charAt(0).toUpperCase() + metadata.plan.slice(1)
+
+          const emailHtml = generatePlanPurchaseEmail({
+            userName: userProfile.username || "Usuario",
+            planName: planName,
+            amount: metadata.final_price,
+            features: planFeatures,
+            purchaseDate: new Date().toLocaleDateString("es-AR"),
+          })
+
+          await sendBrevoEmail({
+            to: [userProfile.email],
+            subject: `Bienvenido al plan ${planName} - ArSound`,
+            htmlContent: emailHtml,
+            sender: {
+              email: process.env.BREVO_SENDER_EMAIL || "noreply@arsound.com",
+              name: "ArSound",
+            },
+          })
+
+          console.log("[v0] Plan purchase email sent successfully")
+        }
+      } catch (emailError) {
+        console.error("[v0] Error sending plan purchase email:", emailError)
+      }
     }
 
     return NextResponse.json({ received: true })
