@@ -1,21 +1,5 @@
 {
-  "node": {
-    "40be870f8359042ca77e28750b5f416e2aa76019f9": {
-      "workers": {
-        "app/plans/page": {
-          "moduleId": "[project]/.next-internal/server/app/plans/page/actions.js { ACTIONS_MODULE0 => \"[project]/app/plans/actions.ts [app-rsc] (ecmascript)\" } [app-rsc] (server actions loader, ecmascript)",
-          "async": false,
-          "exportedName": "selectPlan",
-          "filename": "app/plans/actions.ts"
-        }
-      },
-      "layer": {
-        "app/plans/page": "action-browser"
-      },
-      "filename": "app/plans/actions.ts",
-      "exportedName": "selectPlan"
-    }
-  },
+  "node": {},
   "edge": {},
   "encryptionKey": "81DC2vZ+rIlSdFTUmEaEytSgD8AH5b2eSUBQQMofxm0="
 }

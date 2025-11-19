@@ -1,5 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/server-client"
 import { NextResponse } from "next/server"
+import { sendEmailBrevo } from "@/lib/email/send"
+
 
 // Comisión por plan
 function getCommissionByPlan(plan: string) {
@@ -136,6 +138,59 @@ export async function POST(request: Request) {
       .from("profiles")
       .update({ total_sales: newTotalSales })
       .eq("id", pack.user_id)
+
+
+
+  // Obtener emails del comprador y vendedor
+    const { data: buyerProfile } = await adminSupabase
+      .from("profiles")
+      .select("email, username")
+      .eq("id", buyerId)
+      .single()
+
+    if (!buyerProfile) {
+      return NextResponse.json(
+        { error: "Buyer profile not found" },
+        { status: 404 }
+      )
+    }
+
+    const { data: sellerProfileEmail } = await adminSupabase
+      .from("profiles")
+      .select("email, username")
+      .eq("id", pack.user_id)
+      .single()
+
+    if (!sellerProfileEmail) {
+      return NextResponse.json(
+        { error: "Seller profile not found" },
+        { status: 404 }
+      )
+    }
+
+  // Email al comprador
+  await sendEmailBrevo({
+    to: buyerProfile.email,
+    subject: "¡Gracias por tu compra en ARSOUND!",
+    html: `
+      <h2>Gracias por tu compra 🎧</h2>
+      <p>Compraste el pack: <strong>${pack.title}</strong></p>
+      <p>ID de pago: ${paymentId}</p>
+      <p>Podes descargarlo desde tu perfil cuando quieras.</p>
+    `,
+  })
+  
+
+  // Email al vendedor
+  await sendEmailBrevo({
+    to: sellerProfileEmail.email,
+    subject: "¡Vendiste un pack en ARSOUND! 💸",
+    html: `
+      <h2>¡Felicitaciones!</h2>
+      <p>Vendiste: <strong>${pack.title}</strong></p>
+      <p>Ganancias: $${sellerEarnings.toFixed(2)}</p>
+    `,
+  })
 
     return NextResponse.json({
       success: true,
