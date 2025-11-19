@@ -50,6 +50,7 @@ export default function UploadPage() {
   const [discountPercent, setDiscountPercent] = useState("")
   const [discountCode, setDiscountCode] = useState("")
   const [discountType, setDiscountType] = useState("all")
+  const [discountRequiresCode, setDiscountRequiresCode] = useState(true)
 
   // Tags state
   const [tags, setTags] = useState<string[]>([])
@@ -436,8 +437,9 @@ export default function UploadPage() {
           tags: tags,
           has_discount: hasDiscount,
           discount_percent: hasDiscount ? Number.parseInt(discountPercent) : 0,
-          discountCode: hasDiscount ? discountCode : null,
+          discountCode: hasDiscount && discountRequiresCode ? discountCode : null,
           discountType: hasDiscount ? discountType : null,
+          discountRequiresCode: hasDiscount ? discountRequiresCode : false,
         }),
       })
 
@@ -921,8 +923,11 @@ export default function UploadPage() {
                           value={discountCode}
                           onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
                           className="h-11 rounded-lg bg-background"
-                          disabled={isLoading}
+                          disabled={isLoading || !discountRequiresCode}
                         />
+                        <p className="text-xs text-muted-foreground">
+                          {discountRequiresCode ? "Dejá vacío para sin código" : "Este descuento se aplica sin código a todos"}
+                        </p>
                       </div>
 
                       <div className="space-y-2">
@@ -965,6 +970,30 @@ export default function UploadPage() {
                           </SelectContent>
                         </Select>
                       </div>
+
+                      <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="requireCode" className="text-sm font-semibold text-foreground">
+                          Requisito de Código
+                        </Label>
+                        <div className="flex items-center gap-3 p-3 bg-background rounded-lg border border-border">
+                          <input
+                            type="checkbox"
+                            id="requireCode"
+                            checked={discountRequiresCode}
+                            onChange={(e) => {
+                              setDiscountRequiresCode(e.target.checked)
+                              if (!e.target.checked) setDiscountCode("")
+                            }}
+                            disabled={isLoading}
+                            className="h-5 w-5 rounded border-border text-primary"
+                          />
+                          <label htmlFor="requireCode" className="text-sm text-muted-foreground cursor-pointer flex-1">
+                            {discountRequiresCode
+                              ? "Se aplica solo con código (especificá abajo)"
+                              : "Se aplica automáticamente a todos sin código"}
+                          </label>
+                        </div>
+                      </div>
                     </div>
 
                     {discountPercentNumber > 0 && (
@@ -973,6 +1002,13 @@ export default function UploadPage() {
                         <p className="text-2xl font-black text-primary">${priceAfterDiscount.toFixed(0)} ARS</p>
                         <p className="text-xs text-muted-foreground mt-1">
                           Ahorro de ${discountAmount.toFixed(0)} ARS ({discountPercentNumber}% OFF)
+                        </p>
+                        <p className="text-xs text-primary mt-2">
+                          {discountRequiresCode
+                            ? discountCode
+                              ? `Código: ${discountCode}`
+                              : "Código: AUTOMÁTICO"
+                            : "Sin código - Se aplica a todos"}
                         </p>
                       </div>
                     )}

@@ -57,7 +57,7 @@ export async function POST(request: Request) {
 
       const { data: sellerProfile, error: sellerError } = await supabase
         .from("profiles")
-        .select("plan, mp_user_id, mp_connected")
+        .select("plan, mp_user_id, mp_connected, mp_access_token")
         .eq("id", pack.user_id)
         .single()
 
@@ -163,16 +163,16 @@ export async function POST(request: Request) {
       ]
       preferenceData.external_reference = `pack_${user.id}_${packId}`
       
-      preferenceData.marketplace_fee = commissionAmount
-
-      preferenceData.application_fee = commissionAmount
       preferenceData.collector_id = sellerProfile.mp_user_id
+      preferenceData.marketplace_fee = commissionAmount
+      preferenceData.application_fee = commissionAmount
 
       preferenceData.metadata = {
         type: "pack_purchase",
         pack_id: packId,
         buyer_id: user.id,
         seller_id: pack.user_id,
+        seller_mp_user_id: sellerProfile.mp_user_id,
         seller_plan: sellerPlan,
         commission_percent: commission,
         commission_amount: commissionAmount,

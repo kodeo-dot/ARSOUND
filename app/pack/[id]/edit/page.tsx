@@ -40,6 +40,9 @@ export default function EditPackPage() {
 
   const [price, setPrice] = useState("")
   const [discountPercent, setDiscountPercent] = useState("")
+  const [discountCode, setDiscountCode] = useState("")
+  const [discountRequiresCode, setDiscountRequiresCode] = useState(true)
+  const [discountType, setDiscountType] = useState("all")
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
 
@@ -72,7 +75,6 @@ export default function EditPackPage() {
 
       if (error) throw error
 
-      // Check if user is owner
       if (packData.user_id !== authUser.id) {
         toast({
           title: "Acceso denegado",
@@ -87,6 +89,21 @@ export default function EditPackPage() {
       setPrice(packData.price.toString())
       setDiscountPercent(packData.discount_percent?.toString() || "")
       setCoverPreview(packData.cover_image_url)
+
+      const { data: discountCodes } = await supabase
+        .from("discount_codes")
+        .select("*")
+        .eq("pack_id", packId)
+        .limit(1)
+
+      if (discountCodes && discountCodes.length > 0) {
+        const discountCode = discountCodes[0]
+        setDiscountCode(discountCode.code || "")
+        setDiscountType(
+          discountCode.for_followers ? "followers" : discountCode.for_first_purchase ? "first" : "all"
+        )
+        setDiscountRequiresCode(!!(discountCode.code && discountCode.code.length > 0))
+      }
     } catch (error: any) {
       console.error("Error loading pack:", error)
       toast({
@@ -181,12 +198,10 @@ export default function EditPackPage() {
 
       let coverUrl = pack.cover_image_url
 
-      // Upload new cover if selected
       if (coverFile) {
         coverUrl = await uploadCoverToStorage(coverFile)
       }
 
-      // Update pack
       const { error } = await supabase
         .from("packs")
         .update({
@@ -198,6 +213,34 @@ export default function EditPackPage() {
         .eq("id", packId)
 
       if (error) throw error
+
+      if (discountNum > 0) {
+        const { data: existingDiscount } = await supabase
+          .from("discount_codes")
+          .select("id")
+          .eq("pack_id", packId)
+          .limit(1)
+
+        const discountCodeData = {
+          pack_id: packId,
+          code: discountRequiresCode ? (discountCode || `AUTO-${Date.now().toString(36).toUpperCase()}`) : "",
+          discount_percent: discountNum,
+          for_all_users: discountType === "all",
+          for_first_purchase: discountType === "first",
+          for_followers: discountType === "followers",
+        }
+
+        if (existingDiscount && existingDiscount.length > 0) {
+          await supabase
+            .from("discount_codes")
+            .update(discountCodeData)
+            .eq("pack_id", packId)
+        } else {
+          await supabase.from("discount_codes").insert(discountCodeData)
+        }
+      } else {
+        await supabase.from("discount_codes").delete().eq("pack_id", packId)
+      }
 
       toast({
         title: "Pack actualizado",
@@ -231,7 +274,6 @@ export default function EditPackPage() {
         console.error("Error marking upload as deleted:", markDeletedError)
       }
 
-      // Delete pack from database
       const { error } = await supabase.from("packs").delete().eq("id", packId)
 
       if (error) throw error
@@ -395,6 +437,67 @@ export default function EditPackPage() {
               <p className="text-sm text-muted-foreground">
                 Descuento máximo para tu plan ({userPlan}): {getMaxDiscount()}%. Dejá en 0 para no aplicar descuento.
               </p>
+
+              {Number.parseFloat(discountPercent) > 0 && (
+                <Card className="p-6 rounded-xl border border-border bg-accent/30 mt-6">
+                  <div className="space-y-4">
+                    <h3 className="font-bold text-foreground text-sm">Configurar Descuento</h3>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="discountCode" className="text-sm font-semibold text-foreground">
+                        Código de Descuento
+                      </Label>
+                      <Input
+                        id="discountCode"
+                        placeholder="ARSOUND25"
+                        value={discountCode}
+                        onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                        className="h-11 rounded-lg bg-background"
+                        disabled={saving || !discountRequiresCode}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {discountRequiresCode ? "Dejá vacío para auto-generar" : "Este descuento se aplica sin código"}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="discountType" className="text-sm font-semibold text-foreground">
+                        Aplicar a
+                      </Label>
+                      <select
+                        id="discountType"
+                        value={discountType}
+                        onChange={(e) => setDiscountType(e.target.value)}
+                        disabled={saving}
+                        className="h-11 rounded-lg bg-background border border-border px-3 text-sm"
+                      >
+                        <option value="all">Todos los usuarios</option>
+                        <option value="first">Primera compra</option>
+                        <option value="followers">Mis seguidores</option>
+                      </select>
+                    </div>
+
+                    <div className="flex items-center gap-3 p-3 bg-background rounded-lg border border-border">
+                      <input
+                        type="checkbox"
+                        id="requireCode"
+                        checked={discountRequiresCode}
+                        onChange={(e) => {
+                          setDiscountRequiresCode(e.target.checked)
+                          if (!e.target.checked) setDiscountCode("")
+                        }}
+                        disabled={saving}
+                        className="h-5 w-5 rounded border-border text-primary"
+                      />
+                      <label htmlFor="requireCode" className="text-sm text-muted-foreground cursor-pointer flex-1">
+                        {discountRequiresCode
+                          ? "Se aplica solo con código"
+                          : "Se aplica automáticamente a todos"}
+                      </label>
+                    </div>
+                  </div>
+                </Card>
+              )}
             </div>
 
             {/* Price Summary */}

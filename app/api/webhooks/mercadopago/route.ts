@@ -45,6 +45,7 @@ export async function POST(request: Request) {
         status: paymentData.status,
         external_reference: paymentData.external_reference,
         metadata: paymentData.metadata,
+        collector_id: paymentData.collector_id,
       })
     } catch (error) {
       console.error("[v0] Error calling Mercado Pago API:", error)
@@ -77,11 +78,19 @@ export async function POST(request: Request) {
         return NextResponse.json({ received: true })
       }
 
+      const { data: sellerProfile } = await supabase
+        .from("profiles")
+        .select("mp_user_id")
+        .eq("id", pack.user_id)
+        .single()
+
       const discountAmount = metadata.original_price ? metadata.original_price - metadata.final_price : 0
 
       console.log("[v0] Creating purchase record with:", {
         buyer_id: metadata.buyer_id,
         pack_id: metadata.pack_id,
+        seller_id: pack.user_id,
+        seller_mp_user_id: metadata.seller_mp_user_id || sellerProfile?.mp_user_id,
         amount: metadata.final_price,
         mercado_pago_payment_id: paymentId,
       })
@@ -91,6 +100,7 @@ export async function POST(request: Request) {
         .insert({
           buyer_id: metadata.buyer_id,
           pack_id: metadata.pack_id,
+          seller_id: pack.user_id,
           amount: metadata.final_price,
           discount_amount: discountAmount,
           discount_code: metadata.discount_code,
@@ -158,13 +168,13 @@ export async function POST(request: Request) {
         }
 
         if (pack.price > 0 && metadata.seller_earnings) {
-          const { data: sellerProfile } = await supabase
+          const { data: sellerSalesProfile } = await supabase
             .from("profiles")
             .select("total_sales")
             .eq("id", pack.user_id)
             .single()
 
-          const newTotalSales = (sellerProfile?.total_sales || 0) + (metadata.seller_earnings || 0)
+          const newTotalSales = (sellerSalesProfile?.total_sales || 0) + (metadata.seller_earnings || 0)
 
           const { error: profileError } = await supabase
             .from("profiles")
