@@ -74,7 +74,7 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href="mailto:contacto@arsound.com"
+                  href="mailto:soporte@arsound.com.ar"
                   className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Contacto
@@ -106,7 +106,7 @@ export function Footer() {
                 <Youtube className="h-5 w-5" />
               </a>
               <a
-                href="mailto:contacto@arsound.com"
+                href="mailto:soporte@arsound.com.ar"
                 className="h-10 w-10 rounded-full bg-accent hover:bg-primary hover:text-primary-foreground transition-colors flex items-center justify-center"
               >
                 <Mail className="h-5 w-5" />

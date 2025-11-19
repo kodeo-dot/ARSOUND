@@ -115,8 +115,8 @@ export default function PoliticaPrivacidad() {
                 Si tienes preguntas sobre esta Política de Privacidad, contáctanos en:
               </p>
               <p className="text-muted-foreground">
-                <a href="mailto:contacto@arsound.com" className="text-primary hover:underline">
-                  contacto@arsound.com
+                <a href="mailto:soporte@arsound.com.ar" className="text-primary hover:underline">
+                  soporte@arsound.com.ar
                 </a>
               </p>
             </section>
