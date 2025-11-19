@@ -159,8 +159,8 @@ export async function POST(request: Request) {
               subject: `Tu compra de ${metadata.pack_title || "Pack"} está lista para descargar`,
               htmlContent: buyerEmailHtml,
               sender: {
-                email: process.env.BREVO_SENDER_EMAIL || "noreply@arsound.com",
-                name: "ArSound",
+                email: process.env.BREVO_SENDER_EMAIL || "noreply@arsound.com.ar",
+                name: "ARSOUND",
               },
             })
 
@@ -180,8 +180,8 @@ export async function POST(request: Request) {
               subject: `¡Nueva venta! ${buyer.username || "Un cliente"} compró tu pack`,
               htmlContent: sellerEmailHtml,
               sender: {
-                email: process.env.BREVO_SENDER_EMAIL || "noreply@arsound.com",
-                name: "ArSound",
+                email: process.env.BREVO_SENDER_EMAIL || "noreply@arsound.com.ar",
+                name: "ARSOUND",
               },
             })
 
@@ -290,11 +290,11 @@ export async function POST(request: Request) {
 
           await sendBrevoEmail({
             to: [userProfile.email],
-            subject: `Bienvenido al plan ${planName} - ArSound`,
+            subject: `Bienvenido al plan ${planName} - ARSOUND`,
             htmlContent: emailHtml,
             sender: {
-              email: process.env.BREVO_SENDER_EMAIL || "noreply@arsound.com",
-              name: "ArSound",
+              email: process.env.BREVO_SENDER_EMAIL || "noreply@arsound.com.ar",
+              name: "ARSOUND",
             },
           })
 
