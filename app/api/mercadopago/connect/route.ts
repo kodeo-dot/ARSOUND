@@ -23,17 +23,17 @@ export async function POST(request: Request) {
     let baseUrl = process.env.NEXT_PUBLIC_APP_URL
     
     // Fallback logic for development
-    if (!baseUrl || baseUrl === 'http://localhost:3000') {
+    if (!baseUrl || baseUrl === 'https://arsound.com.ar') {
       // Check if we're running on Vercel Preview
       const headers = request.headers
       const forwardedProto = headers.get('x-forwarded-proto') || 'https'
-      const forwardedHost = headers.get('x-forwarded-host') || headers.get('host') || 'localhost:3000'
+      const forwardedHost = headers.get('x-forwarded-host') || headers.get('host') || 'https://arsound.com.ar'
       
       if (forwardedHost && !forwardedHost.includes('localhost')) {
         baseUrl = `${forwardedProto}://${forwardedHost}`
         console.log("[v0] MP Connect: Using forwarded URL:", baseUrl)
       } else {
-        baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+        baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://arsound.com.ar'
       }
     }
     
