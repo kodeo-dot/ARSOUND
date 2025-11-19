@@ -104,9 +104,9 @@ export default function SignupPage() {
     try {
       const { data: existingProfile } = await supabase
         .from("profiles")
-        .select("username")
+        .select("id")
         .eq("username", username.toLowerCase().trim())
-        .single()
+        .maybeSingle()
 
       if (existingProfile) {
         setError("Nombre de usuario ya en uso")
