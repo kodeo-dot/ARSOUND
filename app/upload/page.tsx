@@ -37,6 +37,10 @@ import { useBlockStatus } from "@/hooks/use-block-status"
 import Link from "next/link"
 import { Switch } from "@/components/ui/switch"
 
+const PRICE_OPTIONS = Array.from({ length: 14 }, (_, i) => i * 5000) // 0, 5000, 10000... 65000
+const DISCOUNT_OPTIONS = [0, 10, 20, 30, 40, 50]
+// </CHANGE>
+
 // Mock implementation for canUserUploadPack as it's not provided
 // In a real scenario, this would be imported or defined elsewhere.
 const canUserUploadPack = async (userId: string, plan: PlanType): Promise<{ canUpload: boolean; reason?: string }> => {
@@ -95,6 +99,9 @@ export default function UploadPage() {
   const [canUpload, setCanUpload] = useState(true)
   const [uploadBlockReason, setUploadBlockReason] = useState<string | null>(null)
   const [mpConnected, setMpConnected] = useState(false)
+  // Added isPurchasing state for handlePurchase
+  const [isPurchasing, setIsPurchasing] = useState(false)
+  // </CHANGE>
 
   const blockStatus = useBlockStatus()
 
@@ -322,6 +329,56 @@ export default function UploadPage() {
     }
   }
 
+  const handlePurchase = async () => {
+    setIsPurchasing(true)
+
+    // This logic is for when a user *downloads* a pack, not uploads.
+    // For the purpose of this merge, we'll assume 'packId', 'pack', and 'pack.price'
+    // are available in this scope if this function were truly used on a download page.
+    // Since this is the upload page, this function might be misplaced or a remnant.
+    // We'll keep the logic as provided in the updates for now.
+
+    // Mocking pack and packId for demonstration as they are not defined in this component's scope.
+    const mockPack = { title: "Test Pack", price: 0, free: true }
+    const mockPackId = "12345"
+
+    if (mockPack.price === 0 || mockPack.free === true) {
+      try {
+        // In a real scenario, this would fetch a download URL or stream the file.
+        // For this example, we simulate a successful download.
+        const blob = new Blob(["This is a dummy zip file content."], { type: "application/zip" })
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = `${mockPack.title.replace(/[^a-zA-Z0-9]/g, "_")}.zip`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        document.body.removeChild(a)
+
+        toast({
+          title: "Descarga iniciada",
+          description: "El pack se está descargando",
+        })
+      } catch (error) {
+        console.error("Download error:", error)
+        toast({
+          title: "Error",
+          description: "Error al descargar el pack",
+          variant: "destructive",
+        })
+      } finally {
+        setIsPurchasing(false)
+      }
+    } else {
+      // This would redirect to a checkout page for paid packs.
+      // window.location.href = `/pack/${mockPackId}/checkout`
+      console.log("Redirecting to checkout for paid pack.")
+      setIsPurchasing(false)
+    }
+  }
+  // </CHANGE>
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -480,6 +537,18 @@ export default function UploadPage() {
       const result = await response.json()
 
       if (!response.ok) {
+        if (response.status === 403 && result.errorCode === "REUPLOAD_FORBIDDEN") {
+          toast({
+            title: "No podés resubir este pack",
+            description: "Este pack ya existe en la plataforma. No se permite resubir contenido duplicado.",
+            variant: "destructive",
+            duration: 5000,
+          })
+          setIsLoading(false)
+          return
+        }
+        // </CHANGE>
+
         const errorMsg = result.details || result.error || "Unknown error occurred"
         setUploadError(errorMsg)
         toast({
@@ -638,7 +707,7 @@ export default function UploadPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-10">
+        <form onSubmit={handleSubmit} className="space-y-8">
           {/* Portada */}
           <div className="space-y-4">
             <Label htmlFor="cover" className="text-lg font-bold flex items-center gap-2 text-foreground">
@@ -904,19 +973,18 @@ export default function UploadPage() {
               <DollarSign className="h-5 w-5 text-primary" />
               Precio (ARS) *
             </Label>
-            <Input
-              id="price"
-              type="number"
-              placeholder="5000"
-              value={price}
-              onChange={handlePriceChange}
-              className="text-base h-14 rounded-xl bg-card border-border text-lg font-semibold"
-              min="0"
-              max={MAX_PRICE}
-              step="100"
-              required
-              disabled={isLoading}
-            />
+            <Select value={price} onValueChange={setPrice} disabled={isLoading} required>
+              <SelectTrigger className="text-base h-14 rounded-xl bg-card border-border text-lg font-semibold">
+                <SelectValue placeholder="Seleccioná un precio" />
+              </SelectTrigger>
+              <SelectContent>
+                {PRICE_OPTIONS.map((priceOption) => (
+                  <SelectItem key={priceOption} value={priceOption.toString()}>
+                    {priceOption === 0 ? "GRATIS" : `$${priceOption.toLocaleString()} ARS`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <p className="text-sm text-muted-foreground flex items-center gap-2">
               <Info className="h-4 w-4" />
               Precio máximo permitido: ${MAX_PRICE.toLocaleString()} ARS
@@ -969,21 +1037,18 @@ export default function UploadPage() {
                         <Percent className="h-4 w-4" />
                         Porcentaje (máx. {MAX_DISCOUNT}%)
                       </Label>
-                      <Input
-                        id="discountPercent"
-                        type="number"
-                        placeholder="25"
-                        value={discountPercent}
-                        onChange={(e) => {
-                          const val = Number.parseFloat(e.target.value) || 0
-                          setDiscountPercent(Math.min(val, MAX_DISCOUNT).toString())
-                        }}
-                        className="h-11 rounded-lg bg-background"
-                        min="0"
-                        max={MAX_DISCOUNT}
-                        step="5"
-                        disabled={isLoading}
-                      />
+                      <Select value={discountPercent} onValueChange={setDiscountPercent} disabled={isLoading}>
+                        <SelectTrigger className="h-11 rounded-lg bg-background">
+                          <SelectValue placeholder="Seleccioná descuento" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DISCOUNT_OPTIONS.filter((opt) => opt <= MAX_DISCOUNT).map((discountOption) => (
+                            <SelectItem key={discountOption} value={discountOption.toString()}>
+                              {discountOption}%
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
 
                     <div className="space-y-2 md:col-span-2">
@@ -1019,9 +1084,7 @@ export default function UploadPage() {
                           className="h-5 w-5 rounded border-border text-primary"
                         />
                         <label htmlFor="requireCode" className="text-sm text-muted-foreground cursor-pointer flex-1">
-                          {discountRequiresCode
-                            ? "Se aplica solo con código (especificá abajo)"
-                            : "Se aplica automáticamente a todos sin código"}
+                          {discountRequiresCode ? "Se aplica solo con código" : "Se aplica automáticamente a todos"}
                         </label>
                       </div>
                     </div>

@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
-import { Upload, ImageIcon, Loader2, Trash2, Save, Percent, AlertTriangle } from 'lucide-react'
+import { Upload, ImageIcon, Loader2, Trash2, Save, Percent, AlertTriangle } from "lucide-react"
 import { useState, useEffect } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams } from "next/navigation"
 import { toast } from "@/hooks/use-toast"
 import {
   AlertDialog,
@@ -24,6 +24,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { PLAN_FEATURES, type PlanType } from "@/lib/plans"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+const PRICE_OPTIONS = Array.from({ length: 14 }, (_, i) => i * 5000) // 0, 5000, 10000... 65000
+const DISCOUNT_OPTIONS = [0, 10, 20, 30, 40, 50]
 
 export default function EditPackPage() {
   const params = useParams()
@@ -87,21 +91,15 @@ export default function EditPackPage() {
 
       setPack(packData)
       setPrice(packData.price.toString())
-      setDiscountPercent(packData.discount_percent?.toString() || "")
+      setDiscountPercent(packData.discount_percent?.toString() || "0")
       setCoverPreview(packData.cover_image_url)
 
-      const { data: discountCodes } = await supabase
-        .from("discount_codes")
-        .select("*")
-        .eq("pack_id", packId)
-        .limit(1)
+      const { data: discountCodes } = await supabase.from("discount_codes").select("*").eq("pack_id", packId).limit(1)
 
       if (discountCodes && discountCodes.length > 0) {
         const discountCode = discountCodes[0]
         setDiscountCode(discountCode.code || "")
-        setDiscountType(
-          discountCode.for_followers ? "followers" : discountCode.for_first_purchase ? "first" : "all"
-        )
+        setDiscountType(discountCode.for_followers ? "followers" : discountCode.for_first_purchase ? "first" : "all")
         setDiscountRequiresCode(!!(discountCode.code && discountCode.code.length > 0))
       }
     } catch (error: any) {
@@ -129,21 +127,14 @@ export default function EditPackPage() {
     }
   }
 
-  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    const numValue = Number.parseFloat(value) || 0
-    if (numValue <= MAX_PRICE) {
-      setPrice(value)
-    } else {
-      setPrice(MAX_PRICE.toString())
-    }
-  }
-
   const getMaxDiscount = () => {
+    const planDiscount = PLAN_FEATURES[userPlan]?.maxDiscountPercent
+    if (planDiscount) return planDiscount
+
     switch (userPlan) {
       case "free":
         return 10
-      case "hit":
+      case "de_0_a_hit":
         return 50
       case "studio_plus":
         return 100
@@ -223,7 +214,7 @@ export default function EditPackPage() {
 
         const discountCodeData = {
           pack_id: packId,
-          code: discountRequiresCode ? (discountCode || `AUTO-${Date.now().toString(36).toUpperCase()}`) : "",
+          code: discountRequiresCode ? discountCode || `AUTO-${Date.now().toString(36).toUpperCase()}` : "",
           discount_percent: discountNum,
           for_all_users: discountType === "all",
           for_first_purchase: discountType === "first",
@@ -231,10 +222,7 @@ export default function EditPackPage() {
         }
 
         if (existingDiscount && existingDiscount.length > 0) {
-          await supabase
-            .from("discount_codes")
-            .update(discountCodeData)
-            .eq("pack_id", packId)
+          await supabase.from("discount_codes").update(discountCodeData).eq("pack_id", packId)
         } else {
           await supabase.from("discount_codes").insert(discountCodeData)
         }
@@ -395,18 +383,18 @@ export default function EditPackPage() {
               <Label htmlFor="price" className="text-lg font-bold text-foreground">
                 Precio (ARS) *
               </Label>
-              <Input
-                id="price"
-                type="number"
-                value={price}
-                onChange={handlePriceChange}
-                className="text-base h-14 rounded-xl bg-card border-border text-lg font-semibold"
-                min="0"
-                max={MAX_PRICE}
-                step="100"
-                required
-                disabled={saving}
-              />
+              <Select value={price} onValueChange={setPrice} disabled={saving}>
+                <SelectTrigger className="text-base h-14 rounded-xl bg-card border-border text-lg font-semibold">
+                  <SelectValue placeholder="Seleccioná un precio" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRICE_OPTIONS.map((priceOption) => (
+                    <SelectItem key={priceOption} value={priceOption.toString()}>
+                      {priceOption === 0 ? "GRATIS" : `$${priceOption.toLocaleString()} ARS`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <p className="text-sm text-muted-foreground">
                 Precio máximo permitido: ${MAX_PRICE.toLocaleString()} ARS
               </p>
@@ -418,22 +406,18 @@ export default function EditPackPage() {
                 <Percent className="h-5 w-5 text-primary" />
                 Descuento (%)
               </Label>
-              <Input
-                id="discount"
-                type="number"
-                placeholder="0"
-                value={discountPercent}
-                onChange={(e) => {
-                  const val = Number.parseFloat(e.target.value) || 0
-                  const maxDiscount = getMaxDiscount()
-                  setDiscountPercent(Math.min(val, maxDiscount).toString())
-                }}
-                className="text-base h-14 rounded-xl bg-card border-border text-lg font-semibold"
-                min="0"
-                max={getMaxDiscount()}
-                step="5"
-                disabled={saving}
-              />
+              <Select value={discountPercent} onValueChange={setDiscountPercent} disabled={saving}>
+                <SelectTrigger className="text-base h-14 rounded-xl bg-card border-border text-lg font-semibold">
+                  <SelectValue placeholder="Seleccioná descuento" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DISCOUNT_OPTIONS.filter((opt) => opt <= getMaxDiscount()).map((discountOption) => (
+                    <SelectItem key={discountOption} value={discountOption.toString()}>
+                      {discountOption}%
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
               <p className="text-sm text-muted-foreground">
                 Descuento máximo para tu plan ({userPlan}): {getMaxDiscount()}%. Dejá en 0 para no aplicar descuento.
               </p>
@@ -469,7 +453,7 @@ export default function EditPackPage() {
                         value={discountType}
                         onChange={(e) => setDiscountType(e.target.value)}
                         disabled={saving}
-                        className="h-11 rounded-lg bg-background border border-border px-3 text-sm"
+                        className="w-full h-11 rounded-lg bg-background border border-border px-3 text-sm"
                       >
                         <option value="all">Todos los usuarios</option>
                         <option value="first">Primera compra</option>
@@ -490,9 +474,7 @@ export default function EditPackPage() {
                         className="h-5 w-5 rounded border-border text-primary"
                       />
                       <label htmlFor="requireCode" className="text-sm text-muted-foreground cursor-pointer flex-1">
-                        {discountRequiresCode
-                          ? "Se aplica solo con código"
-                          : "Se aplica automáticamente a todos"}
+                        {discountRequiresCode ? "Se aplica solo con código" : "Se aplica automáticamente a todos"}
                       </label>
                     </div>
                   </div>
@@ -544,84 +526,56 @@ export default function EditPackPage() {
             )}
 
             {/* Actions */}
-            <div className="flex flex-col sm:flex-row gap-4 pt-6">
+            <div className="flex gap-4 pt-6">
               <Button
+                type="button"
                 onClick={handleSave}
                 disabled={saving || deleting}
-                className="flex-1 h-14 text-base font-bold rounded-xl gap-2"
+                className="flex-1 h-14 rounded-full text-base font-bold"
               >
                 {saving ? (
                   <>
-                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
                     Guardando...
                   </>
                 ) : (
                   <>
-                    <Save className="h-5 w-5" />
+                    <Save className="h-5 w-5 mr-2" />
                     Guardar Cambios
                   </>
                 )}
               </Button>
 
-              <Button
-                variant="outline"
-                onClick={() => router.push(`/pack/${packId}`)}
-                disabled={saving || deleting}
-                className="h-14 text-base font-semibold rounded-xl bg-transparent"
-              >
-                Cancelar
-              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={saving || deleting}
+                    className="h-14 px-8 rounded-full text-base font-bold"
+                  >
+                    {deleting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="flex items-center gap-2">
+                      <AlertTriangle className="h-6 w-6 text-destructive" />
+                      ¿Estás seguro?
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta acción no se puede deshacer. El pack se eliminará permanentemente de la plataforma.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+                      Eliminar Pack
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
-
-            {/* Delete Section */}
-            <Card className="p-6 rounded-3xl border-2 border-destructive/20 bg-destructive/5">
-              <div className="flex items-start gap-4">
-                <div className="flex-shrink-0">
-                  <AlertTriangle className="h-6 w-6 text-destructive" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-foreground mb-2 text-lg">Zona Peligrosa</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Una vez que elimines este pack, no hay vuelta atrás. Por favor, asegurate antes de continuar.
-                  </p>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive" disabled={saving || deleting} className="gap-2 rounded-xl">
-                        {deleting ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Eliminando...
-                          </>
-                        ) : (
-                          <>
-                            <Trash2 className="h-4 w-4" />
-                            Eliminar Pack
-                          </>
-                        )}
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>¿Estás completamente seguro?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Esta acción no se puede deshacer. Esto eliminará permanentemente tu pack "{pack.title}" y
-                          todos los datos asociados a él.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={handleDelete}
-                          className="bg-destructive text-destructive-foreground"
-                        >
-                          Sí, eliminar pack
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </div>
-            </Card>
           </div>
         </div>
       </main>

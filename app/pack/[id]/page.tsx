@@ -11,6 +11,7 @@ import Link from "next/link"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useAudioPlayer } from "@/hooks/use-audio-player"
 import { useParams, useRouter } from "next/navigation"
+import { toast } from "@/components/ui/use-toast"
 
 export default function PackDetailPage() {
   const params = useParams()
@@ -130,12 +131,16 @@ export default function PackDetailPage() {
   const handlePurchase = async () => {
     setIsPurchasing(true)
 
-    if (pack?.price === 0) {
+    if (pack?.price === 0 || pack?.free === true) {
       try {
         const response = await fetch(`/api/packs/${packId}/download`)
         if (!response.ok) {
           const error = await response.json()
-          alert(error.error || "Error al descargar el pack")
+          toast({
+            title: "Error al descargar",
+            description: error.error || "Error al descargar el pack",
+            variant: "destructive",
+          })
           setIsPurchasing(false)
           return
         }
@@ -148,10 +153,19 @@ export default function PackDetailPage() {
         a.click()
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
-        setIsPurchasing(false)
+
+        toast({
+          title: "Descarga iniciada",
+          description: "El pack se está descargando",
+        })
       } catch (error) {
         console.error("Download error:", error)
-        alert("Error al descargar el pack")
+        toast({
+          title: "Error",
+          description: "Error al descargar el pack",
+          variant: "destructive",
+        })
+      } finally {
         setIsPurchasing(false)
       }
     } else {
@@ -234,20 +248,18 @@ export default function PackDetailPage() {
 
       // Ensure discount_percent is a valid number
       const packDiscountPercent = Number(pack.discount_percent) || 0
-    if (pack.price === 0) {
-      setAppliedDiscount(0)
-      setDiscountReason("")
-      return
-    }
+      if (pack.price === 0 || pack.free === true) {
+        setAppliedDiscount(0)
+        setDiscountReason("")
+        return
+      }
 
       if (activeOffer) {
         const offerAmount = Number(activeOffer.discount_percent) || 0 // en realidad es el monto del descuento
         appliedDiscount = offerAmount
         finalPrice = pack.price - appliedDiscount
         discountReason = `Descuento activo del ${formatPrice(offerAmount)}%`
-      }
-
-      else if (pack.has_discount && packDiscountPercent > 0 && packDiscountPercent <= 100) {
+      } else if (pack.has_discount && packDiscountPercent > 0 && packDiscountPercent <= 100) {
         appliedDiscount = (pack.price * packDiscountPercent) / 100
         finalPrice = pack.price - appliedDiscount
         discountReason = `${packDiscountPercent}% de descuento`
@@ -322,8 +334,6 @@ export default function PackDetailPage() {
                     {pack.genre}
                   </Badge>
                 )}
-
-
               </div>
             </Card>
 
@@ -376,7 +386,7 @@ export default function PackDetailPage() {
             <Card className="p-6 rounded-3xl border-border bg-accent/50">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  {pack.price === 0 ? (
+                  {pack.price === 0 || pack.free === true ? (
                     <div>
                       <div className="text-5xl font-black text-green-600">GRATIS</div>
                     </div>
@@ -451,7 +461,7 @@ export default function PackDetailPage() {
                       <Loader2 className="h-5 w-5 animate-spin" />
                       Procesando...
                     </>
-                  ) : pack.price === 0 ? (
+                  ) : pack.price === 0 || pack.free === true ? (
                     <>
                       <Download className="h-5 w-5" />
                       Descargar Gratis
