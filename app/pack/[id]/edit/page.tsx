@@ -26,8 +26,8 @@ import {
 import { PLAN_FEATURES, type PlanType } from "@/lib/plans"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-const PRICE_OPTIONS = Array.from({ length: 14 }, (_, i) => i * 5000) // 0, 5000, 10000... 65000
-const DISCOUNT_OPTIONS = [0, 10, 20, 30, 40, 50]
+const ALL_PRICE_OPTIONS = Array.from({ length: 14 }, (_, i) => i * 5000) // 0, 5000, 10000... 65000
+const ALL_DISCOUNT_OPTIONS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
 export default function EditPackPage() {
   const params = useParams()
@@ -50,7 +50,11 @@ export default function EditPackPage() {
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
 
-  const MAX_PRICE = 65000
+  const MAX_PRICE = PLAN_FEATURES[userPlan].maxPrice || 65000
+  const MAX_DISCOUNT = PLAN_FEATURES[userPlan]?.maxDiscountPercent || 50
+
+  const PRICE_OPTIONS = ALL_PRICE_OPTIONS.filter((price) => price <= MAX_PRICE)
+  const DISCOUNT_OPTIONS = ALL_DISCOUNT_OPTIONS.filter((discount) => discount <= MAX_DISCOUNT)
 
   useEffect(() => {
     checkAuthAndLoadPack()
@@ -128,19 +132,7 @@ export default function EditPackPage() {
   }
 
   const getMaxDiscount = () => {
-    const planDiscount = PLAN_FEATURES[userPlan]?.maxDiscountPercent
-    if (planDiscount) return planDiscount
-
-    switch (userPlan) {
-      case "free":
-        return 10
-      case "de_0_a_hit":
-        return 50
-      case "studio_plus":
-        return 100
-      default:
-        return 10
-    }
+    return PLAN_FEATURES[userPlan]?.maxDiscountPercent || 50
   }
 
   const uploadCoverToStorage = async (file: File) => {
@@ -411,7 +403,7 @@ export default function EditPackPage() {
                   <SelectValue placeholder="Seleccioná descuento" />
                 </SelectTrigger>
                 <SelectContent>
-                  {DISCOUNT_OPTIONS.filter((opt) => opt <= getMaxDiscount()).map((discountOption) => (
+                  {DISCOUNT_OPTIONS.filter((opt) => opt <= MAX_DISCOUNT).map((discountOption) => (
                     <SelectItem key={discountOption} value={discountOption.toString()}>
                       {discountOption}%
                     </SelectItem>
@@ -419,7 +411,7 @@ export default function EditPackPage() {
                 </SelectContent>
               </Select>
               <p className="text-sm text-muted-foreground">
-                Descuento máximo para tu plan ({userPlan}): {getMaxDiscount()}%. Dejá en 0 para no aplicar descuento.
+                Descuento máximo para tu plan ({userPlan}): {MAX_DISCOUNT}%. Dejá en 0 para no aplicar descuento.
               </p>
 
               {Number.parseFloat(discountPercent) > 0 && (

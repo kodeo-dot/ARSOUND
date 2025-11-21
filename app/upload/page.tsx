@@ -37,9 +37,8 @@ import { useBlockStatus } from "@/hooks/use-block-status"
 import Link from "next/link"
 import { Switch } from "@/components/ui/switch"
 
-const PRICE_OPTIONS = Array.from({ length: 14 }, (_, i) => i * 5000) // 0, 5000, 10000... 65000
-const DISCOUNT_OPTIONS = [0, 10, 20, 30, 40, 50]
-// </CHANGE>
+const ALL_PRICE_OPTIONS = Array.from({ length: 14 }, (_, i) => i * 5000) // 0, 5000, 10000... 65000
+const ALL_DISCOUNT_OPTIONS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
 // Mock implementation for canUserUploadPack as it's not provided
 // In a real scenario, this would be imported or defined elsewhere.
@@ -101,7 +100,6 @@ export default function UploadPage() {
   const [mpConnected, setMpConnected] = useState(false)
   // Added isPurchasing state for handlePurchase
   const [isPurchasing, setIsPurchasing] = useState(false)
-  // </CHANGE>
 
   const blockStatus = useBlockStatus()
 
@@ -110,6 +108,9 @@ export default function UploadPage() {
   const MAX_FILE_SIZE_MB = PLAN_FEATURES[userPlan]?.maxFileSizeMB || 50
   const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
   const commission = PLAN_FEATURES[userPlan]?.commission ?? 0.15
+
+  const PRICE_OPTIONS = ALL_PRICE_OPTIONS.filter((price) => price <= MAX_PRICE)
+  const DISCOUNT_OPTIONS = ALL_DISCOUNT_OPTIONS.filter((discount) => discount <= MAX_DISCOUNT)
 
   const priceNumber = Math.min(Number.parseFloat(price) || 0, MAX_PRICE)
 
@@ -377,7 +378,6 @@ export default function UploadPage() {
       setIsPurchasing(false)
     }
   }
-  // </CHANGE>
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -547,7 +547,6 @@ export default function UploadPage() {
           setIsLoading(false)
           return
         }
-        // </CHANGE>
 
         const errorMsg = result.details || result.error || "Unknown error occurred"
         setUploadError(errorMsg)
