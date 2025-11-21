@@ -1,6 +1,7 @@
 import { createServerClient } from "@/lib/supabase/server-client"
 import { getUserPlan } from "@/lib/plans-actions"
 import { PLAN_FEATURES, type PlanType } from "@/lib/plans"
+import { hashFileFromUrl } from "@/lib/hash-file"
 import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
@@ -46,7 +47,7 @@ export async function POST(request: Request) {
           details: `Missing required fields: ${missingFields.join(", ")}`,
           missingFields,
         },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
@@ -56,8 +57,44 @@ export async function POST(request: Request) {
           error: "Invalid file URL",
           details: "file_url must be a full HTTPS URL from Supabase Storage",
         },
-        { status: 400 }
+        { status: 400 },
       )
+    }
+
+    let fileHash: string
+    try {
+      fileHash = await hashFileFromUrl(file_url)
+    } catch (hashError) {
+      console.error("[v0] Error generating file hash:", hashError)
+      return NextResponse.json(
+        {
+          error: "Could not process file",
+          details: "Failed to generate file hash. Please try again.",
+        },
+        { status: 500 },
+      )
+    }
+
+    const { data: existingPack, error: existingPackError } = await supabase
+      .from("packs")
+      .select("id, user_id")
+      .eq("file_hash", fileHash)
+      .single()
+
+    if (!existingPackError && existingPack) {
+      // File hash already exists - check if it belongs to the same user
+      if (existingPack.user_id !== user.id) {
+        // Different user trying to upload the same file - REJECT
+        return NextResponse.json(
+          {
+            error: "Duplicate file",
+            details: "Este pack ya existe en la plataforma.",
+          },
+          { status: 403 },
+        )
+      }
+      // Same user re-uploading - allow it to proceed (can update metadata)
+      console.log("[v0] User re-uploading their own pack with file_hash:", fileHash)
     }
 
     const { plan, error: planError } = await getUserPlan(user.id)
@@ -68,12 +105,12 @@ export async function POST(request: Request) {
           error: "Could not verify user plan",
           details: planError,
         },
-        { status: 500 }
+        { status: 500 },
       )
     }
 
     const planLimits = PLAN_FEATURES[plan as PlanType]
-    
+
     const priceNum = Number.parseInt(price)
     if (priceNum > 0) {
       const { data: profile, error: profileError } = await supabase
@@ -86,9 +123,10 @@ export async function POST(request: Request) {
         return NextResponse.json(
           {
             error: "Mercado Pago not connected",
-            details: "Necesitás conectar tu cuenta de Mercado Pago para vender packs. Andá a tu perfil para conectarla.",
+            details:
+              "Necesitás conectar tu cuenta de Mercado Pago para vender packs. Andá a tu perfil para conectarla.",
           },
-          { status: 403 }
+          { status: 403 },
         )
       }
     }
@@ -109,7 +147,7 @@ export async function POST(request: Request) {
           current: totalPacks,
           limit: planLimits.maxTotalPacks,
         },
-        { status: 403 }
+        { status: 403 },
       )
     }
 
@@ -124,11 +162,15 @@ export async function POST(request: Request) {
           error: "Could not verify upload limit",
           details: "Failed to check your monthly upload quota",
         },
-        { status: 500 }
+        { status: 500 },
       )
     }
 
-    if (plan === "de_0_a_hit" && planLimits.maxPacksPerMonth !== null && (packsThisMonth || 0) >= planLimits.maxPacksPerMonth) {
+    if (
+      plan === "de_0_a_hit" &&
+      planLimits.maxPacksPerMonth !== null &&
+      (packsThisMonth || 0) >= planLimits.maxPacksPerMonth
+    ) {
       return NextResponse.json(
         {
           error: "Upload limit reached",
@@ -136,7 +178,7 @@ export async function POST(request: Request) {
           current: packsThisMonth,
           limit: planLimits.maxPacksPerMonth,
         },
-        { status: 403 }
+        { status: 403 },
       )
     }
 
@@ -148,7 +190,7 @@ export async function POST(request: Request) {
           current: priceNum,
           limit: planLimits.maxPrice,
         },
-        { status: 403 }
+        { status: 403 },
       )
     }
 
@@ -162,7 +204,7 @@ export async function POST(request: Request) {
             current: discount_percent,
             limit: maxDiscount,
           },
-          { status: 403 }
+          { status: 403 },
         )
       }
     }
@@ -182,6 +224,7 @@ export async function POST(request: Request) {
         tags: tags || [],
         has_discount: has_discount || false,
         discount_percent: has_discount ? Number.parseInt(discount_percent) : 0,
+        file_hash: fileHash,
       })
       .select()
       .single()
@@ -194,7 +237,7 @@ export async function POST(request: Request) {
           details: `Database error: ${packError.message}`,
           code: packError.code,
         },
-        { status: 500 }
+        { status: 500 },
       )
     }
 
@@ -246,7 +289,7 @@ export async function POST(request: Request) {
         error: "Internal server error",
         details: error.message || "An unexpected error occurred during upload",
       },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }

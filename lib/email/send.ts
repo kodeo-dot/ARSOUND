@@ -20,7 +20,7 @@ export async function sendEmailBrevo({
   })
 
   await transporter.sendMail({
-    from: '"ARSOUND" <no-reply@arsound.com>',
+    from: '"ARSOUND" <soporte@arsound.com.ar>',
     to,
     subject,
     html,
