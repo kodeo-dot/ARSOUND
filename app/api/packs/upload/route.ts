@@ -2,6 +2,7 @@ import { createServerClient } from "@/lib/supabase/server-client"
 import { getUserPlan } from "@/lib/plans-actions"
 import { PLAN_FEATURES, type PlanType } from "@/lib/plans"
 import { hashFileFromUrl } from "@/lib/hash-file"
+import { checkReuploadProtection } from "@/lib/reupload-protection"
 import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
@@ -84,14 +85,21 @@ export async function POST(request: Request) {
     if (!existingPackError && existingPack) {
       // File hash already exists - check if it belongs to the same user
       if (existingPack.user_id !== user.id) {
-        // Different user trying to upload the same file - REJECT
-        return NextResponse.json(
-          {
-            error: "Duplicate file",
-            details: "Este pack ya existe en la plataforma.",
-          },
-          { status: 403 },
-        )
+        // Different user trying to upload the same file - check protection and block if needed
+        const protectionResult = await checkReuploadProtection(user.id, fileHash, existingPack.user_id)
+
+        if (!protectionResult.isAllowed) {
+          return NextResponse.json(
+            {
+              error: "Duplicate file",
+              message: protectionResult.message,
+              errorCode: protectionResult.errorCode,
+              attemptCount: protectionResult.attemptCount,
+              isBlocked: protectionResult.isBlocked,
+            },
+            { status: protectionResult.isBlocked ? 403 : 403 },
+          )
+        }
       }
       // Same user re-uploading - allow it to proceed (can update metadata)
       console.log("[v0] User re-uploading their own pack with file_hash:", fileHash)
