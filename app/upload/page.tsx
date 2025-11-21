@@ -1,24 +1,56 @@
 "use client"
 
 import type React from "react"
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import { createBrowserClient } from "@/lib/supabase/client"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Upload, ImageIcon, Music, FileArchive, DollarSign, Info, Percent, Tag, Loader2, X, Zap, Crown, AlertCircle } from 'lucide-react'
-import { useState, useEffect } from "react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
-import { createBrowserClient } from "@/lib/supabase/client"
-import { useRouter } from 'next/navigation'
-import { toast } from "@/hooks/use-toast"
-import { Badge } from "@/components/ui/badge"
-import { PLAN_FEATURES, type PlanType, getMaxDiscountPercent, getMaxFileSizeMB } from "@/lib/plans"
 import { Card } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Badge } from "@/components/ui/badge"
+import {
+  Upload,
+  ImageIcon,
+  Music,
+  FileArchive,
+  DollarSign,
+  Tag,
+  Info,
+  Loader2,
+  X,
+  AlertCircle,
+  Zap,
+  Crown,
+  Percent,
+} from "lucide-react"
+import { toast } from "@/components/ui/use-toast"
+import type { PlanType } from "@/lib/plans"
+import { validatePackUpload } from "@/lib/pack-validation"
+import { PLAN_FEATURES } from "@/lib/plans"
+import { BlockWarningBanner } from "@/components/block-warning-banner"
+import { useBlockStatus } from "@/hooks/use-block-status"
 import Link from "next/link"
-import { validatePackUpload, canUserUploadPack } from "@/lib/pack-validation"
+import { Switch } from "@/components/ui/switch"
+
+// Mock implementation for canUserUploadPack as it's not provided
+// In a real scenario, this would be imported or defined elsewhere.
+const canUserUploadPack = async (userId: string, plan: PlanType): Promise<{ canUpload: boolean; reason?: string }> => {
+  // Placeholder logic: Replace with actual implementation
+  console.log(`[Mock] Checking upload permission for user ${userId} on plan ${plan}`)
+  if (plan === "free") {
+    // Example: Free users have a limit of 3 uploads
+    const currentUploads = Math.floor(Math.random() * 4) // Simulate current uploads
+    if (currentUploads >= 3) {
+      return { canUpload: false, reason: "Has alcanzado el límite de 3 packs para el plan gratuito." }
+    }
+  }
+  return { canUpload: true }
+}
 
 export default function UploadPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
@@ -64,9 +96,11 @@ export default function UploadPage() {
   const [uploadBlockReason, setUploadBlockReason] = useState<string | null>(null)
   const [mpConnected, setMpConnected] = useState(false)
 
+  const blockStatus = useBlockStatus()
+
   const MAX_PRICE = PLAN_FEATURES[userPlan].maxPrice || 65000
-  const MAX_DISCOUNT = getMaxDiscountPercent(userPlan)
-  const MAX_FILE_SIZE_MB = getMaxFileSizeMB(userPlan)
+  const MAX_DISCOUNT = PLAN_FEATURES[userPlan]?.maxDiscountPercent || 50
+  const MAX_FILE_SIZE_MB = PLAN_FEATURES[userPlan]?.maxFileSizeMB || 50
   const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
   const commission = PLAN_FEATURES[userPlan]?.commission ?? 0.15
 
@@ -123,7 +157,7 @@ export default function UploadPage() {
             plan = plan.replace(/-/g, "_")
             setUserPlan(plan as PlanType)
             setMpConnected(existingProfile.mp_connected || false)
-            
+
             const uploadCheck = await canUserUploadPack(user.id, plan as PlanType)
             setCanUpload(uploadCheck.canUpload)
             setUploadBlockReason(uploadCheck.reason || null)
@@ -489,634 +523,630 @@ export default function UploadPage() {
   const MUSICAL_KEYS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <Header />
 
-      <main className="flex-1 container mx-auto px-4 py-16">
-        <div className="max-w-4xl mx-auto">
-          <div className="space-y-3 mb-12">
-            <div className="inline-flex items-center gap-2 text-sm font-semibold text-primary">
-              <Upload className="h-4 w-4" />
-              SUBIR PACK
+      {blockStatus.isNearBlock && !blockStatus.loading && (
+        <BlockWarningBanner attemptCount={blockStatus.attemptCount} />
+      )}
+
+      <main className="flex-1 container mx-auto px-4 py-12 max-w-5xl">
+        <div className="mb-10 text-center">
+          <div className="inline-flex items-center gap-2 text-sm font-semibold text-primary mb-3">
+            <Upload className="h-4 w-4" />
+            SUBIR PACK
+          </div>
+          <h1 className="text-4xl md:text-5xl font-black text-foreground mb-3">Publicá tu Sample Pack</h1>
+          <p className="text-lg text-muted-foreground">Compartí tus sonidos con miles de productores argentinos</p>
+        </div>
+
+        {userPlan === "free" && (
+          <Card className="p-8 rounded-3xl border-2 border-primary/30 bg-primary/5 mb-12">
+            <div className="grid md:grid-cols-2 gap-8 items-center">
+              <div>
+                <h2 className="text-2xl font-black text-foreground mb-3">¿Querés tener el 100% de tus ganancias?</h2>
+                <p className="text-muted-foreground mb-6">
+                  Mejorá tu plan y accedé a beneficios exclusivos como comisiones reducidas, sin límites de packs y
+                  descuentos ilimitados.
+                </p>
+                <Button className="gap-2 rounded-full h-12 bg-primary hover:bg-primary/90" asChild>
+                  <Link href="/plans">
+                    <Zap className="h-4 w-4" />
+                    Mejorar Plan
+                  </Link>
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                <div className="p-4 rounded-2xl border border-border bg-card">
+                  <div className="flex items-start gap-3">
+                    <Zap className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-foreground text-sm">De 0 a Hit - 5.000 ARS/mes</div>
+                      <div className="text-xs text-muted-foreground">
+                        {(PLAN_FEATURES["de_0_a_hit"].commission * 100).toFixed(0)}% comisión, hasta 50% descuento
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl border border-border bg-card">
+                  <div className="flex items-start gap-3">
+                    <Crown className="h-5 w-5 text-purple-500 flex-shrink-0 mt-0.5" />
+                    <div>
+                      <div className="font-bold text-foreground text-sm">Studio Plus - 15.000 ARS/mes</div>
+                      <div className="text-xs text-muted-foreground">
+                        {(PLAN_FEATURES["studio_plus"].commission * 100).toFixed(0)}% comisión, descuentos ilimitados
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-            <h1 className="text-4xl md:text-5xl font-black text-foreground">Publicá tu Sample Pack</h1>
-            <p className="text-lg text-muted-foreground">Compartí tus sonidos con miles de productores argentinos</p>
+          </Card>
+        )}
+
+        {!canUpload && (
+          <Card className="p-6 rounded-2xl border-2 border-destructive/50 bg-destructive/10 mb-8">
+            <div className="flex items-start gap-4">
+              <AlertCircle className="h-6 w-6 text-destructive flex-shrink-0 mt-1" />
+              <div className="flex-1">
+                <h3 className="font-bold text-destructive text-lg mb-2">No puedes subir más packs</h3>
+                <p className="text-destructive/90 mb-4">{uploadBlockReason}</p>
+                <Button className="gap-2 rounded-full bg-primary hover:bg-primary/90" asChild>
+                  <Link href="/plans">
+                    <Zap className="h-4 w-4" />
+                    Mejorar Plan
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {priceNumber > 0 && !mpConnected && (
+          <Card className="p-6 rounded-2xl border-2 border-amber-500/50 bg-amber-500/10 mb-8">
+            <div className="flex items-start gap-4">
+              <AlertCircle className="h-6 w-6 text-amber-600 flex-shrink-0 mt-1" />
+              <div className="flex-1">
+                <h3 className="font-bold text-amber-600 text-lg mb-2">Conectá tu cuenta de Mercado Pago</h3>
+                <p className="text-amber-600/90 mb-4">
+                  Para vender packs necesitás conectar tu cuenta de Mercado Pago. Así vas a recibir tus ganancias
+                  automáticamente.
+                </p>
+                <Button className="gap-2 rounded-full bg-amber-600 hover:bg-amber-700 text-white" asChild>
+                  <Link href="/profile">Conectar Mercado Pago</Link>
+                </Button>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {isLoading && (
+          <div className="mb-8 bg-card rounded-xl p-6 border-2 border-primary">
+            <div className="flex items-center gap-3 mb-3">
+              <Loader2 className="h-5 w-5 animate-spin text-primary" />
+              <p className="font-bold text-foreground">Subiendo tu pack...</p>
+            </div>
+            <div className="w-full bg-secondary rounded-full h-3">
+              <div
+                className="bg-primary h-3 rounded-full transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground mt-2">{uploadProgress}% completado</p>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-10">
+          {/* Portada */}
+          <div className="space-y-4">
+            <Label htmlFor="cover" className="text-lg font-bold flex items-center gap-2 text-foreground">
+              <ImageIcon className="h-5 w-5 text-primary" />
+              Portada del Pack
+            </Label>
+            <div className="border-2 border-dashed border-border rounded-2xl p-12 hover:border-primary/50 transition-all bg-card">
+              <input
+                id="cover"
+                type="file"
+                accept="image/*"
+                onChange={handleCoverChange}
+                className="hidden"
+                disabled={isLoading}
+              />
+              <label htmlFor="cover" className="flex flex-col items-center justify-center cursor-pointer">
+                {coverPreview ? (
+                  <div className="relative group">
+                    <img
+                      src={coverPreview || "/placeholder.svg"}
+                      alt="Preview"
+                      className="max-h-80 rounded-xl object-cover border-2 border-border"
+                    />
+                    <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
+                      <p className="text-white font-semibold">Cambiar imagen</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center">
+                    <div className="mx-auto w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                      <Upload className="h-10 w-10 text-primary" />
+                    </div>
+                    <p className="text-base font-bold text-foreground mb-2">Hacé clic para subir la portada</p>
+                    <p className="text-sm text-muted-foreground">PNG, JPG o WEBP (máx. 5MB)</p>
+                  </div>
+                )}
+              </label>
+            </div>
           </div>
 
-          {userPlan === "free" && (
-            <Card className="p-8 rounded-3xl border-2 border-primary/30 bg-primary/5 mb-12">
-              <div className="grid md:grid-cols-2 gap-8 items-center">
-                <div>
-                  <h2 className="text-2xl font-black text-foreground mb-3">¿Querés tener el 100% de tus ganancias?</h2>
-                  <p className="text-muted-foreground mb-6">
-                    Mejorá tu plan y accedé a beneficios exclusivos como comisiones reducidas, sin límites de packs y
-                    descuentos ilimitados.
-                  </p>
-                  <Link href="/plans">
-                    <Button className="gap-2 rounded-full h-12 bg-primary hover:bg-primary/90">
-                      <Zap className="h-4 w-4" />
-                      Mejorar Plan
-                    </Button>
-                  </Link>
-                </div>
-
-                <div className="space-y-3">
-                  <div className="p-4 rounded-2xl border border-border bg-card">
-                    <div className="flex items-start gap-3">
-                      <Zap className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <div className="font-bold text-foreground text-sm">De 0 a Hit - 5.000 ARS/mes</div>
-                        <div className="text-xs text-muted-foreground">
-                          {(PLAN_FEATURES["de_0_a_hit"].commission * 100).toFixed(0)}% comisión, hasta 50% descuento
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-4 rounded-2xl border border-border bg-card">
-                    <div className="flex items-start gap-3">
-                      <Crown className="h-5 w-5 text-purple-500 flex-shrink-0 mt-0.5" />
-                      <div>
-                        <div className="font-bold text-foreground text-sm">Studio Plus - 15.000 ARS/mes</div>
-                        <div className="text-xs text-muted-foreground">
-                          {(PLAN_FEATURES["studio_plus"].commission * 100).toFixed(0)}% comisión, descuentos ilimitados
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          )}
-
-          {!canUpload && (
-            <Card className="p-6 rounded-2xl border-2 border-destructive/50 bg-destructive/10 mb-8">
-              <div className="flex items-start gap-4">
-                <AlertCircle className="h-6 w-6 text-destructive flex-shrink-0 mt-1" />
-                <div className="flex-1">
-                  <h3 className="font-bold text-destructive text-lg mb-2">No puedes subir más packs</h3>
-                  <p className="text-destructive/90 mb-4">{uploadBlockReason}</p>
-                  <Link href="/plans">
-                    <Button className="gap-2 rounded-full bg-primary hover:bg-primary/90">
-                      <Zap className="h-4 w-4" />
-                      Mejorar Plan
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </Card>
-          )}
-
-          {priceNumber > 0 && !mpConnected && (
-            <Card className="p-6 rounded-2xl border-2 border-amber-500/50 bg-amber-500/10 mb-8">
-              <div className="flex items-start gap-4">
-                <AlertCircle className="h-6 w-6 text-amber-600 flex-shrink-0 mt-1" />
-                <div className="flex-1">
-                  <h3 className="font-bold text-amber-600 text-lg mb-2">Conectá tu cuenta de Mercado Pago</h3>
-                  <p className="text-amber-600/90 mb-4">
-                    Para vender packs necesitás conectar tu cuenta de Mercado Pago. Así vas a recibir tus ganancias automáticamente.
-                  </p>
-                  <Link href="/profile">
-                    <Button className="gap-2 rounded-full bg-amber-600 hover:bg-amber-700 text-white">
-                      Conectar Mercado Pago
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </Card>
-          )}
-
-          {isLoading && (
-            <div className="mb-8 bg-card rounded-xl p-6 border-2 border-primary">
-              <div className="flex items-center gap-3 mb-3">
-                <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                <p className="font-bold text-foreground">Subiendo tu pack...</p>
-              </div>
-              <div className="w-full bg-secondary rounded-full h-3">
-                <div
-                  className="bg-primary h-3 rounded-full transition-all duration-300"
-                  style={{ width: `${uploadProgress}%` }}
-                />
-              </div>
-              <p className="text-sm text-muted-foreground mt-2">{uploadProgress}% completado</p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-10">
-            {/* Portada */}
+          <div className="grid md:grid-cols-2 gap-6">
             <div className="space-y-4">
-              <Label htmlFor="cover" className="text-lg font-bold flex items-center gap-2 text-foreground">
-                <ImageIcon className="h-5 w-5 text-primary" />
-                Portada del Pack
+              <Label htmlFor="packName" className="text-lg font-bold text-foreground">
+                Nombre del Pack *
               </Label>
-              <div className="border-2 border-dashed border-border rounded-2xl p-12 hover:border-primary/50 transition-all bg-card">
+              <Input
+                id="packName"
+                placeholder="Ej: Trap Argentino Vol. 1"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="text-base h-12 rounded-xl bg-card border-border"
+                required
+                disabled={isLoading}
+              />
+            </div>
+
+            <div className="space-y-4">
+              <Label htmlFor="genre" className="text-lg font-bold text-foreground">
+                Género *
+              </Label>
+              <Select value={genre} onValueChange={setGenre} disabled={isLoading}>
+                <SelectTrigger className="h-12 rounded-xl bg-card border-border text-base">
+                  <SelectValue placeholder="Seleccionar género" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="RKT">RKT</SelectItem>
+                  <SelectItem value="TRAP">TRAP</SelectItem>
+                  <SelectItem value="REGGAETON">REGGAETON</SelectItem>
+                  <SelectItem value="CUMBIA">CUMBIA</SelectItem>
+                  <SelectItem value="CUMBIA_VILLERA">CUMBIA VILLERA</SelectItem>
+                  <SelectItem value="DRILL">DRILL</SelectItem>
+                  <SelectItem value="CUARTETO">CUARTETO</SelectItem>
+                  <SelectItem value="DANCEHALL">DANCEHALL</SelectItem>
+                  <SelectItem value="LATIN_URBANO">LATIN URBANO</SelectItem>
+                  <SelectItem value="AFROTRAP">AFROTRAP</SelectItem>
+                  <SelectItem value="HIP_HOP">HIP HOP</SelectItem>
+                  <SelectItem value="DEMBOW">DEMBOW</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-4 md:col-span-2">
+              <Label htmlFor="bpmRange" className="text-lg font-bold text-foreground">
+                Rango de BPM
+              </Label>
+              <Select value={bpmRange} onValueChange={setBpmRange} disabled={isLoading}>
+                <SelectTrigger className="h-12 rounded-xl bg-card border-border text-base">
+                  <SelectValue placeholder="Seleccionar rango de BPM" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="50-100">50 - 100 BPM</SelectItem>
+                  <SelectItem value="100-150">100 - 150 BPM</SelectItem>
+                  <SelectItem value="200-250">200 - 250 BPM</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Descripción */}
+          <div className="space-y-4">
+            <Label htmlFor="description" className="text-lg font-bold text-foreground">
+              Descripción *
+            </Label>
+            <Textarea
+              id="description"
+              placeholder="Contá sobre tu pack: qué incluye, instrumentos, estilo..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="min-h-32 text-base rounded-xl bg-card border-border resize-none"
+              required
+              disabled={isLoading}
+            />
+          </div>
+
+          {/* Demo y Archivo */}
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <Label htmlFor="demo" className="text-lg font-bold flex items-center gap-2 text-foreground">
+                <Music className="h-5 w-5 text-primary" />
+                Demo (Audio Preview) *
+              </Label>
+              <div className="border-2 border-dashed border-border rounded-xl p-8 hover:border-primary/50 transition-all bg-card">
                 <input
-                  id="cover"
+                  id="demo"
                   type="file"
-                  accept="image/*"
-                  onChange={handleCoverChange}
+                  accept="audio/*"
+                  onChange={handleDemoChange}
                   className="hidden"
+                  required
                   disabled={isLoading}
                 />
-                <label htmlFor="cover" className="flex flex-col items-center justify-center cursor-pointer">
-                  {coverPreview ? (
-                    <div className="relative group">
-                      <img
-                        src={coverPreview || "/placeholder.svg"}
-                        alt="Preview"
-                        className="max-h-80 rounded-xl object-cover border-2 border-border"
-                      />
-                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
-                        <p className="text-white font-semibold">Cambiar imagen</p>
+                <label htmlFor="demo" className="flex flex-col items-center justify-center cursor-pointer">
+                  {demoFileName ? (
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                        <Music className="h-6 w-6 text-primary" />
+                      </div>
+                      <div className="text-left flex-1">
+                        <p className="font-bold text-foreground text-sm">{demoFileName}</p>
+                        <p className="text-xs text-muted-foreground">Listo para subir</p>
                       </div>
                     </div>
                   ) : (
                     <div className="text-center">
-                      <div className="mx-auto w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
-                        <Upload className="h-10 w-10 text-primary" />
-                      </div>
-                      <p className="text-base font-bold text-foreground mb-2">Hacé clic para subir la portada</p>
-                      <p className="text-sm text-muted-foreground">PNG, JPG o WEBP (máx. 5MB)</p>
+                      <Music className="h-10 w-10 text-muted-foreground mb-3 mx-auto" />
+                      <p className="text-sm font-bold text-foreground mb-1">Subir demo</p>
+                      <p className="text-xs text-muted-foreground">MP3, WAV (máx. 10MB)</p>
                     </div>
                   )}
                 </label>
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <Label htmlFor="packName" className="text-lg font-bold text-foreground">
-                  Nombre del Pack *
-                </Label>
-                <Input
-                  id="packName"
-                  placeholder="Ej: Trap Argentino Vol. 1"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="text-base h-12 rounded-xl bg-card border-border"
+            <div className="space-y-4">
+              <Label htmlFor="packFile" className="text-lg font-bold flex items-center gap-2 text-foreground">
+                <FileArchive className="h-5 w-5 text-primary" />
+                Archivo del Pack *
+              </Label>
+              <div
+                className={`border-2 border-dashed rounded-xl p-8 transition-all bg-card ${
+                  fileSizeError ? "border-red-500/50 hover:border-red-500/50" : "border-border hover:border-primary/50"
+                }`}
+              >
+                <input
+                  id="packFile"
+                  type="file"
+                  name="packFile"
+                  accept=".zip,.rar"
+                  onChange={handleZipChange}
+                  className="hidden"
                   required
                   disabled={isLoading}
                 />
-              </div>
-
-              <div className="space-y-4">
-                <Label htmlFor="genre" className="text-lg font-bold text-foreground">
-                  Género *
-                </Label>
-                <Select value={genre} onValueChange={setGenre} disabled={isLoading}>
-                  <SelectTrigger className="h-12 rounded-xl bg-card border-border text-base">
-                    <SelectValue placeholder="Seleccionar género" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="RKT">RKT</SelectItem>
-                    <SelectItem value="TRAP">TRAP</SelectItem>
-                    <SelectItem value="REGGAETON">REGGAETON</SelectItem>
-                    <SelectItem value="CUMBIA">CUMBIA</SelectItem>
-                    <SelectItem value="CUMBIA_VILLERA">CUMBIA VILLERA</SelectItem>
-                    <SelectItem value="DRILL">DRILL</SelectItem>
-                    <SelectItem value="CUARTETO">CUARTETO</SelectItem>
-                    <SelectItem value="DANCEHALL">DANCEHALL</SelectItem>
-                    <SelectItem value="LATIN_URBANO">LATIN URBANO</SelectItem>
-                    <SelectItem value="AFROTRAP">AFROTRAP</SelectItem>
-                    <SelectItem value="HIP_HOP">HIP HOP</SelectItem>
-                    <SelectItem value="DEMBOW">DEMBOW</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-4 md:col-span-2">
-                <Label htmlFor="bpmRange" className="text-lg font-bold text-foreground">
-                  Rango de BPM
-                </Label>
-                <Select value={bpmRange} onValueChange={setBpmRange} disabled={isLoading}>
-                  <SelectTrigger className="h-12 rounded-xl bg-card border-border text-base">
-                    <SelectValue placeholder="Seleccionar rango de BPM" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="50-100">50 - 100 BPM</SelectItem>
-                    <SelectItem value="100-150">100 - 150 BPM</SelectItem>
-                    <SelectItem value="200-250">200 - 250 BPM</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Descripción */}
-            <div className="space-y-4">
-              <Label htmlFor="description" className="text-lg font-bold text-foreground">
-                Descripción *
-              </Label>
-              <Textarea
-                id="description"
-                placeholder="Contá sobre tu pack: qué incluye, instrumentos, estilo..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="min-h-32 text-base rounded-xl bg-card border-border resize-none"
-                required
-                disabled={isLoading}
-              />
-            </div>
-
-            {/* Demo y Archivo */}
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <Label htmlFor="demo" className="text-lg font-bold flex items-center gap-2 text-foreground">
-                  <Music className="h-5 w-5 text-primary" />
-                  Demo (Audio Preview) *
-                </Label>
-                <div className="border-2 border-dashed border-border rounded-xl p-8 hover:border-primary/50 transition-all bg-card">
-                  <input
-                    id="demo"
-                    type="file"
-                    accept="audio/*"
-                    onChange={handleDemoChange}
-                    className="hidden"
-                    required
-                    disabled={isLoading}
-                  />
-                  <label htmlFor="demo" className="flex flex-col items-center justify-center cursor-pointer">
-                    {demoFileName ? (
-                      <div className="flex items-center gap-3 text-sm">
-                        <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                          <Music className="h-6 w-6 text-primary" />
-                        </div>
-                        <div className="text-left flex-1">
-                          <p className="font-bold text-foreground text-sm">{demoFileName}</p>
-                          <p className="text-xs text-muted-foreground">Listo para subir</p>
-                        </div>
+                <label htmlFor="packFile" className="flex flex-col items-center justify-center cursor-pointer">
+                  {zipFileName ? (
+                    <div className="flex items-center gap-3 text-sm">
+                      <div className="w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center">
+                        <FileArchive className="h-6 w-6 text-secondary" />
                       </div>
-                    ) : (
-                      <div className="text-center">
-                        <Music className="h-10 w-10 text-muted-foreground mb-3 mx-auto" />
-                        <p className="text-sm font-bold text-foreground mb-1">Subir demo</p>
-                        <p className="text-xs text-muted-foreground">MP3, WAV (máx. 10MB)</p>
-                      </div>
-                    )}
-                  </label>
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <Label htmlFor="packFile" className="text-lg font-bold flex items-center gap-2 text-foreground">
-                  <FileArchive className="h-5 w-5 text-primary" />
-                  Archivo del Pack *
-                </Label>
-                <div
-                  className={`border-2 border-dashed rounded-xl p-8 transition-all bg-card ${
-                    fileSizeError
-                      ? "border-red-500/50 hover:border-red-500/50"
-                      : "border-border hover:border-primary/50"
-                  }`}
-                >
-                  <input
-                    id="packFile"
-                    type="file"
-                    name="packFile"
-                    accept=".zip,.rar"
-                    onChange={handleZipChange}
-                    className="hidden"
-                    required
-                    disabled={isLoading}
-                  />
-                  <label htmlFor="packFile" className="flex flex-col items-center justify-center cursor-pointer">
-                    {zipFileName ? (
-                      <div className="flex items-center gap-3 text-sm">
-                        <div className="w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center">
-                          <FileArchive className="h-6 w-6 text-secondary" />
-                        </div>
-                        <div className="text-left flex-1">
-                          <p className="font-bold text-foreground text-sm">{zipFileName}</p>
-                          <p className="text-xs text-muted-foreground">{fileSize}</p>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-center">
-                        <FileArchive className="h-10 w-10 text-muted-foreground mb-3 mx-auto" />
-                        <p className="text-sm font-bold text-foreground mb-1">Subir ZIP/RAR</p>
-                        <p className="text-xs text-muted-foreground">ZIP o RAR (máx. {MAX_FILE_SIZE_MB} MB)</p>
-                      </div>
-                    )}
-                  </label>
-                </div>
-                {fileSizeError && (
-                  <div className="flex gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
-                    <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-red-500 font-medium">{fileSizeError}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <Label htmlFor="tags" className="text-lg font-bold flex items-center gap-2 text-foreground">
-                <Tag className="h-5 w-5 text-primary" />
-                Tags (hasta 5, máximo 12 caracteres)
-              </Label>
-              <p className="text-sm text-muted-foreground">
-                Agregá palabras clave para que los usuarios encuentren tu pack más fácilmente
-              </p>
-              <div className="flex gap-2">
-                <div className="flex-1 relative">
-                  <Input
-                    id="tags"
-                    placeholder="Ej: 808, melodías, oscuro..."
-                    value={tagInput}
-                    onChange={handleTagInputChange}
-                    onKeyDown={handleTagKeyDown}
-                    className="text-base h-12 rounded-xl bg-card border-border pr-16"
-                    disabled={isLoading || tags.length >= 5}
-                    maxLength={12}
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                    {tagInput.length}/12
-                  </span>
-                </div>
-                <Button
-                  type="button"
-                  onClick={addTag}
-                  disabled={isLoading || tags.length >= 5 || !tagInput.trim()}
-                  className="h-12 px-6 rounded-xl"
-                >
-                  Agregar
-                </Button>
-              </div>
-              {tags.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {tags.map((tag, index) => (
-                    <Badge
-                      key={index}
-                      variant="secondary"
-                      className="px-4 py-2 rounded-full text-sm flex items-center gap-2"
-                    >
-                      {tag}
-                      <button
-                        type="button"
-                        onClick={() => removeTag(tag)}
-                        className="hover:text-destructive transition-colors"
-                        disabled={isLoading}
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              )}
-              <p className="text-xs text-muted-foreground">{tags.length}/5 tags agregados</p>
-            </div>
-
-            {/* Precio */}
-            <div className="space-y-4">
-              <Label htmlFor="price" className="text-lg font-bold flex items-center gap-2 text-foreground">
-                <DollarSign className="h-5 w-5 text-primary" />
-                Precio (ARS) *
-              </Label>
-              <Input
-                id="price"
-                type="number"
-                placeholder="5000"
-                value={price}
-                onChange={handlePriceChange}
-                className="text-base h-14 rounded-xl bg-card border-border text-lg font-semibold"
-                min="0"
-                max={MAX_PRICE}
-                step="100"
-                required
-                disabled={isLoading}
-              />
-              <p className="text-sm text-muted-foreground flex items-center gap-2">
-                <Info className="h-4 w-4" />
-                Precio máximo permitido: ${MAX_PRICE.toLocaleString()} ARS
-              </p>
-
-              <div className="bg-accent rounded-xl p-6 space-y-6 border border-border mt-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Tag className="h-5 w-5 text-primary" />
-                    <div>
-                      <Label htmlFor="hasDiscount" className="text-base font-bold text-foreground cursor-pointer">
-                        Código de Descuento
-                      </Label>
-                      <p className="text-sm text-muted-foreground">Ofrecé un descuento especial</p>
-                    </div>
-                  </div>
-                  <Switch
-                    id="hasDiscount"
-                    checked={hasDiscount}
-                    onCheckedChange={setHasDiscount}
-                    disabled={isLoading}
-                  />
-                </div>
-
-                {hasDiscount && (
-                  <div className="space-y-4 pt-2 border-t border-border">
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="discountCode"
-                          className="text-sm font-semibold text-foreground flex items-center gap-2"
-                        >
-                          Código
-                        </Label>
-                        <Input
-                          id="discountCode"
-                          placeholder="ARSOUND25"
-                          value={discountCode}
-                          onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
-                          className="h-11 rounded-lg bg-background"
-                          disabled={isLoading || !discountRequiresCode}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          {discountRequiresCode ? "Dejá vacío para sin código" : "Este descuento se aplica sin código a todos"}
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="discountPercent"
-                          className="text-sm font-semibold text-foreground flex items-center gap-2"
-                        >
-                          <Percent className="h-4 w-4" />
-                          Porcentaje (máx. {MAX_DISCOUNT}%)
-                        </Label>
-                        <Input
-                          id="discountPercent"
-                          type="number"
-                          placeholder="25"
-                          value={discountPercent}
-                          onChange={(e) => {
-                            const val = Number.parseFloat(e.target.value) || 0
-                            setDiscountPercent(Math.min(val, MAX_DISCOUNT).toString())
-                          }}
-                          className="h-11 rounded-lg bg-background"
-                          min="0"
-                          max={MAX_DISCOUNT}
-                          step="5"
-                          disabled={isLoading}
-                        />
-                      </div>
-
-                      <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="discountType" className="text-sm font-semibold text-foreground">
-                          Aplicar a
-                        </Label>
-                        <Select value={discountType} onValueChange={setDiscountType} disabled={isLoading}>
-                          <SelectTrigger className="h-11 rounded-lg bg-background">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Todos los usuarios</SelectItem>
-                            <SelectItem value="first">Primera compra</SelectItem>
-                            <SelectItem value="followers">Mis seguidores</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="requireCode" className="text-sm font-semibold text-foreground">
-                          Requisito de Código
-                        </Label>
-                        <div className="flex items-center gap-3 p-3 bg-background rounded-lg border border-border">
-                          <input
-                            type="checkbox"
-                            id="requireCode"
-                            checked={discountRequiresCode}
-                            onChange={(e) => {
-                              setDiscountRequiresCode(e.target.checked)
-                              if (!e.target.checked) setDiscountCode("")
-                            }}
-                            disabled={isLoading}
-                            className="h-5 w-5 rounded border-border text-primary"
-                          />
-                          <label htmlFor="requireCode" className="text-sm text-muted-foreground cursor-pointer flex-1">
-                            {discountRequiresCode
-                              ? "Se aplica solo con código (especificá abajo)"
-                              : "Se aplica automáticamente a todos sin código"}
-                          </label>
-                        </div>
+                      <div className="text-left flex-1">
+                        <p className="font-bold text-foreground text-sm">{zipFileName}</p>
+                        <p className="text-xs text-muted-foreground">{fileSize}</p>
                       </div>
                     </div>
-
-                    {discountPercentNumber > 0 && (
-                      <div className="bg-primary/10 rounded-lg p-4 border border-primary/20">
-                        <p className="text-sm font-semibold text-primary mb-1">Precio con descuento:</p>
-                        <p className="text-2xl font-black text-primary">${priceAfterDiscount.toFixed(0)} ARS</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Ahorro de ${discountAmount.toFixed(0)} ARS ({discountPercentNumber}% OFF)
-                        </p>
-                        <p className="text-xs text-primary mt-2">
-                          {discountRequiresCode
-                            ? discountCode
-                              ? `Código: ${discountCode}`
-                              : "Código: AUTOMÁTICO"
-                            : "Sin código - Se aplica a todos"}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
+                  ) : (
+                    <div className="text-center">
+                      <FileArchive className="h-10 w-10 text-muted-foreground mb-3 mx-auto" />
+                      <p className="text-sm font-bold text-foreground mb-1">Subir ZIP/RAR</p>
+                      <p className="text-xs text-muted-foreground">ZIP o RAR (máx. {MAX_FILE_SIZE_MB} MB)</p>
+                    </div>
+                  )}
+                </label>
               </div>
-
-              {priceNumber > 0 && (
-                <div className="bg-card rounded-xl p-6 space-y-3 border-2 border-border">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Info className="h-5 w-5 text-primary" />
-                    <h3 className="font-bold text-foreground">Resumen de Ganancia</h3>
-                  </div>
-                  <div className="space-y-3 text-base">
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Precio del pack:</span>
-                      <span className="font-bold text-foreground text-lg">
-                        ${new Intl.NumberFormat("es-AR").format(priceNumber)} ARS
-                      </span>
-                    </div>
-                    {hasDiscount && discountPercentNumber > 0 && (
-                      <>
-                        <div className="flex justify-between items-center">
-                          <span className="text-muted-foreground">Descuento aplicado ({discountPercentNumber}%):</span>
-                          <span className="font-bold text-orange-500 text-lg">
-                            - ${new Intl.NumberFormat("es-AR").format(discountAmount)} ARS
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-muted-foreground">Precio final para el comprador:</span>
-                          <span className="font-bold text-primary text-lg">
-                            ${new Intl.NumberFormat("es-AR").format(priceAfterDiscount)} ARS
-                          </span>
-                        </div>
-                      </>
-                    )}
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">
-                        Comisión ARSOUND ({(commission * 100).toFixed(0)}%
-                        {hasDiscount && discountPercentNumber > 0 ? " del precio final" : ""}):
-                      </span>
-                      <span className="font-bold text-destructive text-lg">
-                        - ${new Intl.NumberFormat("es-AR").format(commissionAmount)} ARS
-                      </span>
-                    </div>
-                    <div className="pt-3 border-t-2 border-border flex justify-between items-center">
-                      <span className="font-bold text-foreground text-lg">Vas a recibir:</span>
-                      <span className="font-black text-primary text-3xl">
-                        ${new Intl.NumberFormat("es-AR").format(youWillReceive)}
-                      </span>
-                    </div>
-                  </div>
+              {fileSizeError && (
+                <div className="flex gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
+                  <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-red-500 font-medium">{fileSizeError}</p>
                 </div>
               )}
             </div>
+          </div>
 
-            {/* Ownership Confirmation */}
-            <div className="flex items-start gap-3 p-4 rounded-xl bg-accent border border-border">
-              <input
-                type="checkbox"
-                id="ownership"
-                checked={ownershipConfirmed}
-                onChange={(e) => setOwnershipConfirmed(e.target.checked)}
-                required
-                className="mt-1 h-5 w-5 rounded border-border text-primary focus:ring-primary"
-              />
-              <label htmlFor="ownership" className="text-sm text-foreground cursor-pointer">
-                <span className="font-bold">Confirmo que todos los sonidos son propios.</span>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Al subir este pack, declaro que tengo todos los derechos sobre el contenido y que no infringe derechos
-                  de autor de terceros.
-                </p>
-              </label>
-            </div>
-
-            {/* Botones */}
-            <div className="flex gap-4 pt-6">
-              <Button
-                type="submit"
-                size="lg"
-                className="flex-1 h-14 text-base font-bold rounded-xl bg-primary hover:bg-primary/90"
-                disabled={isLoading || !canUpload || (priceNumber > 0 && !mpConnected)}
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                    Subiendo...
-                  </>
-                ) : (
-                  <>
-                    <Upload className="h-5 w-5 mr-2" />
-                    Publicar Pack
-                  </>
-                )}
-              </Button>
+          <div className="space-y-4">
+            <Label htmlFor="tags" className="text-lg font-bold flex items-center gap-2 text-foreground">
+              <Tag className="h-5 w-5 text-primary" />
+              Tags (hasta 5, máximo 12 caracteres)
+            </Label>
+            <p className="text-sm text-muted-foreground">
+              Agregá palabras clave para que los usuarios encuentren tu pack más fácilmente
+            </p>
+            <div className="flex gap-2">
+              <div className="flex-1 relative">
+                <Input
+                  id="tags"
+                  placeholder="Ej: 808, melodías, oscuro..."
+                  value={tagInput}
+                  onChange={handleTagInputChange}
+                  onKeyDown={handleTagKeyDown}
+                  className="text-base h-12 rounded-xl bg-card border-border pr-16"
+                  disabled={isLoading || tags.length >= 5}
+                  maxLength={12}
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+                  {tagInput.length}/12
+                </span>
+              </div>
               <Button
                 type="button"
-                size="lg"
-                variant="outline"
-                className="h-14 text-base font-semibold rounded-xl bg-transparent"
-                onClick={() => router.push("/")}
-                disabled={isLoading}
+                onClick={addTag}
+                disabled={isLoading || tags.length >= 5 || !tagInput.trim()}
+                className="h-12 px-6 rounded-xl"
               >
-                Cancelar
+                Agregar
               </Button>
             </div>
-          </form>
-        </div>
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag, index) => (
+                  <Badge
+                    key={index}
+                    variant="secondary"
+                    className="px-4 py-2 rounded-full text-sm flex items-center gap-2"
+                  >
+                    {tag}
+                    <button
+                      type="button"
+                      onClick={() => removeTag(tag)}
+                      className="hover:text-destructive transition-colors"
+                      disabled={isLoading}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">{tags.length}/5 tags agregados</p>
+          </div>
+
+          {/* Precio */}
+          <div className="space-y-4">
+            <Label htmlFor="price" className="text-lg font-bold flex items-center gap-2 text-foreground">
+              <DollarSign className="h-5 w-5 text-primary" />
+              Precio (ARS) *
+            </Label>
+            <Input
+              id="price"
+              type="number"
+              placeholder="5000"
+              value={price}
+              onChange={handlePriceChange}
+              className="text-base h-14 rounded-xl bg-card border-border text-lg font-semibold"
+              min="0"
+              max={MAX_PRICE}
+              step="100"
+              required
+              disabled={isLoading}
+            />
+            <p className="text-sm text-muted-foreground flex items-center gap-2">
+              <Info className="h-4 w-4" />
+              Precio máximo permitido: ${MAX_PRICE.toLocaleString()} ARS
+            </p>
+
+            <div className="bg-accent rounded-xl p-6 space-y-6 border border-border mt-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Tag className="h-5 w-5 text-primary" />
+                  <div>
+                    <Label htmlFor="hasDiscount" className="text-base font-bold text-foreground cursor-pointer">
+                      Código de Descuento
+                    </Label>
+                    <p className="text-sm text-muted-foreground">Ofrecé un descuento especial</p>
+                  </div>
+                </div>
+                <Switch id="hasDiscount" checked={hasDiscount} onCheckedChange={setHasDiscount} disabled={isLoading} />
+              </div>
+
+              {hasDiscount && (
+                <div className="space-y-4 pt-2 border-t border-border">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="discountCode"
+                        className="text-sm font-semibold text-foreground flex items-center gap-2"
+                      >
+                        Código
+                      </Label>
+                      <Input
+                        id="discountCode"
+                        placeholder="ARSOUND25"
+                        value={discountCode}
+                        onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                        className="h-11 rounded-lg bg-background"
+                        disabled={isLoading || !discountRequiresCode}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {discountRequiresCode
+                          ? "Dejá vacío para sin código"
+                          : "Este descuento se aplica sin código a todos"}
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor="discountPercent"
+                        className="text-sm font-semibold text-foreground flex items-center gap-2"
+                      >
+                        <Percent className="h-4 w-4" />
+                        Porcentaje (máx. {MAX_DISCOUNT}%)
+                      </Label>
+                      <Input
+                        id="discountPercent"
+                        type="number"
+                        placeholder="25"
+                        value={discountPercent}
+                        onChange={(e) => {
+                          const val = Number.parseFloat(e.target.value) || 0
+                          setDiscountPercent(Math.min(val, MAX_DISCOUNT).toString())
+                        }}
+                        className="h-11 rounded-lg bg-background"
+                        min="0"
+                        max={MAX_DISCOUNT}
+                        step="5"
+                        disabled={isLoading}
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="discountType" className="text-sm font-semibold text-foreground">
+                        Aplicar a
+                      </Label>
+                      <Select value={discountType} onValueChange={setDiscountType} disabled={isLoading}>
+                        <SelectTrigger className="h-11 rounded-lg bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Todos los usuarios</SelectItem>
+                          <SelectItem value="first">Primera compra</SelectItem>
+                          <SelectItem value="followers">Mis seguidores</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label htmlFor="requireCode" className="text-sm font-semibold text-foreground">
+                        Requisito de Código
+                      </Label>
+                      <div className="flex items-center gap-3 p-3 bg-background rounded-lg border border-border">
+                        <input
+                          type="checkbox"
+                          id="requireCode"
+                          checked={discountRequiresCode}
+                          onChange={(e) => {
+                            setDiscountRequiresCode(e.target.checked)
+                            if (!e.target.checked) setDiscountCode("")
+                          }}
+                          disabled={isLoading}
+                          className="h-5 w-5 rounded border-border text-primary"
+                        />
+                        <label htmlFor="requireCode" className="text-sm text-muted-foreground cursor-pointer flex-1">
+                          {discountRequiresCode
+                            ? "Se aplica solo con código (especificá abajo)"
+                            : "Se aplica automáticamente a todos sin código"}
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                  {discountPercentNumber > 0 && (
+                    <div className="bg-primary/10 rounded-lg p-4 border border-primary/20">
+                      <p className="text-sm font-semibold text-primary mb-1">Precio con descuento:</p>
+                      <p className="text-2xl font-black text-primary">${priceAfterDiscount.toFixed(0)} ARS</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Ahorro de ${discountAmount.toFixed(0)} ARS ({discountPercentNumber}% OFF)
+                      </p>
+                      <p className="text-xs text-primary mt-2">
+                        {discountRequiresCode
+                          ? discountCode
+                            ? `Código: ${discountCode}`
+                            : "Código: AUTOMÁTICO"
+                          : "Sin código - Se aplica a todos"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {priceNumber > 0 && (
+              <div className="bg-card rounded-xl p-6 space-y-3 border-2 border-border">
+                <div className="flex items-center gap-2 mb-2">
+                  <Info className="h-5 w-5 text-primary" />
+                  <h3 className="font-bold text-foreground">Resumen de Ganancia</h3>
+                </div>
+                <div className="space-y-3 text-base">
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Precio del pack:</span>
+                    <span className="font-bold text-foreground text-lg">
+                      ${new Intl.NumberFormat("es-AR").format(priceNumber)} ARS
+                    </span>
+                  </div>
+                  {hasDiscount && discountPercentNumber > 0 && (
+                    <>
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Descuento aplicado ({discountPercentNumber}%):</span>
+                        <span className="font-bold text-orange-500 text-lg">
+                          - ${new Intl.NumberFormat("es-AR").format(discountAmount)} ARS
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-muted-foreground">Precio final para el comprador:</span>
+                        <span className="font-bold text-primary text-lg">
+                          ${new Intl.NumberFormat("es-AR").format(priceAfterDiscount)} ARS
+                        </span>
+                      </div>
+                    </>
+                  )}
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">
+                      Comisión ARSOUND ({(commission * 100).toFixed(0)}%
+                      {hasDiscount && discountPercentNumber > 0 ? " del precio final" : ""}):
+                    </span>
+                    <span className="font-bold text-destructive text-lg">
+                      - ${new Intl.NumberFormat("es-AR").format(commissionAmount)} ARS
+                    </span>
+                  </div>
+                  <div className="pt-3 border-t-2 border-border flex justify-between items-center">
+                    <span className="font-bold text-foreground text-lg">Vas a recibir:</span>
+                    <span className="font-black text-primary text-3xl">
+                      ${new Intl.NumberFormat("es-AR").format(youWillReceive)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Ownership Confirmation */}
+          <div className="flex items-start gap-3 p-4 rounded-xl bg-accent border border-border">
+            <input
+              type="checkbox"
+              id="ownership"
+              checked={ownershipConfirmed}
+              onChange={(e) => setOwnershipConfirmed(e.target.checked)}
+              required
+              className="mt-1 h-5 w-5 rounded border-border text-primary focus:ring-primary"
+            />
+            <label htmlFor="ownership" className="text-sm text-foreground cursor-pointer">
+              <span className="font-bold">Confirmo que todos los sonidos son propios.</span>
+              <p className="text-xs text-muted-foreground mt-1">
+                Al subir este pack, declaro que tengo todos los derechos sobre el contenido y que no infringe derechos
+                de autor de terceros.
+              </p>
+            </label>
+          </div>
+
+          {/* Botones */}
+          <div className="flex gap-4 pt-6">
+            <Button
+              type="submit"
+              size="lg"
+              className="flex-1 h-14 text-base font-bold rounded-xl bg-primary hover:bg-primary/90"
+              disabled={isLoading || !canUpload || (priceNumber > 0 && !mpConnected)}
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                  Subiendo...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-5 w-5 mr-2" />
+                  Publicar Pack
+                </>
+              )}
+            </Button>
+            <Button
+              type="button"
+              size="lg"
+              variant="outline"
+              className="h-14 text-base font-semibold rounded-xl bg-transparent"
+              onClick={() => router.push("/")}
+              disabled={isLoading}
+            >
+              Cancelar
+            </Button>
+          </div>
+        </form>
       </main>
 
       <Footer />

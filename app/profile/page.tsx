@@ -3,7 +3,7 @@
 import type React from "react"
 
 import { useEffect, useState, useRef } from "react"
-import { useRouter } from 'next/navigation'
+import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
@@ -14,7 +14,24 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Settings, MapPin, Calendar, Package, Check, X, Loader2, Upload, TrendingUp, Heart, Play, DollarSign, Users, Zap, Camera, AlertCircle, Download } from 'lucide-react'
+import {
+  Settings,
+  MapPin,
+  Calendar,
+  Package,
+  Check,
+  X,
+  Loader2,
+  Upload,
+  TrendingUp,
+  Heart,
+  Play,
+  DollarSign,
+  Users,
+  Zap,
+  Camera,
+  AlertCircle,
+} from "lucide-react"
 import Link from "next/link"
 import { LogoutButton } from "@/components/logout-button"
 // import { AvatarUpload } from "@/components/avatar-upload" // Removed AvatarUpload component
@@ -36,6 +53,8 @@ import { PLAN_FEATURES } from "@/lib/plans" // Added for commission calculation
 import { toast } from "@/components/ui/use-toast" // Added for toast notifications
 import { ProfilePurchasesTab } from "@/components/profile-purchases-tab"
 import { StudioPlusAnalytics } from "@/components/studio-plus-analytics"
+import { BlockWarningBanner } from "@/components/block-warning-banner"
+import { useBlockStatus } from "@/hooks/use-block-status"
 
 interface Profile {
   id: string
@@ -98,6 +117,8 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+
+  const blockStatus = useBlockStatus()
 
   const [editForm, setEditForm] = useState({
     username: "",
@@ -475,8 +496,8 @@ export default function ProfilePage() {
 
       console.log("[v0] Starting Mercado Pago connection...")
 
-      const response = await fetch('/api/mercadopago/connect', {
-        method: 'POST',
+      const response = await fetch("/api/mercadopago/connect", {
+        method: "POST",
       })
 
       console.log("[v0] Response status:", response.status)
@@ -548,10 +569,10 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    const mpSuccess = params.get('mp_success')
-    const mpError = params.get('mp_error')
+    const mpSuccess = params.get("mp_success")
+    const mpError = params.get("mp_error")
 
-    if (mpSuccess === 'true') {
+    if (mpSuccess === "true") {
       toast({
         title: "Conectado exitosamente",
         description: "Tu cuenta de Mercado Pago fue conectada correctamente",
@@ -559,7 +580,7 @@ export default function ProfilePage() {
       // Reload profile data
       loadUserData()
       // Clean URL
-      window.history.replaceState({}, '', '/profile')
+      window.history.replaceState({}, "", "/profile")
     }
 
     if (mpError) {
@@ -578,7 +599,7 @@ export default function ProfilePage() {
         variant: "destructive",
       })
       // Clean URL
-      window.history.replaceState({}, '', '/profile')
+      window.history.replaceState({}, "", "/profile")
     }
   }, [])
 
@@ -639,6 +660,10 @@ export default function ProfilePage() {
       <Header />
 
       <main className="flex-1 container mx-auto px-3 md:px-4 py-6 md:py-12">
+        {blockStatus.isNearBlock && !blockStatus.loading && (
+          <BlockWarningBanner attemptCount={blockStatus.attemptCount} />
+        )}
+
         {/* Profile Header - RESPONSIVE IMPROVEMENTS */}
         <Card className="p-6 md:p-8 rounded-3xl border-border mb-6 md:mb-8">
           <div className="flex flex-col md:flex-row gap-6 md:gap-8">
@@ -667,7 +692,10 @@ export default function ProfilePage() {
                         {profile?.username || "Usuario"}
                       </h1>
                       <div className="flex flex-col sm:flex-row items-center justify-center md:justify-start gap-2 md:gap-3 mb-3 flex-wrap">
-                        <Badge variant="secondary" className="px-3 md:px-4 py-1 md:py-1.5 rounded-full font-bold uppercase text-xs">
+                        <Badge
+                          variant="secondary"
+                          className="px-3 md:px-4 py-1 md:py-1.5 rounded-full font-bold uppercase text-xs"
+                        >
                           {userPlan === "free" && "Plan Gratuito"}
                           {userPlan === "de_0_a_hit" && "De 0 a Hit"}
                           {userPlan === "studio_plus" && "Studio Plus"}
@@ -708,7 +736,10 @@ export default function ProfilePage() {
                     </div>
 
                     <div className="flex flex-col gap-2 w-full md:w-auto">
-                      <Button onClick={() => setIsEditing(true)} className="gap-2 rounded-full h-10 md:h-11 px-4 md:px-6 text-sm md:text-base w-full md:w-auto">
+                      <Button
+                        onClick={() => setIsEditing(true)}
+                        className="gap-2 rounded-full h-10 md:h-11 px-4 md:px-6 text-sm md:text-base w-full md:w-auto"
+                      >
                         <Settings className="h-4 w-4" />
                         <span className="hidden sm:inline">Editar Perfil</span>
                         <span className="sm:hidden">Editar</span>
@@ -720,9 +751,7 @@ export default function ProfilePage() {
                   {/* Stats cards - RESPONSIVE */}
                   <div className="flex flex-col sm:flex-row flex-wrap gap-3 md:gap-6 pt-4 justify-center md:justify-start">
                     <div className="text-center md:text-left">
-                      <div className="text-2xl md:text-3xl font-black text-foreground">
-                        {profile?.packs_count || 0}
-                      </div>
+                      <div className="text-2xl md:text-3xl font-black text-foreground">{profile?.packs_count || 0}</div>
                       <div className="text-xs md:text-sm text-muted-foreground">Packs Subidos</div>
                     </div>
                     <div className="text-center md:text-left">
@@ -1104,7 +1133,9 @@ export default function ProfilePage() {
                                   <Users className="h-8 w-8 text-blue-500" />
                                   <TrendingUp className="h-5 w-5 text-blue-500/60" />
                                 </div>
-                                <div className="text-3xl font-black text-foreground">{profile?.followers_count || 0}</div>
+                                <div className="text-3xl font-black text-foreground">
+                                  {profile?.followers_count || 0}
+                                </div>
                                 <div className="text-sm text-muted-foreground font-semibold mt-1">Seguidores</div>
                               </Card>
                             </>
@@ -1322,9 +1353,7 @@ export default function ProfilePage() {
                             <Check className="h-6 w-6 text-white" />
                           </div>
                           <div className="flex-1">
-                            <h3 className="font-bold text-green-600 text-lg mb-1">
-                              Cuenta conectada exitosamente
-                            </h3>
+                            <h3 className="font-bold text-green-600 text-lg mb-1">Cuenta conectada exitosamente</h3>
                             <p className="text-green-600/80 text-sm mb-3">
                               Ya podés vender packs y recibir pagos automáticamente
                             </p>
@@ -1353,7 +1382,8 @@ export default function ProfilePage() {
                               <span className="text-xs font-bold text-primary">2</span>
                             </div>
                             <p className="text-sm text-muted-foreground">
-                              ARSOUND retiene la comisión según tu plan ({(PLAN_FEATURES[userPlan].commission * 100).toFixed(0)}%)
+                              ARSOUND retiene la comisión según tu plan (
+                              {(PLAN_FEATURES[userPlan].commission * 100).toFixed(0)}%)
                             </p>
                           </div>
                           <div className="flex items-start gap-3">
@@ -1371,7 +1401,7 @@ export default function ProfilePage() {
                         <Button
                           variant="outline"
                           onClick={handleDisconnectMercadoPago}
-                          className="gap-2 rounded-full text-red-600 hover:text-red-600 hover:bg-red-500/10 border-red-500/20"
+                          className="gap-2 rounded-full text-red-600 hover:text-red-600 hover:bg-red-500/10 border-red-500/20 bg-transparent"
                         >
                           <X className="h-4 w-4" />
                           Desconectar cuenta
@@ -1384,11 +1414,10 @@ export default function ProfilePage() {
                         <div className="flex items-start gap-4">
                           <AlertCircle className="h-6 w-6 text-amber-600 flex-shrink-0 mt-1" />
                           <div>
-                            <h3 className="font-bold text-amber-600 text-lg mb-1">
-                              Cuenta no conectada
-                            </h3>
+                            <h3 className="font-bold text-amber-600 text-lg mb-1">Cuenta no conectada</h3>
                             <p className="text-amber-600/80 text-sm">
-                              Necesitás conectar tu cuenta de Mercado Pago para vender packs pagos y recibir tus ganancias.
+                              Necesitás conectar tu cuenta de Mercado Pago para vender packs pagos y recibir tus
+                              ganancias.
                             </p>
                           </div>
                         </div>
@@ -1400,25 +1429,29 @@ export default function ProfilePage() {
                           <div className="flex items-start gap-3">
                             <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
                             <p className="text-sm text-muted-foreground">
-                              <span className="font-semibold text-foreground">Pagos automáticos:</span> Recibí tu dinero directamente en tu cuenta
+                              <span className="font-semibold text-foreground">Pagos automáticos:</span> Recibí tu dinero
+                              directamente en tu cuenta
                             </p>
                           </div>
                           <div className="flex items-start gap-3">
                             <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
                             <p className="text-sm text-muted-foreground">
-                              <span className="font-semibold text-foreground">Sin intermediarios:</span> El dinero va directo de la compra a tu cuenta
+                              <span className="font-semibold text-foreground">Sin intermediarios:</span> El dinero va
+                              directo de la compra a tu cuenta
                             </p>
                           </div>
                           <div className="flex items-start gap-3">
                             <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
                             <p className="text-sm text-muted-foreground">
-                              <span className="font-semibold text-foreground">Seguro y confiable:</span> Mercado Pago es la plataforma de pagos más usada en Argentina
+                              <span className="font-semibold text-foreground">Seguro y confiable:</span> Mercado Pago es
+                              la plataforma de pagos más usada en Argentina
                             </p>
                           </div>
                           <div className="flex items-start gap-3">
                             <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
                             <p className="text-sm text-muted-foreground">
-                              <span className="font-semibold text-foreground">Configuración simple:</span> Solo tomará unos minutos
+                              <span className="font-semibold text-foreground">Configuración simple:</span> Solo tomará
+                              unos minutos
                             </p>
                           </div>
                         </div>

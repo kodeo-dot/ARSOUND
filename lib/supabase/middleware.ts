@@ -29,6 +29,27 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  if (user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("is_blocked, blocked_reason, blocked_at")
+      .eq("id", user.id)
+      .single()
+
+    // If user is blocked, only allow access to /blocked, /api/appeal, and logout
+    if (profile?.is_blocked) {
+      const isBlockedPage = request.nextUrl.pathname === "/blocked"
+      const isAppealAPI = request.nextUrl.pathname === "/api/appeal"
+      const isLogoutAPI = request.nextUrl.pathname.startsWith("/api/auth")
+
+      if (!isBlockedPage && !isAppealAPI && !isLogoutAPI) {
+        const url = request.nextUrl.clone()
+        url.pathname = "/blocked"
+        return NextResponse.redirect(url)
+      }
+    }
+  }
+
   // Protect routes that require authentication
   if (!user && (request.nextUrl.pathname.startsWith("/profile") || request.nextUrl.pathname.startsWith("/upload"))) {
     const url = request.nextUrl.clone()

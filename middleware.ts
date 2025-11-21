@@ -2,7 +2,14 @@ import { updateSession } from "@/lib/supabase/middleware"
 import type { NextRequest } from "next/server"
 
 export async function middleware(request: NextRequest) {
-  return await updateSession(request)
+  const response = await updateSession(request)
+
+  // If the updateSession returns a redirect or modified response, return it
+  if (response.status !== 200) {
+    return response
+  }
+
+  return response
 }
 
 export const config = {
