@@ -219,3 +219,13 @@ export function Header() {
     </header>
   )
 }
+export function getInitials(name?: string | null) {
+  if (!name) return "??";
+  return name
+    .split(" ")
+    .map(part => part[0])
+    .join("")
+    .substring(0, 2)
+    .toUpperCase();
+}
+
