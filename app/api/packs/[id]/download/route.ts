@@ -29,7 +29,7 @@ export async function GET(
 
     console.log("[v0] User authenticated:", user.id)
 
-    // Get pack details - use regular client since SELECT is allowed for everyone
+    // Get pack details
     const { data: pack, error: packError } = await supabase
       .from("packs")
       .select("id, title, price, file_url, user_id")
@@ -45,23 +45,28 @@ export async function GET(
 
     const isFree = !pack.price || pack.price === 0
 
-    // Check permissions for paid packs - use admin client to bypass RLS restrictions
-    const { data: purchase, error: purchaseError } = await adminSupabase
-      .from("purchases")
-      .select("id")
-      .eq("pack_id", packId)
-      .eq("buyer_id", user.id)
-      .eq("status", "completed")
-      .single()
+    // Only check purchase if pack is NOT free
+    if (!isFree) {
+      const { data: purchase, error: purchaseError } = await adminSupabase
+        .from("purchases")
+        .select("id")
+        .eq("pack_id", packId)
+        .eq("buyer_id", user.id)
+        .eq("status", "completed")
+        .single()
 
-    if (!purchase) {
-      console.log("[v0] User has not purchased this pack. Checking if pack is free...")
-      return NextResponse.json(
-        { error: "Necesitás comprar este pack para descargarlo" },
-        { status: 403 }
-      )
+      if (!purchase) {
+        console.log("[v0] User has not purchased this pack and it is paid")
+        return NextResponse.json(
+          { error: "Necesitás comprar este pack para descargarlo" },
+          { status: 403 }
+        )
+      }
+
+      console.log("[v0] User has purchased pack:", purchase.id)
+    } else {
+      console.log("[v0] Pack is free, skipping purchase check")
     }
-    console.log("[v0] User has purchased pack:", purchase.id)
 
     // Extract file path from URL
     const url = new URL(pack.file_url)
@@ -84,7 +89,7 @@ export async function GET(
 
     console.log("[v0] File downloaded successfully")
 
-    // Record download - use admin client
+    // Record download
     const { error: recordError } = await adminSupabase
       .from("pack_downloads")
       .insert({
@@ -99,7 +104,7 @@ export async function GET(
       console.log("[v0] Download recorded successfully")
     }
 
-    // Increment counter - use admin client
+    // Increment download counter
     const { error: incrementError } = await adminSupabase.rpc("increment", {
       table_name: "packs",
       row_id: packId,
@@ -112,7 +117,7 @@ export async function GET(
       console.log("[v0] Download counter incremented")
     }
 
-    // Return file
+    // Return file to client
     const buffer = await fileData.arrayBuffer()
     return new NextResponse(buffer, {
       status: 200,
