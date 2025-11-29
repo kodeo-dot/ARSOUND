@@ -40,11 +40,7 @@ export function Hero() {
         </div>
       </div>
 
-      <div className="bg-accent py-3 border-t border-border">
-        <p className="text-center text-xs text-muted-foreground">
-          Creado con ❤️ por <span className="font-bold text-foreground">mixflp</span>
-        </p>
-      </div>
+
     </section>
   )
 }
