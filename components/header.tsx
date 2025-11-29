@@ -1,4 +1,6 @@
   "use client"
+  
+  import Image from "next/image";
 
   import { Waves, Search, Menu, Upload, User, LogOut } from "lucide-react"
   import { Button } from "@/components/ui/button"
@@ -41,10 +43,14 @@
         <div className="container mx-auto px-4">
           <div className="flex h-20 items-center justify-between">
             <Link href="/" className="flex items-center gap-3">
-              <div className="relative">
-                <Waves className="h-9 w-9 text-primary" strokeWidth={2.5} />
-                <div className="absolute inset-0 bg-primary/20 blur-xl" />
-              </div>
+              <Image
+                src="public\apple-icon.png"         // Cambialo por tu logo 
+                alt="ARSOUND"
+                width={40}
+                height={40}
+                className="rounded-lg object-contain"
+              />
+
               <div className="flex flex-col">
                 <span className="text-2xl font-black tracking-tight text-foreground">ARSOUND</span>
                 <span className="text-[10px] font-medium text-muted-foreground -mt-1">ARGENTINA</span>
