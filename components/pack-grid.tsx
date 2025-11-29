@@ -6,8 +6,8 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card } from "@/components/ui/card"
 import { useState, useEffect } from "react"
-import { Filter, Search, SlidersHorizontal, Loader2 } from "lucide-react"
-import { createBrowserClient } from "@/lib/supabase/client"
+import { Filter, Search, SlidersHorizontal, Loader2 } from 'lucide-react'
+import { createClient } from "@/lib/supabase/client"
 
 const GENRES = [
   "Todos",
@@ -35,12 +35,13 @@ export function PackGrid() {
   const [bpmRange, setBpmRange] = useState("todos")
   const [showFilters, setShowFilters] = useState(false)
 
-  const supabase = createBrowserClient()
+  const supabase = createClient()
 
   useEffect(() => {
     const fetchPacks = async () => {
       setIsLoading(true)
       try {
+        console.log("[v0] Fetching packs...")
         let query = supabase.from("packs").select(`
             *,
             profiles:user_id (
@@ -68,6 +69,7 @@ export function PackGrid() {
           return
         }
 
+        console.log("[v0] Packs loaded successfully:", data?.length || 0)
         setPacks(data || [])
       } catch (error) {
         console.error("[v0] Error:", error)
