@@ -1,6 +1,6 @@
 "use client"
 
-import { Waves, Menu, Upload, User, LogOut } from 'lucide-react'
+import { Waves, Menu, Upload, LogOut } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState, useEffect } from "react"
@@ -19,7 +19,6 @@ export function Header() {
 
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       setUser(user)
-      // <CHANGE> Fetch user profile for avatar
       if (user) {
         const { data: profileData } = await supabase
           .from("profiles")
@@ -56,7 +55,6 @@ export function Header() {
     router.refresh()
   }
 
-  // <CHANGE> Get user initials for avatar fallback
   const getInitials = () => {
     if (profile?.display_name) {
       return profile.display_name
@@ -66,64 +64,115 @@ export function Header() {
         .toUpperCase()
         .slice(0, 2)
     }
-    if (profile?.username) {
-      return profile.username.slice(0, 2).toUpperCase()
-    }
-    if (user?.email) {
-      return user.email.slice(0, 2).toUpperCase()
-    }
+    if (profile?.username) return profile.username.slice(0, 2).toUpperCase()
+    if (user?.email) return user.email.slice(0, 2).toUpperCase()
     return "U"
   }
 
   return (
-    // <CHANGE> Cleaner header with minimal colors
     <header className="border-b border-border bg-background sticky top-0 z-50">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
-          {/* <CHANGE> Simplified logo without glow effects */}
           <Link href="/" className="flex items-center gap-2">
             <Waves className="h-6 w-6 text-foreground" strokeWidth={2} />
             <span className="text-xl font-bold tracking-tight text-foreground">ARSOUND</span>
           </Link>
 
-          {/* <CHANGE> Removed "Buscar" tab, kept only Inicio/Explorar/Productores */}
           <nav className="hidden lg:flex items-center gap-1">
-            <Link
-              href="/"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2 rounded-md hover:bg-accent"
-            >
+            <Link href="/" className="text-sm font-medium px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md">
               Inicio
             </Link>
-            <Link
-              href="/#packs"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2 rounded-md hover:bg-accent"
-            >
+            <Link href="/#packs" className="text-sm font-medium px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md">
               Explorar
             </Link>
-            <Link
-              href="/producers"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2 rounded-md hover:bg-accent"
-            >
+            <Link href="/producers" className="text-sm font-medium px-4 py-2 text-muted-foreground hover:text-foreground hover:bg-accent rounded-md">
               Productores
             </Link>
           </nav>
 
-          
-          {/* Actions */}
           <div className="flex items-center gap-2">
             {user && (
               <Link href="/upload" className="hidden sm:block">
-                {/* <CHANGE> Transparent button with dark gray stroke */}
                 <Button
                   variant="outline"
-                  className="gap-2 h-9 px-4 bg-transparent border-2 border-foreground/20 hover:bg-accent hover:border-foreground/30 text-foreground font-medium"
+                  className="gap-2 h-9 px-4 bg-transparent border-2 border-foreground/20 hover:bg-accent hover:border-foreground/30 text-foreground"
                 >
                   <Upload className="h-4 w-4" />
                   Subir pack
                 </Button>
               </Link>
             )}
+
             {user ? (
               <>
-                {/* <CHANGE> Profile avatar with initials fallback */}
-                <Link href="/profile" className="hidden l
+                <Link href="/profile" className="hidden lg:flex">
+                  <Avatar className="h-9 w-9 cursor-pointer">
+                    <AvatarImage src={profile?.avatar_url || ""} />
+                    <AvatarFallback>{getInitials()}</AvatarFallback>
+                  </Avatar>
+                </Link>
+
+                <Button
+                  variant="ghost"
+                  className="p-2 hover:bg-accent"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="h-5 w-5 text-foreground" />
+                </Button>
+              </>
+            ) : (
+              <Link href="/login" className="hidden sm:block">
+                <Button variant="ghost" className="text-foreground">
+                  Iniciar sesión
+                </Button>
+              </Link>
+            )}
+
+            <Button
+              variant="ghost"
+              className="lg:hidden p-2"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              <Menu className="h-6 w-6" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {mobileMenuOpen && (
+        <div className="lg:hidden border-t border-border bg-background px-4 py-3 space-y-2">
+          <Link href="/" className="block text-sm py-2 text-muted-foreground hover:text-foreground">Inicio</Link>
+          <Link href="/#packs" className="block text-sm py-2 text-muted-foreground hover:text-foreground">Explorar</Link>
+          <Link href="/producers" className="block text-sm py-2 text-muted-foreground hover:text-foreground">Productores</Link>
+
+          {user && (
+            <Link href="/upload" className="block">
+              <Button
+                variant="outline"
+                className="w-full gap-2 bg-transparent border-2 border-foreground/20 hover:bg-accent hover:border-foreground/30 text-foreground"
+              >
+                <Upload className="h-4 w-4" />
+                Subir pack
+              </Button>
+            </Link>
+          )}
+
+          {user ? (
+            <Button
+              variant="ghost"
+              className="w-full flex items-center gap-2"
+              onClick={handleLogout}
+            >
+              <LogOut className="h-5 w-5" />
+              Cerrar sesión
+            </Button>
+          ) : (
+            <Link href="/login">
+              <Button variant="ghost" className="w-full">Iniciar sesión</Button>
+            </Link>
+          )}
+        </div>
+      )}
+    </header>
+  )
+}
