@@ -1,29 +1,49 @@
 "use client"
 
-import { Waves, Search, Menu, Upload, User, LogOut } from "lucide-react"
+import { Waves, Menu, Upload, User, LogOut } from 'lucide-react'
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
+import { useRouter } from 'next/navigation'
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [user, setUser] = useState<any>(null)
+  const [profile, setProfile] = useState<any>(null)
   const router = useRouter()
 
   useEffect(() => {
     const supabase = createClient()
 
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
       setUser(user)
+      // <CHANGE> Fetch user profile for avatar
+      if (user) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("avatar_url, username, display_name")
+          .eq("id", user.id)
+          .single()
+        setProfile(profileData)
+      }
     })
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null)
+      if (session?.user) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("avatar_url, username, display_name")
+          .eq("id", session.user.id)
+          .single()
+        setProfile(profileData)
+      } else {
+        setProfile(null)
+      }
     })
 
     return () => subscription.unsubscribe()
@@ -36,146 +56,74 @@ export function Header() {
     router.refresh()
   }
 
+  // <CHANGE> Get user initials for avatar fallback
+  const getInitials = () => {
+    if (profile?.display_name) {
+      return profile.display_name
+        .split(" ")
+        .map((n: string) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2)
+    }
+    if (profile?.username) {
+      return profile.username.slice(0, 2).toUpperCase()
+    }
+    if (user?.email) {
+      return user.email.slice(0, 2).toUpperCase()
+    }
+    return "U"
+  }
+
   return (
-    <header className="border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-50">
+    // <CHANGE> Cleaner header with minimal colors
+    <header className="border-b border-border bg-background sticky top-0 z-50">
       <div className="container mx-auto px-4">
-        <div className="flex h-20 items-center justify-between">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="relative">
-              <Waves className="h-9 w-9 text-primary" strokeWidth={2.5} />
-              <div className="absolute inset-0 bg-primary/20 blur-xl" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-2xl font-black tracking-tight text-foreground">ARSOUND</span>
-              <span className="text-[10px] font-medium text-muted-foreground -mt-1">ARGENTINA</span>
-            </div>
+        <div className="flex h-16 items-center justify-between">
+          {/* <CHANGE> Simplified logo without glow effects */}
+          <Link href="/" className="flex items-center gap-2">
+            <Waves className="h-6 w-6 text-foreground" strokeWidth={2} />
+            <span className="text-xl font-bold tracking-tight text-foreground">ARSOUND</span>
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-8">
-            <Link href="/" className="text-sm font-semibold text-foreground hover:text-primary transition-colors">
+          {/* <CHANGE> Removed "Buscar" tab, kept only Inicio/Explorar/Productores */}
+          <nav className="hidden lg:flex items-center gap-1">
+            <Link
+              href="/"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2 rounded-md hover:bg-accent"
+            >
               Inicio
             </Link>
-            <Link href="/#packs" className="text-sm font-semibold text-foreground hover:text-primary transition-colors">
+            <Link
+              href="/#packs"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2 rounded-md hover:bg-accent"
+            >
               Explorar
             </Link>
             <Link
               href="/producers"
-              className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors px-4 py-2 rounded-md hover:bg-accent"
             >
               Productores
             </Link>
           </nav>
 
-          {/* Search Bar - Desktop */}
-          <div className="hidden md:flex flex-1 max-w-sm mx-8">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Buscar packs..."
-                className="pl-10 bg-accent border-border h-11 rounded-full"
-              />
-            </div>
-          </div>
-
+          
           {/* Actions */}
           <div className="flex items-center gap-2">
             {user && (
               <Link href="/upload" className="hidden sm:block">
-                <Button className="gap-2 rounded-full h-11 px-6 bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                  <Upload className="h-4 w-4" />
-                  Subir Pack
-                </Button>
-              </Link>
-            )}
-            {user ? (
-              <>
-                <Link href="/profile" className="hidden lg:block">
-                  <Button variant="ghost" size="icon" className="rounded-full h-11 w-11">
-                    <User className="h-5 w-5" />
-                  </Button>
-                </Link>
+                {/* <CHANGE> Transparent button with dark gray stroke */}
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  className="hidden lg:block rounded-full h-11 w-11"
-                  onClick={handleLogout}
+                  variant="outline"
+                  className="gap-2 h-9 px-4 bg-transparent border-2 border-foreground/20 hover:bg-accent hover:border-foreground/30 text-foreground font-medium"
                 >
-                  <LogOut className="h-5 w-5" />
+                  <Upload className="h-4 w-4" />
+                  Subir pack
                 </Button>
-              </>
-            ) : (
-              <Link href="/login" className="hidden lg:block">
-                <Button className="rounded-full h-11 px-6">Ingresar</Button>
               </Link>
             )}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden rounded-full h-11 w-11"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-          </div>
-        </div>
-
-        {mobileMenuOpen && (
-          <div className="lg:hidden py-6 space-y-4 border-t border-border">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input type="search" placeholder="Buscar packs..." className="pl-10 bg-accent rounded-full" />
-            </div>
-            <nav className="flex flex-col gap-1">
-              <Link
-                href="/"
-                className="text-sm font-semibold text-foreground hover:text-primary py-3 px-4 rounded-lg hover:bg-accent transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Inicio
-              </Link>
-              <Link
-                href="/#packs"
-                className="text-sm font-semibold text-foreground hover:text-primary py-3 px-4 rounded-lg hover:bg-accent transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Explorar
-              </Link>
-              <Link
-                href="/producers"
-                className="text-sm font-semibold text-foreground hover:text-primary py-3 px-4 rounded-lg hover:bg-accent transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                Productores
-              </Link>
-            </nav>
             {user ? (
               <>
-                <Link href="/upload" onClick={() => setMobileMenuOpen(false)}>
-                  <Button className="w-full gap-2 rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                    <Upload className="h-4 w-4" />
-                    Subir Pack
-                  </Button>
-                </Link>
-                <Link href="/profile" onClick={() => setMobileMenuOpen(false)}>
-                  <Button className="w-full gap-2 rounded-full bg-transparent" variant="outline">
-                    <User className="h-4 w-4" />
-                    Mi Perfil
-                  </Button>
-                </Link>
-                <Button className="w-full gap-2 rounded-full bg-transparent" variant="outline" onClick={handleLogout}>
-                  <LogOut className="h-4 w-4" />
-                  Cerrar Sesión
-                </Button>
-              </>
-            ) : (
-              <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                <Button className="w-full rounded-full">Ingresar</Button>
-              </Link>
-            )}
-          </div>
-        )}
-      </div>
-    </header>
-  )
-}
+                {/* <CHANGE> Profile avatar with initials fallback */}
+                <Link href="/profile" className="hidden l

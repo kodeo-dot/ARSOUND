@@ -265,8 +265,8 @@ export default function BlockedPage() {
 
             <p className="text-xs text-center text-muted-foreground">
               Si tenés preguntas, contactanos en{" "}
-              <a href="mailto:support@arsound.com" className="text-primary hover:underline font-semibold">
-                support@arsound.com
+              <a href="mailto:soprte@arsound.com.ar" className="text-primary hover:underline font-semibold">
+                soprte@arsound.com.ar
               </a>
             </p>
           </div>
