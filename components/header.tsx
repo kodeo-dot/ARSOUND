@@ -158,14 +158,23 @@ export function Header() {
           )}
 
           {user ? (
-            <Button
-              variant="ghost"
-              className="w-full flex items-center gap-2"
-              onClick={handleLogout}
-            >
-              <LogOut className="h-5 w-5" />
-              Cerrar sesión
-            </Button>
+            <>
+              <Link href="/profile" className="flex items-center gap-2 py-2">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={profile?.avatar_url || ""} />
+                  <AvatarFallback>{getInitials()}</AvatarFallback>
+                </Avatar>
+                <span className="text-sm text-foreground">{profile?.display_name || profile?.username || 'Mi Perfil'}</span>
+              </Link>
+              <Button
+                variant="ghost"
+                className="w-full flex items-center gap-2 justify-start"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-5 w-5" />
+                Cerrar sesión
+              </Button>
+            </>
           ) : (
             <Link href="/login">
               <Button variant="ghost" className="w-full">Iniciar sesión</Button>
