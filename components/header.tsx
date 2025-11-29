@@ -1,5 +1,5 @@
   "use client"
-  
+
   import Image from "next/image";
 
   import { Waves, Search, Menu, Upload, User, LogOut } from "lucide-react"
@@ -44,7 +44,7 @@
           <div className="flex h-20 items-center justify-between">
             <Link href="/" className="flex items-center gap-3">
               <Image
-                src="public\apple-icon.png"         // Cambialo por tu logo 
+                src="'icon.svg"         // Cambialo por tu logo 
                 alt="ARSOUND"
                 width={40}
                 height={40}
