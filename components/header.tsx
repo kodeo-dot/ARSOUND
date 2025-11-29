@@ -67,22 +67,14 @@ export function Header() {
           </nav>
 
           {/* Search Bar - Desktop */}
-          <div className="hidden md:flex flex-1 max-w-sm mx-8">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Buscar packs..."
-                className="pl-10 bg-accent border-border h-11 rounded-full"
-              />
-            </div>
-          </div>
 
           {/* Actions */}
           <div className="flex items-center gap-2">
             {user && (
               <Link href="/upload" className="hidden sm:block">
-                <Button className="gap-2 rounded-full h-11 px-6 bg-secondary text-secondary-foreground hover:bg-secondary/90">
+                <Button
+                  className="gap-2 rounded-lg h-11 px-4 bg-transparent border border-neutral-700 text-foreground hover:bg-neutral-900/20"
+                >
                   <Upload className="h-4 w-4" />
                   Subir Pack
                 </Button>
