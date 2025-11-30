@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { Menu, Upload, User, LogOut, BarChart3, Heart, ShoppingBag, Settings, Zap } from "lucide-react"
+import { Menu, Upload, LogOut, BarChart3, Heart, ShoppingBag, Settings, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -228,27 +228,81 @@ export function Header() {
             </nav>
             {user ? (
               <>
+                <div className="pt-2 border-t border-border">
+                  <Link href="/profile" onClick={() => setMobileMenuOpen(false)}>
+                    <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-accent transition-colors mb-2">
+                      <UserAvatar
+                        avatarUrl={profile?.avatar_url}
+                        username={profile?.username}
+                        displayName={profile?.display_name}
+                        size="md"
+                      />
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-foreground text-sm">
+                          {profile?.display_name || profile?.username || "Usuario"}
+                        </span>
+                        <span className="text-xs text-muted-foreground">Ver mi perfil</span>
+                      </div>
+                    </div>
+                  </Link>
+                </div>
                 <Link href="/upload" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="outline" className="w-full gap-2 rounded-xl h-11 font-semibold bg-transparent">
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2 rounded-xl h-11 font-semibold bg-transparent justify-start"
+                  >
                     <Upload className="h-4 w-4" />
                     Subir Pack
                   </Button>
                 </Link>
-                <Link href="/profile" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="outline" className="w-full gap-2 rounded-xl h-11 font-semibold bg-transparent">
-                    <User className="h-4 w-4" />
-                    Mi Perfil
+                <Link href="/statistics" onClick={() => setMobileMenuOpen(false)}>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2 rounded-xl h-11 font-semibold bg-transparent justify-start"
+                  >
+                    <BarChart3 className="h-4 w-4 text-primary" />
+                    Estadísticas
                   </Button>
                 </Link>
-                <Link href="/statistics" onClick={() => setMobileMenuOpen(false)}>
-                  <Button variant="outline" className="w-full gap-2 rounded-xl h-11 font-semibold bg-transparent">
-                    <BarChart3 className="h-4 w-4" />
-                    Estadísticas
+                <Link href="/saved" onClick={() => setMobileMenuOpen(false)}>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2 rounded-xl h-11 font-semibold bg-transparent justify-start"
+                  >
+                    <Heart className="h-4 w-4 text-red-500" />
+                    Guardados
+                  </Button>
+                </Link>
+                <Link href="/purchases" onClick={() => setMobileMenuOpen(false)}>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2 rounded-xl h-11 font-semibold bg-transparent justify-start"
+                  >
+                    <ShoppingBag className="h-4 w-4 text-secondary" />
+                    Mis compras
+                  </Button>
+                </Link>
+                <Link href="/settings" onClick={() => setMobileMenuOpen(false)}>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2 rounded-xl h-11 font-semibold bg-transparent justify-start"
+                  >
+                    <Settings className="h-4 w-4 text-muted-foreground" />
+                    Configuración
+                  </Button>
+                </Link>
+                <Link href="/plans" onClick={() => setMobileMenuOpen(false)}>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2 rounded-xl h-11 font-semibold bg-transparent justify-start text-primary border-primary/30 hover:bg-primary/5"
+                  >
+                    <Zap className="h-4 w-4" />
+                    Mejorar plan
                   </Button>
                 </Link>
                 <Button
                   variant="outline"
-                  className="w-full gap-2 rounded-xl h-11 font-semibold text-destructive border-destructive/30 hover:bg-destructive/10 bg-transparent"
+                  className="w-full gap-2 rounded-xl h-11 font-semibold text-destructive border-destructive/30 hover:bg-destructive/10 bg-transparent justify-start"
                   onClick={handleLogout}
                 >
                   <LogOut className="h-4 w-4" />
