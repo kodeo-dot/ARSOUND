@@ -159,10 +159,7 @@ export function Header() {
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link
-                        href="/profile?tab=settings"
-                        className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer"
-                      >
+                      <Link href="/settings" className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer">
                         <Settings className="h-4 w-4 text-muted-foreground" />
                         <span className="font-medium">Configuración</span>
                       </Link>
