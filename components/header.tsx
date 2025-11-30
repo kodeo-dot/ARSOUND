@@ -1,179 +1,271 @@
-  "use client"
+"use client"
 
-  import Image from "next/image";
+import Image from "next/image"
+import { Menu, Upload, User, LogOut, BarChart3, Heart, ShoppingBag, Settings, Zap } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { useState, useEffect } from "react"
+import Link from "next/link"
+import { createClient } from "@/lib/supabase/client"
+import { useRouter } from "next/navigation"
+import { UserAvatar } from "@/components/user-avatar"
 
-  import { Waves, Search, Menu, Upload, User, LogOut } from "lucide-react"
-  import { Button } from "@/components/ui/button"
-  import { Input } from "@/components/ui/input"
-  import { useState, useEffect } from "react"
-  import Link from "next/link"
-  import { createClient } from "@/lib/supabase/client"
-  import { useRouter } from "next/navigation"
+export function Header() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const [profile, setProfile] = useState<any>(null)
+  const router = useRouter()
 
-  export function Header() {
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-    const [user, setUser] = useState<any>(null)
-    const router = useRouter()
+  useEffect(() => {
+    const supabase = createClient()
 
-    useEffect(() => {
-      const supabase = createClient()
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      setUser(user)
+      if (user) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("username, avatar_url, display_name")
+          .eq("id", user.id)
+          .single()
+        setProfile(profileData)
+      }
+    })
 
-      supabase.auth.getUser().then(({ data: { user } }) => {
-        setUser(user)
-      })
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setUser(session?.user ?? null)
+      if (session?.user) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("username, avatar_url, display_name")
+          .eq("id", session.user.id)
+          .single()
+        setProfile(profileData)
+      } else {
+        setProfile(null)
+      }
+    })
 
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange((_event, session) => {
-        setUser(session?.user ?? null)
-      })
+    return () => subscription.unsubscribe()
+  }, [])
 
-      return () => subscription.unsubscribe()
-    }, [])
+  const handleLogout = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push("/")
+    router.refresh()
+  }
 
-    const handleLogout = async () => {
-      const supabase = createClient()
-      await supabase.auth.signOut()
-      router.push("/")
-      router.refresh()
-    }
+  return (
+    <header className="border-b border-border bg-card/80 backdrop-blur-md sticky top-0 z-50">
+      <div className="container mx-auto px-4">
+        <div className="flex h-16 items-center justify-between">
+          <Link href="/" className="flex items-center gap-3">
+            <Image src="/icon.svg" alt="ARSOUND" width={36} height={36} className="rounded-lg object-contain" />
+            <div className="flex flex-col">
+              <span className="text-xl font-black tracking-tight text-foreground">ARSOUND</span>
+              <span className="text-[9px] font-semibold text-muted-foreground -mt-0.5">ARGENTINA</span>
+            </div>
+          </Link>
 
-    return (
-      <header className="border-b border-border bg-background/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="container mx-auto px-4">
-          <div className="flex h-20 items-center justify-between">
-            <Link href="/" className="flex items-center gap-3">
-              <Image
-                src="/icon.svg"         // Cambialo por tu logo 
-                alt="ARSOUND"
-                width={40}
-                height={40}
-                className="rounded-lg object-contain"
-              />
-
-              <div className="flex flex-col">
-                <span className="text-2xl font-black tracking-tight text-foreground">ARSOUND</span>
-                <span className="text-[10px] font-medium text-muted-foreground -mt-1">ARGENTINA</span>
-              </div>
+          <nav className="hidden lg:flex items-center gap-6">
+            <Link
+              href="/"
+              className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Inicio
             </Link>
+            <Link
+              href="/#packs"
+              className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Explorar
+            </Link>
+            <Link
+              href="/producers"
+              className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Productores
+            </Link>
+          </nav>
 
-            <nav className="hidden lg:flex items-center gap-8">
-              <Link href="/" className="text-sm font-semibold text-foreground hover:text-primary transition-colors">
+          <div className="flex items-center gap-3">
+            {user && (
+              <Link href="/upload" className="hidden sm:block">
+                <Button
+                  variant="outline"
+                  className="gap-2 rounded-xl h-10 px-4 bg-transparent border-2 border-muted-foreground/30 text-foreground hover:border-primary hover:bg-primary/5 hover:text-foreground transition-all"
+                >
+                  <Upload className="h-4 w-4" />
+                  <span className="font-semibold">Subir Pack</span>
+                </Button>
+              </Link>
+            )}
+            {user ? (
+              <>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="hidden lg:flex focus:outline-none focus:ring-2 focus:ring-primary rounded-full transition-all hover:ring-2 hover:ring-primary/50">
+                      <UserAvatar
+                        avatarUrl={profile?.avatar_url}
+                        username={profile?.username}
+                        displayName={profile?.display_name}
+                        size="md"
+                      />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-64 rounded-2xl p-2">
+                    <DropdownMenuLabel className="p-3">
+                      <Link href="/profile" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                        <UserAvatar
+                          avatarUrl={profile?.avatar_url}
+                          username={profile?.username}
+                          displayName={profile?.display_name}
+                          size="md"
+                        />
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-foreground">
+                            {profile?.display_name || profile?.username || "Usuario"}
+                          </span>
+                          <span className="text-xs text-muted-foreground">Ver mi perfil</span>
+                        </div>
+                      </Link>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/statistics" className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer">
+                        <BarChart3 className="h-4 w-4 text-primary" />
+                        <span className="font-medium">Estadísticas</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/saved" className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer">
+                        <Heart className="h-4 w-4 text-red-500" />
+                        <span className="font-medium">Guardados</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/purchases" className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer">
+                        <ShoppingBag className="h-4 w-4 text-secondary" />
+                        <span className="font-medium">Mis compras</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href="/profile?tab=settings"
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer"
+                      >
+                        <Settings className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">Configuración</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link
+                        href="/plans"
+                        className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-primary"
+                      >
+                        <Zap className="h-4 w-4" />
+                        <span className="font-semibold">Mejorar plan</span>
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={handleLogout}
+                      className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-destructive focus:text-destructive"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      <span className="font-medium">Cerrar sesión</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            ) : (
+              <Link href="/login" className="hidden lg:block">
+                <Button className="rounded-xl h-10 px-6 font-semibold">Ingresar</Button>
+              </Link>
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden rounded-xl h-10 w-10"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          </div>
+        </div>
+
+        {mobileMenuOpen && (
+          <div className="lg:hidden py-4 space-y-3 border-t border-border">
+            <nav className="flex flex-col gap-1">
+              <Link
+                href="/"
+                className="text-sm font-semibold text-foreground hover:text-primary py-2.5 px-3 rounded-xl hover:bg-accent transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
                 Inicio
               </Link>
-              <Link href="/#packs" className="text-sm font-semibold text-foreground hover:text-primary transition-colors">
+              <Link
+                href="/#packs"
+                className="text-sm font-semibold text-foreground hover:text-primary py-2.5 px-3 rounded-xl hover:bg-accent transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
+              >
                 Explorar
               </Link>
               <Link
                 href="/producers"
-                className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
+                className="text-sm font-semibold text-foreground hover:text-primary py-2.5 px-3 rounded-xl hover:bg-accent transition-colors"
+                onClick={() => setMobileMenuOpen(false)}
               >
                 Productores
               </Link>
             </nav>
-
-            {/* Search Bar - Desktop */}
-
-            {/* Actions */}
-            <div className="flex items-center gap-2">
-              {user && (
-                <Link href="/upload" className="hidden sm:block">
-                  <Button
-                    className="gap-2 rounded-lg h-11 px-4 bg-transparent border border-neutral-700 text-foreground hover:bg-neutral-900/20"
-                  >
+            {user ? (
+              <>
+                <Link href="/upload" onClick={() => setMobileMenuOpen(false)}>
+                  <Button variant="outline" className="w-full gap-2 rounded-xl h-11 font-semibold bg-transparent">
                     <Upload className="h-4 w-4" />
                     Subir Pack
                   </Button>
                 </Link>
-              )}
-              {user ? (
-                <>
-                  <Link href="/profile" className="hidden lg:block">
-                    <Button variant="ghost" size="icon" className="rounded-full h-11 w-11">
-                      <User className="h-5 w-5" />
-                    </Button>
-                  </Link>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="hidden lg:block rounded-full h-11 w-11"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="h-5 w-5" />
+                <Link href="/profile" onClick={() => setMobileMenuOpen(false)}>
+                  <Button variant="outline" className="w-full gap-2 rounded-xl h-11 font-semibold bg-transparent">
+                    <User className="h-4 w-4" />
+                    Mi Perfil
                   </Button>
-                </>
-              ) : (
-                <Link href="/login" className="hidden lg:block">
-                  <Button className="rounded-full h-11 px-6">Ingresar</Button>
                 </Link>
-              )}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="lg:hidden rounded-full h-11 w-11"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              >
-                <Menu className="h-5 w-5" />
-              </Button>
-            </div>
+                <Link href="/statistics" onClick={() => setMobileMenuOpen(false)}>
+                  <Button variant="outline" className="w-full gap-2 rounded-xl h-11 font-semibold bg-transparent">
+                    <BarChart3 className="h-4 w-4" />
+                    Estadísticas
+                  </Button>
+                </Link>
+                <Button
+                  variant="outline"
+                  className="w-full gap-2 rounded-xl h-11 font-semibold text-destructive border-destructive/30 hover:bg-destructive/10 bg-transparent"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="h-4 w-4" />
+                  Cerrar Sesión
+                </Button>
+              </>
+            ) : (
+              <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+                <Button className="w-full rounded-xl h-11 font-semibold">Ingresar</Button>
+              </Link>
+            )}
           </div>
-
-          {mobileMenuOpen && (
-            <div className="lg:hidden py-6 space-y-4 border-t border-border">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input type="search" placeholder="Buscar packs..." className="pl-10 bg-accent rounded-full" />
-              </div>
-              <nav className="flex flex-col gap-1">
-                <Link
-                  href="/"
-                  className="text-sm font-semibold text-foreground hover:text-primary py-3 px-4 rounded-lg hover:bg-accent transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Inicio
-                </Link>
-                <Link
-                  href="/#packs"
-                  className="text-sm font-semibold text-foreground hover:text-primary py-3 px-4 rounded-lg hover:bg-accent transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Explorar
-                </Link>
-                <Link
-                  href="/producers"
-                  className="text-sm font-semibold text-foreground hover:text-primary py-3 px-4 rounded-lg hover:bg-accent transition-colors"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Productores
-                </Link>
-              </nav>
-              {user ? (
-                <>
-                  <Link href="/upload" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="w-full gap-2 rounded-full bg-secondary text-secondary-foreground hover:bg-secondary/90">
-                      <Upload className="h-4 w-4" />
-                      Subir Pack
-                    </Button>
-                  </Link>
-                  <Link href="/profile" onClick={() => setMobileMenuOpen(false)}>
-                    <Button className="w-full gap-2 rounded-full bg-transparent" variant="outline">
-                      <User className="h-4 w-4" />
-                      Mi Perfil
-                    </Button>
-                  </Link>
-                  <Button className="w-full gap-2 rounded-full bg-transparent" variant="outline" onClick={handleLogout}>
-                    <LogOut className="h-4 w-4" />
-                    Cerrar Sesión
-                  </Button>
-                </>
-              ) : (
-                <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
-                  <Button className="w-full rounded-full">Ingresar</Button>
-                </Link>
-              )}
-            </div>
-          )}
-        </div>
-      </header>
-    )
-  }
+        )}
+      </div>
+    </header>
+  )
+}

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card } from "@/components/ui/card"
 import { useState, useEffect } from "react"
-import { Filter, Search, SlidersHorizontal, Loader2 } from 'lucide-react'
+import { Filter, Search, SlidersHorizontal, Loader2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 
 const GENRES = [
@@ -108,32 +108,32 @@ export function PackGrid() {
   })
 
   return (
-    <section id="packs" className="py-20 bg-background">
+    <section id="packs" className="py-16 bg-background">
       <div className="container mx-auto px-4">
-        <div className="mb-8">
-          <h2 className="text-4xl md:text-5xl font-black text-foreground mb-3">Explorar Packs</h2>
-          <p className="text-lg text-muted-foreground">Encontrá el sonido perfecto para tu próximo hit</p>
+        <div className="mb-6">
+          <h2 className="text-3xl md:text-4xl font-black text-foreground mb-2">Explorar Packs</h2>
+          <p className="text-base text-muted-foreground">Encontrá el sonido perfecto para tu próximo hit</p>
         </div>
 
-        {/* Search & Filter Bar */}
-        <Card className="p-6 rounded-3xl border-border mb-8 bg-card">
-          <div className="space-y-4">
+        <Card className="p-4 rounded-2xl border mb-6">
+          <div className="space-y-3">
             {/* Search Input */}
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 type="search"
                 placeholder="Buscar por nombre, productor o género..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-12 h-14 text-base rounded-2xl border-border bg-background"
+                className="pl-10 h-11 text-sm rounded-xl border"
               />
             </div>
 
             {/* Filter Toggle Button - Mobile */}
             <Button
               variant="outline"
-              className="w-full lg:hidden gap-2 rounded-xl h-11 bg-transparent"
+              size="sm"
+              className="w-full lg:hidden gap-2 rounded-xl h-10 bg-transparent"
               onClick={() => setShowFilters(!showFilters)}
             >
               <SlidersHorizontal className="h-4 w-4" />
@@ -143,10 +143,12 @@ export function PackGrid() {
             {/* Filters Row */}
             <div className={`grid grid-cols-1 lg:grid-cols-4 gap-3 ${showFilters ? "block" : "hidden lg:grid"}`}>
               {/* Sort By */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Ordenar por</label>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">
+                  Ordenar por
+                </label>
                 <Select value={sortBy} onValueChange={setSortBy}>
-                  <SelectTrigger className="h-11 rounded-xl bg-background border-border">
+                  <SelectTrigger className="h-10 rounded-xl text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -159,12 +161,12 @@ export function PackGrid() {
               </div>
 
               {/* Price Range */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">
                   Rango de Precio
                 </label>
                 <Select value={priceRange} onValueChange={setPriceRange}>
-                  <SelectTrigger className="h-11 rounded-xl bg-background border-border">
+                  <SelectTrigger className="h-10 rounded-xl text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -177,10 +179,10 @@ export function PackGrid() {
               </div>
 
               {/* BPM Range */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide">BPM</label>
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">BPM</label>
                 <Select value={bpmRange} onValueChange={setBpmRange}>
-                  <SelectTrigger className="h-11 rounded-xl bg-background border-border">
+                  <SelectTrigger className="h-10 rounded-xl text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -194,13 +196,14 @@ export function PackGrid() {
               </div>
 
               {/* Clear Filters */}
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wide opacity-0 pointer-events-none">
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide opacity-0 pointer-events-none">
                   Acción
                 </label>
                 <Button
                   variant="outline"
-                  className="w-full h-11 rounded-xl bg-transparent"
+                  size="sm"
+                  className="w-full h-10 rounded-xl text-sm bg-transparent"
                   onClick={() => {
                     setSearchQuery("")
                     setSelectedGenre("Todos")
@@ -216,19 +219,19 @@ export function PackGrid() {
           </div>
         </Card>
 
-        <div className="mb-8">
-          <div className="flex items-center gap-2 mb-4">
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-3">
             <Filter className="h-4 w-4 text-primary" />
-            <span className="text-sm font-bold text-muted-foreground uppercase tracking-wide">Géneros</span>
+            <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Géneros</span>
           </div>
           <div className="flex flex-wrap gap-2">
             {GENRES.map((genre) => (
               <Button
                 key={genre}
                 variant={selectedGenre === genre ? "default" : "outline"}
-                size="lg"
+                size="sm"
                 onClick={() => setSelectedGenre(genre)}
-                className="rounded-full font-semibold"
+                className="rounded-full font-semibold text-xs h-8 px-3"
               >
                 {genre}
               </Button>
@@ -236,24 +239,23 @@ export function PackGrid() {
           </div>
         </div>
 
-        <div className="mb-6">
-          <p className="text-sm text-muted-foreground">
+        <div className="mb-4">
+          <p className="text-xs text-muted-foreground">
             Mostrando <span className="font-bold text-foreground">{filteredPacks.length}</span> packs
           </p>
         </div>
 
-        {/* Pack Grid */}
         {isLoading ? (
-          <div className="flex justify-center items-center py-20">
+          <div className="flex justify-center items-center py-16">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredPacks.length > 0 ? (
               filteredPacks.map((pack) => <PackCard key={pack.id} pack={pack} />)
             ) : (
-              <div className="col-span-full py-20 text-center">
-                <p className="text-xl text-muted-foreground mb-4">
+              <div className="col-span-full py-16 text-center">
+                <p className="text-lg text-muted-foreground mb-4">
                   {packs.length === 0
                     ? "Todavía no hay packs subidos. ¡Sé el primero en subir uno!"
                     : "No se encontraron packs con estos filtros"}
@@ -266,7 +268,7 @@ export function PackGrid() {
                     setPriceRange("todos")
                     setBpmRange("todos")
                   }}
-                  className="rounded-full"
+                  className="rounded-xl"
                 >
                   {packs.length === 0 ? "Subir mi Pack" : "Limpiar Filtros"}
                 </Button>
@@ -277,8 +279,8 @@ export function PackGrid() {
 
         {/* Load More */}
         {filteredPacks.length > 0 && (
-          <div className="flex justify-center mt-16">
-            <Button variant="outline" size="lg" className="rounded-full px-8 h-12 font-semibold bg-transparent">
+          <div className="flex justify-center mt-12">
+            <Button variant="outline" size="sm" className="rounded-xl px-6 h-10 font-semibold bg-transparent">
               Cargar más packs
             </Button>
           </div>
