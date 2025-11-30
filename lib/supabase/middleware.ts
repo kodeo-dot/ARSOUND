@@ -25,10 +25,12 @@ export async function updateSession(request: NextRequest) {
     },
   )
 
+  // Do not put code between createServerClient and supabase.auth.getUser()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Now we can safely use the user data for routing logic
   if (user) {
     const { data: profile } = await supabase
       .from("profiles")
