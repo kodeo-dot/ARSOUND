@@ -5,9 +5,23 @@ import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Check, Zap, Crown, Sparkles, RefreshCw, X, TrendingUp, FileArchive, DollarSign, Percent, Download, BarChart3, Star } from 'lucide-react'
+import {
+  Check,
+  Zap,
+  Crown,
+  Sparkles,
+  RefreshCw,
+  X,
+  TrendingUp,
+  FileArchive,
+  DollarSign,
+  Percent,
+  Download,
+  BarChart3,
+  Star,
+} from "lucide-react"
 import { useState, useEffect } from "react"
-import { createBrowserClient } from "@supabase/ssr"
+import { createClient } from "@/lib/supabase/client"
 import type { PlanType } from "@/lib/plans"
 import { PLAN_FEATURES } from "@/lib/plans"
 import { selectPlan } from "./actions"
@@ -26,10 +40,7 @@ export default function PlansPage() {
   const fetchCurrentPlan = async () => {
     try {
       setIsLoading(true)
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      )
+      const supabase = createClient()
 
       const {
         data: { user },
@@ -143,7 +154,7 @@ export default function PlansPage() {
     setIsProcessing(true)
     try {
       const result = await selectPlan(selectedPlan)
-      
+
       if (result?.success && result.init_point) {
         // Redirect to Mercado Pago checkout
         window.location.href = result.init_point

@@ -42,7 +42,12 @@ export function PackGrid() {
       setIsLoading(true)
       try {
         console.log("[v0] Fetching packs...")
-        let query = supabase.from("packs").select(`
+
+        const supabaseClient = createClient()
+
+        let query = supabaseClient
+          .from("packs")
+          .select(`
             *,
             profiles:user_id (
               username,
@@ -50,6 +55,7 @@ export function PackGrid() {
               avatar_url
             )
           `)
+          .eq("is_deleted", false)
 
         // Apply sorting
         if (sortBy === "recientes") {
@@ -66,20 +72,29 @@ export function PackGrid() {
 
         if (error) {
           console.error("[v0] Error fetching packs:", error)
+          console.error("[v0] Error details:", {
+            message: error.message,
+            hint: error.hint,
+            details: error.details,
+          })
+          setPacks([])
           return
         }
 
         console.log("[v0] Packs loaded successfully:", data?.length || 0)
-        setPacks(data || [])
+        const validPacks = (data || []).filter((pack) => pack.profiles !== null)
+        console.log("[v0] Valid packs (with profiles):", validPacks.length)
+        setPacks(validPacks)
       } catch (error) {
-        console.error("[v0] Error:", error)
+        console.error("[v0] Unexpected error:", error)
+        setPacks([])
       } finally {
         setIsLoading(false)
       }
     }
 
     fetchPacks()
-  }, [sortBy, supabase])
+  }, [sortBy])
 
   const filteredPacks = packs.filter((pack) => {
     const matchesGenre = selectedGenre === "Todos" || pack.genre === selectedGenre

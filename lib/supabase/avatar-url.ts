@@ -15,9 +15,13 @@ export function getAvatarUrl(avatarUrl: string | null | undefined): string {
     return avatarUrl
   }
 
-  // If it's a relative path, construct the full URL
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseUrl =
+    typeof window !== "undefined"
+      ? (window as any).__NEXT_PUBLIC_SUPABASE_URL__ || process.env.NEXT_PUBLIC_SUPABASE_URL
+      : process.env.NEXT_PUBLIC_SUPABASE_URL
+
   if (!supabaseUrl) {
+    console.warn("[v0] NEXT_PUBLIC_SUPABASE_URL not available for avatar URL construction")
     return "/diverse-avatars.png"
   }
 
@@ -31,16 +35,11 @@ export function getAvatarUrl(avatarUrl: string | null | undefined): string {
  * @param expiresIn - Expiration time in seconds (default 3600 = 1 hour)
  * @returns A signed URL or fallback
  */
-export async function getSignedAvatarUrl(
-  userId: string,
-  expiresIn: number = 3600
-): Promise<string> {
+export async function getSignedAvatarUrl(userId: string, expiresIn = 3600): Promise<string> {
   try {
     const supabase = createClient()
 
-    const { data, error } = await supabase.storage
-      .from("avatars")
-      .createSignedUrl(`${userId}`, expiresIn)
+    const { data, error } = await supabase.storage.from("avatars").createSignedUrl(`${userId}`, expiresIn)
 
     if (error || !data?.signedUrl) {
       return "/diverse-avatars.png"
