@@ -24,9 +24,7 @@ export async function POST(request: Request) {
     const paymentId = data.id
 
     const testMode = process.env.MERCADO_PAGO_TEST_MODE === "true"
-    const accessToken = testMode
-      ? process.env.MERCADO_PAGO_TEST_ACCESS_TOKEN
-      : process.env.MERCADO_PAGO_ACCESS_TOKEN
+    const accessToken = testMode ? process.env.MERCADO_PAGO_TEST_ACCESS_TOKEN : process.env.MERCADO_PAGO_ACCESS_TOKEN
 
     if (!accessToken) {
       console.error("[v0] Mercado Pago access token not configured")
@@ -73,12 +71,8 @@ export async function POST(request: Request) {
 
     if (metadata?.type === "pack_purchase") {
       console.log("[v0] Processing pack purchase...")
-      
-      const { data: pack } = await supabase
-        .from("packs")
-        .select("user_id, price")
-        .eq("id", metadata.pack_id)
-        .single()
+
+      const { data: pack } = await supabase.from("packs").select("user_id, price").eq("id", metadata.pack_id).single()
 
       if (!pack) {
         console.error("[v0] Pack not found:", metadata.pack_id)
@@ -152,6 +146,14 @@ export async function POST(request: Request) {
               discount: metadata.original_price ? metadata.original_price - metadata.final_price : undefined,
               purchaseCode: purchaseData?.[0]?.purchase_code || "N/A",
               downloadUrl: `${process.env.NEXT_PUBLIC_APP_URL}/pack/${metadata.pack_id}/download`,
+              transactionId: paymentId?.toString(),
+              purchaseDate: new Date().toLocaleDateString("es-AR", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
             })
 
             await sendBrevoEmail({
@@ -173,6 +175,14 @@ export async function POST(request: Request) {
               commission: metadata.commission_amount || 0,
               earnings: metadata.seller_earnings || 0,
               purchaseCode: purchaseData?.[0]?.purchase_code || "N/A",
+              transactionId: paymentId?.toString(),
+              purchaseDate: new Date().toLocaleDateString("es-AR", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              }),
             })
 
             await sendBrevoEmail({
@@ -193,16 +203,17 @@ export async function POST(request: Request) {
           console.error("[v0] Error sending notification emails:", emailError)
         }
 
-        const { error: eventError } = await supabase
-          .from("user_track_events")
-          .upsert({
+        const { error: eventError } = await supabase.from("user_track_events").upsert(
+          {
             user_id: metadata.buyer_id,
             track_id: metadata.pack_id,
             played: false,
             downloaded: true,
             purchased: true,
             liked: false,
-          }, { onConflict: 'user_id,track_id' })
+          },
+          { onConflict: "user_id,track_id" },
+        )
 
         if (!eventError) {
           console.log("[v0] User track event recorded")
@@ -227,16 +238,14 @@ export async function POST(request: Request) {
           console.log("[v0] Pack downloads_count updated to:", newDownloadCount)
         }
 
-        const { error: downloadError } = await supabase
-          .from("pack_downloads")
-          .insert({
-            user_id: metadata.buyer_id,
-            pack_id: metadata.pack_id,
-            downloaded_at: new Date().toISOString(),
-          })
+        const { error: downloadError } = await supabase.from("pack_downloads").insert({
+          user_id: metadata.buyer_id,
+          pack_id: metadata.pack_id,
+          downloaded_at: new Date().toISOString(),
+        })
 
         if (downloadError) {
-          console.log("[v0] Download record error:", downloadError.message)
+          console.error("[v0] Error creating download record:", downloadError.message)
         } else {
           console.log("[v0] Download record created successfully")
         }
@@ -286,6 +295,7 @@ export async function POST(request: Request) {
             amount: metadata.final_price,
             features: planFeatures,
             purchaseDate: new Date().toLocaleDateString("es-AR"),
+            transactionId: paymentId?.toString(),
           })
 
           await sendBrevoEmail({

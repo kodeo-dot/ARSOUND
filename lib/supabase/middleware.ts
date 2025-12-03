@@ -25,7 +25,27 @@ export async function updateSession(request: NextRequest) {
     },
   )
 
-  // Do not put code between createServerClient and supabase.auth.getUser()
+  try {
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession()
+
+    if (sessionError) {
+      console.error("[v0] Session error:", sessionError.message)
+      // Clear invalid session cookies
+      supabaseResponse.cookies.delete("sb-access-token")
+      supabaseResponse.cookies.delete("sb-refresh-token")
+    }
+
+    if (session) {
+      await supabase.auth.refreshSession()
+    }
+  } catch (error) {
+    console.error("[v0] Error refreshing session:", error)
+  }
+
+  // Get user after session refresh
   const {
     data: { user },
   } = await supabase.auth.getUser()

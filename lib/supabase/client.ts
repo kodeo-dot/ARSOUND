@@ -5,7 +5,59 @@ let client: SupabaseClient | undefined
 
 export function createClient() {
   if (!client) {
-    client = createBrowserClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error("[v0] Missing Supabase environment variables")
+      throw new Error("Supabase configuration is missing")
+    }
+
+    client = createBrowserClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: "pkce",
+        storage: {
+          getItem: (key) => {
+            if (typeof window === "undefined") return null
+            try {
+              return window.localStorage.getItem(key)
+            } catch (e) {
+              console.error("[v0] Error reading from localStorage:", e)
+              return null
+            }
+          },
+          setItem: (key, value) => {
+            if (typeof window === "undefined") return
+            try {
+              window.localStorage.setItem(key, value)
+            } catch (e) {
+              console.error("[v0] Error writing to localStorage:", e)
+            }
+          },
+          removeItem: (key) => {
+            if (typeof window === "undefined") return
+            try {
+              window.localStorage.removeItem(key)
+            } catch (e) {
+              console.error("[v0] Error removing from localStorage:", e)
+            }
+          },
+        },
+      },
+      global: {
+        headers: {
+          "x-application-name": "arsound",
+        },
+      },
+      realtime: {
+        params: {
+          eventsPerSecond: 2,
+        },
+      },
+    })
   }
   return client
 }

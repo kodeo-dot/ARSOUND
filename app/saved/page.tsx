@@ -67,7 +67,8 @@ export default function SavedPage() {
         .order("created_at", { ascending: false })
 
       if (!error && likes) {
-        setLikedPacks(likes as any)
+        const validLikes = likes.filter((like: any) => like.packs && !like.packs.is_deleted)
+        setLikedPacks(validLikes as any)
       }
     } catch (error) {
       console.error("Error loading saved packs:", error)
@@ -110,10 +111,6 @@ export default function SavedPage() {
     )
   }
 
-  const existingPacks = likedPacks.filter(
-    (like) => like.pack !== null && like.pack !== undefined && !like.pack.is_deleted,
-  )
-
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
@@ -129,19 +126,11 @@ export default function SavedPage() {
           <p className="text-muted-foreground">Tus packs favoritos marcados con Me gusta</p>
         </div>
 
-        {existingPacks.length === 0 ? (
+        {likedPacks.length === 0 ? (
           <Card className="p-12 text-center rounded-3xl border-2 border-dashed border-border">
             <Heart className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-            <h3 className="text-xl font-bold text-foreground mb-2">
-              {likedPacks.length > 0
-                ? "Los packs que marcaste se han eliminado"
-                : "Aún no tenés packs guardados en Me gusta"}
-            </h3>
-            <p className="text-muted-foreground mb-6">
-              {likedPacks.length > 0
-                ? "Algunos packs ya no están disponibles, pero podés explorar más"
-                : "Explorá packs y guardá tus favoritos para verlos acá"}
-            </p>
+            <h3 className="text-xl font-bold text-foreground mb-2">Aún no tenés packs guardados en Me gusta</h3>
+            <p className="text-muted-foreground mb-6">Explorá packs y guardá tus favoritos para verlos acá</p>
             <Link href="/">
               <Button className="gap-2 rounded-full h-12 px-8">
                 <Package className="h-4 w-4" />
@@ -151,7 +140,7 @@ export default function SavedPage() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {existingPacks.map((like) => {
+            {likedPacks.map((like) => {
               const pack = like.pack
               if (!pack) return null
 

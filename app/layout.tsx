@@ -10,7 +10,8 @@ const _geistMono = Geist_Mono({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "ARSOUND - El marketplace de samples de Argentina",
-  description: "El marketplace de samples de Argentina",
+  description:
+    "Comprá y vendé samples, loops y packs de audio profesionales. La plataforma líder para productores musicales en Argentina.",
   generator: "mixflp",
   icons: {
     icon: [
@@ -29,6 +30,29 @@ export const metadata: Metadata = {
     ],
     apple: "/apple-icon.png",
   },
+  keywords: ["samples", "loops", "audio", "producción musical", "Argentina", "beats", "sonidos"],
+  authors: [{ name: "ARSOUND" }],
+  creator: "ARSOUND",
+  publisher: "ARSOUND",
+  openGraph: {
+    type: "website",
+    locale: "es_AR",
+    url: "https://arsound.com.ar",
+    title: "ARSOUND - El marketplace de samples de Argentina",
+    description: "Comprá y vendé samples, loops y packs de audio profesionales",
+    siteName: "ARSOUND",
+  },
+}
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+  ],
 }
 
 export default function RootLayout({
@@ -37,7 +61,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="es">
       <body className={`${inter.className} font-sans antialiased`}>
         {children}
         <Analytics />

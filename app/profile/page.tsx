@@ -9,37 +9,12 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-  MapPin,
-  Calendar,
-  Package,
-  Loader2,
-  Upload,
-  TrendingUp,
-  Heart,
-  Play,
-  DollarSign,
-  Users,
-  Zap,
-} from "lucide-react"
+import { MapPin, Calendar, Package, Upload } from "lucide-react"
 import Link from "next/link"
-// import { AvatarUpload } from "@/components/avatar-upload" // Removed AvatarUpload component
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  Cell,
-} from "recharts"
 import type { PlanType } from "@/lib/plans"
 import { ProfileLimitsCard } from "@/components/profile-limits-card"
 // Removed ProfilePurchasesTab import
-import { StudioPlusAnalytics } from "@/components/studio-plus-analytics"
+// import { StudioPlusAnalytics } from "@/components/studio-plus-analytics"
 import { BlockWarningBanner } from "@/components/block-warning-banner"
 import { useBlockStatus } from "@/hooks/use-block-status"
 
@@ -96,7 +71,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (profile?.id) {
       loadUserPacks()
-      loadStatistics()
+      // Removed loadStatistics call
     }
   }, [profile?.id])
 
@@ -165,72 +140,7 @@ export default function ProfilePage() {
     }
   }
 
-  async function loadStatistics() {
-    try {
-      setStatsLoading(true)
-
-      if (!profile?.id) {
-        setStatsLoading(false)
-        return
-      }
-
-      const { data: packs, error: packsError } = await supabase
-        .from("packs")
-        .select(`
-          id,
-          title,
-          likes_count,
-          downloads_count
-        `)
-        .eq("user_id", profile.id)
-
-      if (!packsError && packs && packs.length > 0) {
-        setPackStats(
-          packs.map((pack: any) => ({
-            name: pack.title.length > 20 ? pack.title.substring(0, 20) + "..." : pack.title,
-            sales: pack.downloads_count || 0,
-            likes: pack.likes_count || 0,
-          })),
-        )
-
-        const thirtyDaysAgo = new Date()
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-
-        const packIds = packs.map((p: any) => p.id)
-
-        if (packIds.length > 0) {
-          const { data: plays, error: playsError } = await supabase
-            .from("pack_plays")
-            .select("played_at, pack_id")
-            .in("pack_id", packIds)
-            .gte("played_at", thirtyDaysAgo.toISOString())
-            .order("played_at", { ascending: true })
-
-          if (!playsError && plays && plays.length > 0) {
-            const playsByWeek: any = {}
-            plays.forEach((play: any) => {
-              const date = new Date(play.played_at)
-              const weekStart = new Date(date)
-              weekStart.setDate(date.getDay() === 0 ? date.getDate() - 6 : date.getDay() - 1) // Adjust for Sunday being day 0
-              const weekKey = weekStart.toLocaleDateString("es-AR", { month: "short", day: "numeric" })
-              playsByWeek[weekKey] = (playsByWeek[weekKey] || 0) + 1
-            })
-
-            const playsArray = Object.entries(playsByWeek).map(([week, count]) => ({
-              week,
-              plays: count,
-            }))
-
-            setFollowerStats(playsArray)
-          }
-        }
-      }
-    } catch (error) {
-      console.error("Error loading statistics:", error)
-    } finally {
-      setStatsLoading(false)
-    }
-  }
+  // Removed loadStatistics function
 
   function getAvatarInitials() {
     const username = profile?.username || user?.email || "US"
@@ -379,12 +289,6 @@ export default function ProfilePage() {
                 >
                   Packs ({profile?.packs_count || 0})
                 </TabsTrigger>
-                <TabsTrigger
-                  value="stats"
-                  className="rounded-full px-3 md:px-6 py-2 md:py-3 text-xs md:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground font-semibold whitespace-nowrap flex-shrink-0"
-                >
-                  Estadísticas
-                </TabsTrigger>
               </TabsList>
 
               <TabsContent value="packs">
@@ -463,177 +367,6 @@ export default function ProfilePage() {
                       </Button>
                     </Link>
                   </div>
-                )}
-              </TabsContent>
-
-              <TabsContent value="stats">
-                {statsLoading ? (
-                  <Card className="p-12 rounded-3xl border-border">
-                    <div className="flex items-center justify-center">
-                      <Loader2 className="h-12 w-12 animate-spin text-primary" />
-                    </div>
-                  </Card>
-                ) : (
-                  <>
-                    {showUpgradeCTA && (
-                      <Card className="p-8 rounded-3xl border-2 border-primary/30 bg-primary/5 mb-8">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h2 className="text-2xl font-black text-foreground mb-2">Estadísticas Completas</h2>
-                            <p className="text-muted-foreground">
-                              Mejorá tu plan para acceder a gráficos interactivos y más métricas detalladas.
-                            </p>
-                          </div>
-                          <Link href="/plans">
-                            <Button className="gap-2 rounded-full h-12 px-8 bg-primary hover:bg-primary/90">
-                              <Zap className="h-4 w-4" />
-                              Mejorar Plan
-                            </Button>
-                          </Link>
-                        </div>
-                      </Card>
-                    )}
-
-                    {canShowGraphs && profile?.id ? (
-                      <StudioPlusAnalytics userId={profile.id} />
-                    ) : (
-                      <>
-                        {/* Statistics Cards - Free: 2 cards, De 0 a Hit+: 4 cards */}
-                        <div
-                          className={`grid grid-cols-1 ${canShow4Cards ? "md:grid-cols-2 lg:grid-cols-4" : "md:grid-cols-2"} gap-4`}
-                        >
-                          <Card className="p-6 rounded-3xl border-border bg-gradient-to-br from-primary/10 to-primary/5">
-                            <div className="flex items-center justify-between mb-2">
-                              <DollarSign className="h-8 w-8 text-primary" />
-                              <TrendingUp className="h-5 w-5 text-primary/60" />
-                            </div>
-                            <div className="text-3xl font-black text-foreground">
-                              ${formatPrice(profile?.total_sales || 0)}
-                            </div>
-                            <div className="text-sm text-muted-foreground font-semibold mt-1">Total de Ventas</div>
-                          </Card>
-
-                          <Card className="p-6 rounded-3xl border-border bg-gradient-to-br from-secondary/10 to-secondary/5">
-                            <div className="flex items-center justify-between mb-2">
-                              <Play className="h-8 w-8 text-secondary" />
-                              <TrendingUp className="h-5 w-5 text-secondary/60" />
-                            </div>
-                            <div className="text-3xl font-black text-foreground">{profile?.total_plays_count || 0}</div>
-                            <div className="text-sm text-muted-foreground font-semibold mt-1">Reproducciones</div>
-                          </Card>
-
-                          {canShow4Cards && (
-                            <>
-                              <Card className="p-6 rounded-3xl border-border bg-gradient-to-br from-red-500/10 to-red-500/5">
-                                <div className="flex items-center justify-between mb-2">
-                                  <Heart className="h-8 w-8 text-red-500" />
-                                  <TrendingUp className="h-5 w-5 text-red-500/60" />
-                                </div>
-                                <div className="text-3xl font-black text-foreground">
-                                  {profile?.total_likes_received || 0}
-                                </div>
-                                <div className="text-sm text-muted-foreground font-semibold mt-1">Likes Recibidos</div>
-                              </Card>
-
-                              <Card className="p-6 rounded-3xl border-border bg-gradient-to-br from-blue-500/10 to-blue-500/5">
-                                <div className="flex items-center justify-between mb-2">
-                                  <Users className="h-8 w-8 text-blue-500" />
-                                  <TrendingUp className="h-5 w-5 text-blue-500/60" />
-                                </div>
-                                <div className="text-3xl font-black text-foreground">
-                                  {profile?.followers_count || 0}
-                                </div>
-                                <div className="text-sm text-muted-foreground font-semibold mt-1">Seguidores</div>
-                              </Card>
-                            </>
-                          )}
-                        </div>
-
-                        {/* Graphs - Only for Studio Plus */}
-                        {canShowGraphs && packStats.length > 0 && (
-                          <>
-                            <Card className="p-6 rounded-3xl border-border">
-                              <div className="flex items-center gap-3 mb-6">
-                                <Package className="h-6 w-6 text-primary" />
-                                <h3 className="text-2xl font-black text-foreground">Ventas por Pack</h3>
-                              </div>
-                              <ResponsiveContainer width="100%" height={300}>
-                                <BarChart data={packStats}>
-                                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                                  <XAxis
-                                    dataKey="name"
-                                    stroke="hsl(var(--muted-foreground))"
-                                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                                  />
-                                  <YAxis
-                                    stroke="hsl(var(--muted-foreground))"
-                                    tick={{ fill: "hsl(var(--muted-foreground))" }}
-                                  />
-                                  <Tooltip
-                                    contentStyle={{
-                                      backgroundColor: "hsl(var(--card))",
-                                      border: "1px solid hsl(var(--border))",
-                                      borderRadius: "12px",
-                                    }}
-                                  />
-                                  <Bar dataKey="sales" fill="hsl(var(--primary))" radius={[8, 8, 0, 0]}>
-                                    {packStats.map((entry: any, index: number) => (
-                                      <Cell key={`cell-${index}`} fill={`hsl(var(--primary))`} />
-                                    ))}
-                                  </Bar>
-                                </BarChart>
-                              </ResponsiveContainer>
-                            </Card>
-
-                            <Card className="p-6 rounded-3xl border-border">
-                              <div className="flex items-center gap-3 mb-6">
-                                <Heart className="h-6 w-6 text-red-500" />
-                                <h3 className="text-2xl font-black text-foreground">Reproducciones</h3>
-                              </div>
-                              <ResponsiveContainer width="100%" height={300}>
-                                <LineChart data={followerStats}>
-                                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                                  <XAxis
-                                    dataKey="week"
-                                    stroke="hsl(var(--muted-foreground))"
-                                    tick={{ fill: "hsl(var(--muted-foreground))" }}
-                                  />
-                                  <YAxis
-                                    stroke="hsl(var(--muted-foreground))"
-                                    tick={{ fill: "hsl(var(--muted-foreground))" }}
-                                  />
-                                  <Tooltip
-                                    contentStyle={{
-                                      backgroundColor: "hsl(var(--card))",
-                                      border: "1px solid hsl(var(--border))",
-                                      borderRadius: "12px",
-                                    }}
-                                  />
-                                  <Line
-                                    type="monotone"
-                                    dataKey="plays"
-                                    stroke="hsl(var(--secondary))"
-                                    strokeWidth={3}
-                                    dot={{ fill: "hsl(var(--secondary))", r: 6 }}
-                                  />
-                                </LineChart>
-                              </ResponsiveContainer>
-                            </Card>
-                          </>
-                        )}
-                      </>
-                    )}
-
-                    {packStats.length === 0 && followerStats.length === 0 && (
-                      <Card className="p-12 text-center rounded-3xl border-border">
-                        <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-                        <h3 className="text-xl font-bold text-foreground mb-2">
-                          Todavía no hay estadísticas disponibles
-                        </h3>
-                        <p className="text-muted-foreground">Subí packs y compartí tu perfil para ver tus métricas.</p>
-                      </Card>
-                    )}
-                  </>
                 )}
               </TabsContent>
             </Tabs>
