@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { Menu, Upload, LogOut, BarChart3, Heart, ShoppingBag, Settings, Zap } from "lucide-react"
+import { Menu, Upload, LogOut, BarChart3, Heart, ShoppingBag, Settings, Zap, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -15,7 +15,6 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
-import { UserAvatar } from "@/components/user-avatar"
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -31,7 +30,7 @@ export function Header() {
       if (user) {
         const { data: profileData } = await supabase
           .from("profiles")
-          .select("username, avatar_url, display_name")
+          .select("username, display_name")
           .eq("id", user.id)
           .single()
         setProfile(profileData)
@@ -45,7 +44,7 @@ export function Header() {
       if (session?.user) {
         const { data: profileData } = await supabase
           .from("profiles")
-          .select("username, avatar_url, display_name")
+          .select("username, display_name")
           .eq("id", session.user.id)
           .single()
         setProfile(profileData)
@@ -109,28 +108,25 @@ export function Header() {
                 </Button>
               </Link>
             )}
+
             {user ? (
               <>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button className="hidden lg:flex focus:outline-none focus:ring-2 focus:ring-primary rounded-full transition-all hover:ring-2 hover:ring-primary/50">
-                      <UserAvatar
-                        avatarUrl={profile?.avatar_url}
-                        username={profile?.username}
-                        displayName={profile?.display_name}
-                        size="md"
-                      />
+                      {/* ICONO DEFAULT EN VEZ DE AVATAR */}
+                      <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center">
+                        <User className="w-5 h-5 text-muted-foreground" />
+                      </div>
                     </button>
                   </DropdownMenuTrigger>
+
                   <DropdownMenuContent align="end" className="w-64 rounded-2xl p-2">
                     <DropdownMenuLabel className="p-3">
                       <Link href="/profile" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                        <UserAvatar
-                          avatarUrl={profile?.avatar_url}
-                          username={profile?.username}
-                          displayName={profile?.display_name}
-                          size="md"
-                        />
+                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                          <User className="w-5 h-5 text-muted-foreground" />
+                        </div>
                         <div className="flex flex-col">
                           <span className="font-semibold text-foreground">
                             {profile?.display_name || profile?.username || "Usuario"}
@@ -139,45 +135,51 @@ export function Header() {
                         </div>
                       </Link>
                     </DropdownMenuLabel>
+
                     <DropdownMenuSeparator />
+
                     <DropdownMenuItem asChild>
-                      <Link href="/statistics" className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer">
+                      <Link href="/statistics" className="flex items-center gap-3 px-3 py-2 rounded-lg">
                         <BarChart3 className="h-4 w-4 text-primary" />
                         <span className="font-medium">Estadísticas</span>
                       </Link>
                     </DropdownMenuItem>
+
                     <DropdownMenuItem asChild>
-                      <Link href="/saved" className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer">
+                      <Link href="/saved" className="flex items-center gap-3 px-3 py-2 rounded-lg">
                         <Heart className="h-4 w-4 text-red-500" />
                         <span className="font-medium">Guardados</span>
                       </Link>
                     </DropdownMenuItem>
+
                     <DropdownMenuItem asChild>
-                      <Link href="/purchases" className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer">
+                      <Link href="/purchases" className="flex items-center gap-3 px-3 py-2 rounded-lg">
                         <ShoppingBag className="h-4 w-4 text-secondary" />
                         <span className="font-medium">Mis compras</span>
                       </Link>
                     </DropdownMenuItem>
+
                     <DropdownMenuItem asChild>
-                      <Link href="/settings" className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer">
+                      <Link href="/settings" className="flex items-center gap-3 px-3 py-2 rounded-lg">
                         <Settings className="h-4 w-4 text-muted-foreground" />
                         <span className="font-medium">Configuración</span>
                       </Link>
                     </DropdownMenuItem>
+
                     <DropdownMenuSeparator />
+
                     <DropdownMenuItem asChild>
-                      <Link
-                        href="/plans"
-                        className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-primary"
-                      >
+                      <Link href="/plans" className="flex items-center gap-3 px-3 py-2 rounded-lg text-primary">
                         <Zap className="h-4 w-4" />
                         <span className="font-semibold">Mejorar plan</span>
                       </Link>
                     </DropdownMenuItem>
+
                     <DropdownMenuSeparator />
+
                     <DropdownMenuItem
                       onClick={handleLogout}
-                      className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-destructive focus:text-destructive"
+                      className="flex items-center gap-3 px-3 py-2 rounded-lg cursor-pointer text-destructive"
                     >
                       <LogOut className="h-4 w-4" />
                       <span className="font-medium">Cerrar sesión</span>
@@ -190,6 +192,7 @@ export function Header() {
                 <Button className="rounded-xl h-10 px-6 font-semibold">Ingresar</Button>
               </Link>
             )}
+
             <Button
               variant="ghost"
               size="icon"
@@ -201,44 +204,31 @@ export function Header() {
           </div>
         </div>
 
+        {/* MOBILE MENU */}
         {mobileMenuOpen && (
           <div className="lg:hidden py-4 space-y-3 border-t border-border">
             <nav className="flex flex-col gap-1">
-              <Link
-                href="/"
-                className="text-sm font-semibold text-foreground hover:text-primary py-2.5 px-3 rounded-xl hover:bg-accent transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
+              <Link href="/" onClick={() => setMobileMenuOpen(false)} className="nav-mob">
                 Inicio
               </Link>
-              <Link
-                href="/#packs"
-                className="text-sm font-semibold text-foreground hover:text-primary py-2.5 px-3 rounded-xl hover:bg-accent transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
+              <Link href="/#packs" onClick={() => setMobileMenuOpen(false)} className="nav-mob">
                 Explorar
               </Link>
-              <Link
-                href="/producers"
-                className="text-sm font-semibold text-foreground hover:text-primary py-2.5 px-3 rounded-xl hover:bg-accent transition-colors"
-                onClick={() => setMobileMenuOpen(false)}
-              >
+              <Link href="/producers" onClick={() => setMobileMenuOpen(false)} className="nav-mob">
                 Productores
               </Link>
             </nav>
+
             {user ? (
               <>
-                <div className="pt-2 border-t border-border">
+                <div className="pt-2 border-t border-border mb-2">
                   <Link href="/profile" onClick={() => setMobileMenuOpen(false)}>
-                    <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-accent transition-colors mb-2">
-                      <UserAvatar
-                        avatarUrl={profile?.avatar_url}
-                        username={profile?.username}
-                        displayName={profile?.display_name}
-                        size="md"
-                      />
+                    <div className="flex items-center gap-3 p-3 rounded-xl hover:bg-accent transition">
+                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                        <User className="w-6 h-6 text-muted-foreground" />
+                      </div>
                       <div className="flex flex-col">
-                        <span className="font-semibold text-foreground text-sm">
+                        <span className="font-semibold text-sm">
                           {profile?.display_name || profile?.username || "Usuario"}
                         </span>
                         <span className="text-xs text-muted-foreground">Ver mi perfil</span>
@@ -246,67 +236,56 @@ export function Header() {
                     </div>
                   </Link>
                 </div>
+
                 <Link href="/upload" onClick={() => setMobileMenuOpen(false)}>
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2 rounded-xl h-11 font-semibold bg-transparent justify-start"
-                  >
+                  <Button variant="outline" className="btn-mob">
                     <Upload className="h-4 w-4" />
                     Subir Pack
                   </Button>
                 </Link>
+
                 <Link href="/statistics" onClick={() => setMobileMenuOpen(false)}>
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2 rounded-xl h-11 font-semibold bg-transparent justify-start"
-                  >
+                  <Button variant="outline" className="btn-mob">
                     <BarChart3 className="h-4 w-4 text-primary" />
                     Estadísticas
                   </Button>
                 </Link>
+
                 <Link href="/saved" onClick={() => setMobileMenuOpen(false)}>
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2 rounded-xl h-11 font-semibold bg-transparent justify-start"
-                  >
+                  <Button variant="outline" className="btn-mob">
                     <Heart className="h-4 w-4 text-red-500" />
                     Guardados
                   </Button>
                 </Link>
+
                 <Link href="/purchases" onClick={() => setMobileMenuOpen(false)}>
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2 rounded-xl h-11 font-semibold bg-transparent justify-start"
-                  >
+                  <Button variant="outline" className="btn-mob">
                     <ShoppingBag className="h-4 w-4 text-secondary" />
                     Mis compras
                   </Button>
                 </Link>
+
                 <Link href="/settings" onClick={() => setMobileMenuOpen(false)}>
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2 rounded-xl h-11 font-semibold bg-transparent justify-start"
-                  >
+                  <Button variant="outline" className="btn-mob">
                     <Settings className="h-4 w-4 text-muted-foreground" />
                     Configuración
                   </Button>
                 </Link>
+
                 <Link href="/plans" onClick={() => setMobileMenuOpen(false)}>
-                  <Button
-                    variant="outline"
-                    className="w-full gap-2 rounded-xl h-11 font-semibold bg-transparent justify-start text-primary border-primary/30 hover:bg-primary/5"
-                  >
+                  <Button variant="outline" className="btn-mob text-primary border-primary/30 hover:bg-primary/5">
                     <Zap className="h-4 w-4" />
                     Mejorar plan
                   </Button>
                 </Link>
+
                 <Button
                   variant="outline"
-                  className="w-full gap-2 rounded-xl h-11 font-semibold text-destructive border-destructive/30 hover:bg-destructive/10 bg-transparent justify-start"
+                  className="btn-mob text-destructive border-destructive/30 hover:bg-destructive/10"
                   onClick={handleLogout}
                 >
                   <LogOut className="h-4 w-4" />
-                  Cerrar Sesión
+                  Cerrar sesión
                 </Button>
               </>
             ) : (
