@@ -1,4 +1,4 @@
-import { createBrowserClient } from "@supabase/ssr";
+import { createBrowserClient as _createBrowserClient } from "@supabase/ssr";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 let client: SupabaseClient | undefined;
@@ -13,13 +13,12 @@ export function createClient() {
       throw new Error("Supabase configuration is missing");
     }
 
-    client = createBrowserClient(supabaseUrl, supabaseAnonKey, {
+    client = _createBrowserClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: true,
         flowType: "pkce",
-        // ❗ No custom storage — let Supabase use IndexedDB!
       },
       global: {
         headers: {
@@ -36,3 +35,6 @@ export function createClient() {
 
   return client;
 }
+
+// ⬅️ Esto repara Vercel
+export { createClient as createBrowserClient };
