@@ -1,16 +1,16 @@
-import { createBrowserClient } from "@supabase/ssr"
-import type { SupabaseClient } from "@supabase/supabase-js"
+import { createBrowserClient } from "@supabase/ssr";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-let client: SupabaseClient | undefined
+let client: SupabaseClient | undefined;
 
 export function createClient() {
   if (!client) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseAnonKey) {
-      console.error("[v0] Missing Supabase environment variables")
-      throw new Error("Supabase configuration is missing")
+      console.error("[ARSOUND] Missing Supabase environment variables");
+      throw new Error("Supabase configuration is missing");
     }
 
     client = createBrowserClient(supabaseUrl, supabaseAnonKey, {
@@ -19,33 +19,7 @@ export function createClient() {
         autoRefreshToken: true,
         detectSessionInUrl: true,
         flowType: "pkce",
-        storage: {
-          getItem: (key) => {
-            if (typeof window === "undefined") return null
-            try {
-              return window.localStorage.getItem(key)
-            } catch (e) {
-              console.error("[v0] Error reading from localStorage:", e)
-              return null
-            }
-          },
-          setItem: (key, value) => {
-            if (typeof window === "undefined") return
-            try {
-              window.localStorage.setItem(key, value)
-            } catch (e) {
-              console.error("[v0] Error writing to localStorage:", e)
-            }
-          },
-          removeItem: (key) => {
-            if (typeof window === "undefined") return
-            try {
-              window.localStorage.removeItem(key)
-            } catch (e) {
-              console.error("[v0] Error removing from localStorage:", e)
-            }
-          },
-        },
+        // ❗ No custom storage — let Supabase use IndexedDB!
       },
       global: {
         headers: {
@@ -57,9 +31,8 @@ export function createClient() {
           eventsPerSecond: 2,
         },
       },
-    })
+    });
   }
-  return client
-}
 
-export { createClient as createBrowserClient }
+  return client;
+}
