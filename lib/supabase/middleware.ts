@@ -6,24 +6,30 @@ export async function updateSession(request: NextRequest) {
     request,
   })
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          supabaseResponse = NextResponse.next({
-            request,
-          })
-          cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options))
-        },
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll()
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+        supabaseResponse = NextResponse.next({
+          request,
+        })
+        cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options))
       },
     },
-  )
+    global: {
+      headers: {
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`,
+        "x-application-name": "arsound",
+      },
+    },
+  })
 
   try {
     const {
@@ -32,7 +38,7 @@ export async function updateSession(request: NextRequest) {
     } = await supabase.auth.getSession()
 
     if (sessionError) {
-      console.error("[v0] Session error:", sessionError.message)
+      console.error("[ARSOUND] Session error:", sessionError.message)
       // Clear invalid session cookies
       supabaseResponse.cookies.delete("sb-access-token")
       supabaseResponse.cookies.delete("sb-refresh-token")
@@ -42,7 +48,7 @@ export async function updateSession(request: NextRequest) {
       await supabase.auth.refreshSession()
     }
   } catch (error) {
-    console.error("[v0] Error refreshing session:", error)
+    console.error("[ARSOUND] Error refreshing session:", error)
   }
 
   // Get user after session refresh

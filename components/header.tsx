@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { createClient } from "@/lib/supabase/client"
+import { createClient, clearInvalidSession } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { UserAvatar } from "@/components/user-avatar"
 
@@ -24,26 +24,68 @@ export function Header() {
   const router = useRouter()
 
   useEffect(() => {
-    const supabase = createClient()
+    let supabase: ReturnType<typeof createClient>
 
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      setUser(user)
-      if (user) {
-        const { data: profileData } = await supabase
-          .from("profiles")
-          .select("username, avatar_url, display_name")
-          .eq("id", user.id)
-          .single()
-        setProfile(profileData)
+    const loadUserAndProfile = async () => {
+      try {
+        supabase = createClient()
+
+        let userData
+        try {
+          const result = await supabase.auth.getUser()
+          userData = result.data?.user
+
+          // Check for JWT error
+          if (
+            result.error &&
+            (result.error.message?.includes("invalid claim") ||
+              result.error.message?.includes("bad_jwt") ||
+              result.error.message?.includes("missing sub claim"))
+          ) {
+            console.error("[ARSOUND] JWT error detected, clearing session")
+            await clearInvalidSession()
+            // Don't reload immediately, just set state to null
+            setUser(null)
+            setProfile(null)
+            return
+          }
+        } catch (error: any) {
+          console.error("[ARSOUND] Error getting user:", error)
+          if (
+            error?.message?.includes("invalid claim") ||
+            error?.message?.includes("bad_jwt") ||
+            error?.message?.includes("missing sub claim")
+          ) {
+            await clearInvalidSession()
+            setUser(null)
+            setProfile(null)
+            return
+          }
+        }
+
+        setUser(userData || null)
+
+        if (userData) {
+          const { data: profileData } = await supabase
+            .from("profiles")
+            .select("username, avatar_url, display_name")
+            .eq("id", userData.id)
+            .single()
+          setProfile(profileData)
+        }
+      } catch (error: any) {
+        console.error("[ARSOUND] Unexpected error loading user:", error)
+        setUser(null)
+        setProfile(null)
       }
-    })
+    }
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    loadUserAndProfile()
+
+    const subscription = createClient().auth.onAuthStateChange(async (_event, session) => {
       setUser(session?.user ?? null)
       if (session?.user) {
-        const { data: profileData } = await supabase
+        const { data: profileData } = await createClient()
           .from("profiles")
           .select("username, avatar_url, display_name")
           .eq("id", session.user.id)
@@ -54,12 +96,13 @@ export function Header() {
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => subscription.data.subscription.unsubscribe()
   }, [])
 
   const handleLogout = async () => {
     const supabase = createClient()
     await supabase.auth.signOut()
+    await clearInvalidSession()
     router.push("/")
     router.refresh()
   }
