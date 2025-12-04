@@ -22,6 +22,7 @@ export async function POST(request: Request) {
       title,
       description,
       genre,
+      subgenre,
       bpm,
       price,
       tags,
@@ -34,11 +35,12 @@ export async function POST(request: Request) {
       discountType,
     } = body
 
-    if (!title || !description || !genre || price === undefined || !file_url) {
+    if (!title || !description || !genre || !subgenre || price === undefined || !file_url) {
       const missingFields = []
       if (!title) missingFields.push("title")
       if (!description) missingFields.push("description")
       if (!genre) missingFields.push("genre")
+      if (!subgenre) missingFields.push("subgenre")
       if (price === undefined) missingFields.push("price")
       if (!file_url) missingFields.push("file_url")
 
@@ -224,6 +226,7 @@ export async function POST(request: Request) {
         title,
         description,
         genre,
+        subgenre,
         bpm: bpm || null,
         price: priceNum,
         cover_image_url: cover_image_url || null,

@@ -8,22 +8,7 @@ import { Card } from "@/components/ui/card"
 import { useState, useEffect } from "react"
 import { Filter, Search, SlidersHorizontal, Loader2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
-
-const GENRES = [
-  "Todos",
-  "RKT",
-  "TRAP",
-  "REGGAETON",
-  "CUMBIA",
-  "CUMBIA VILLERA",
-  "DRILL",
-  "CUARTETO",
-  "DANCEHALL",
-  "LATIN URBANO",
-  "AFROTRAP",
-  "HIP HOP",
-  "DEMBOW",
-]
+import { GENRES } from "@/lib/genres"
 
 export function PackGrid() {
   const [packs, setPacks] = useState<any[]>([])
@@ -53,7 +38,6 @@ export function PackGrid() {
           `)
           .eq("is_deleted", false)
 
-        // Apply sorting
         if (sortBy === "recientes") {
           query = query.order("created_at", { ascending: false })
         } else if (sortBy === "populares") {
@@ -92,6 +76,7 @@ export function PackGrid() {
       pack.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       pack.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       pack.genre?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      pack.subgenre?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       pack.profiles?.username?.toLowerCase().includes(searchQuery.toLowerCase())
 
     const matchesPrice =

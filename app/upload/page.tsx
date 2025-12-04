@@ -36,6 +36,7 @@ import { BlockWarningBanner } from "@/components/block-warning-banner"
 import { useBlockStatus } from "@/hooks/use-block-status"
 import Link from "next/link"
 import { Switch } from "@/components/ui/switch"
+import { GENRES, getSubgenres } from "@/lib/genres"
 
 const ALL_PRICE_OPTIONS = Array.from({ length: 14 }, (_, i) => i * 5000) // 0, 5000, 10000... 65000
 const ALL_DISCOUNT_OPTIONS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
@@ -66,6 +67,7 @@ export default function UploadPage() {
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [genre, setGenre] = useState("")
+  const [subgenre, setSubgenre] = useState("")
   const [bpmRange, setBpmRange] = useState("")
   const [fileSize, setFileSize] = useState("")
   const [fileCount, setFileCount] = useState(0)
@@ -379,6 +381,12 @@ export default function UploadPage() {
     }
   }
 
+  // Adding handleGenreChange to reset subgenre
+  const handleGenreChange = (value: string) => {
+    setGenre(value)
+    setSubgenre("") // Reset subgenre when genre changes
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -400,7 +408,7 @@ export default function UploadPage() {
       return
     }
 
-    if (!title || !description || !genre || !price || !demoFile || !packFile || !ownershipConfirmed) {
+    if (!title || !description || !genre || !subgenre || !price || !demoFile || !packFile || !ownershipConfirmed) {
       toast({
         title: "Error",
         description: "Por favor completá todos los campos requeridos",
@@ -428,7 +436,6 @@ export default function UploadPage() {
       return
     }
 
-    setIsLoading(true)
     try {
       const {
         data: { user },
@@ -520,6 +527,7 @@ export default function UploadPage() {
           title,
           description,
           genre,
+          subgenre,
           bpm: bpmRange || null,
           price: Number.parseInt(price),
           cover_image_url: coverUrl,
@@ -767,26 +775,39 @@ export default function UploadPage() {
               <Label htmlFor="genre" className="text-lg font-bold text-foreground">
                 Género *
               </Label>
-              <Select value={genre} onValueChange={setGenre} disabled={isLoading}>
+              <Select value={genre} onValueChange={handleGenreChange} disabled={isLoading}>
                 <SelectTrigger className="h-12 rounded-xl bg-card border-border text-base">
                   <SelectValue placeholder="Seleccionar género" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="RKT">RKT</SelectItem>
-                  <SelectItem value="TRAP">TRAP</SelectItem>
-                  <SelectItem value="REGGAETON">REGGAETON</SelectItem>
-                  <SelectItem value="CUMBIA">CUMBIA</SelectItem>
-                  <SelectItem value="CUMBIA_VILLERA">CUMBIA VILLERA</SelectItem>
-                  <SelectItem value="DRILL">DRILL</SelectItem>
-                  <SelectItem value="CUARTETO">CUARTETO</SelectItem>
-                  <SelectItem value="DANCEHALL">DANCEHALL</SelectItem>
-                  <SelectItem value="LATIN_URBANO">LATIN URBANO</SelectItem>
-                  <SelectItem value="AFROTRAP">AFROTRAP</SelectItem>
-                  <SelectItem value="HIP_HOP">HIP HOP</SelectItem>
-                  <SelectItem value="DEMBOW">DEMBOW</SelectItem>
+                  {GENRES.filter((g) => g !== "Todos").map((genreOption) => (
+                    <SelectItem key={genreOption} value={genreOption}>
+                      {genreOption}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
+
+            {genre && genre !== "Todos" && (
+              <div className="space-y-4 md:col-span-2">
+                <Label htmlFor="subgenre" className="text-lg font-bold text-foreground">
+                  Subgénero *
+                </Label>
+                <Select value={subgenre} onValueChange={setSubgenre} disabled={isLoading}>
+                  <SelectTrigger className="h-12 rounded-xl bg-card border-border text-base">
+                    <SelectValue placeholder="Seleccionar subgénero" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {getSubgenres(genre).map((subgenreOption) => (
+                      <SelectItem key={subgenreOption} value={subgenreOption}>
+                        {subgenreOption}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-4 md:col-span-2">
               <Label htmlFor="bpmRange" className="text-lg font-bold text-foreground">

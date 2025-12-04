@@ -12,6 +12,7 @@ import { createBrowserClient } from "@/lib/supabase/client"
 import { useAudioPlayer } from "@/hooks/use-audio-player"
 import { useParams, useRouter } from "next/navigation"
 import { toast } from "@/components/ui/use-toast"
+import { formatGenreDisplay } from "@/lib/genres"
 
 export default function PackDetailPage() {
   const params = useParams()
@@ -331,7 +332,7 @@ export default function PackDetailPage() {
 
                 {pack.genre && (
                   <Badge className="absolute top-4 left-4 bg-primary text-primary-foreground font-bold px-4 py-2 text-sm">
-                    {pack.genre}
+                    {formatGenreDisplay(pack.genre, pack.subgenre)}
                   </Badge>
                 )}
               </div>

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
-import { Upload, ImageIcon, Loader2, Trash2, Save, Percent, AlertTriangle } from "lucide-react"
+import { Upload, ImageIcon, Loader2, Trash2, Save, Percent } from "lucide-react"
 import { useState, useEffect } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { useRouter, useParams } from "next/navigation"
@@ -25,8 +25,9 @@ import {
 } from "@/components/ui/alert-dialog"
 import { PLAN_FEATURES, type PlanType } from "@/lib/plans"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { GENRES, getSubgenres } from "@/lib/genres"
 
-const ALL_PRICE_OPTIONS = Array.from({ length: 14 }, (_, i) => i * 5000) // 0, 5000, 10000... 65000
+const ALL_PRICE_OPTIONS = Array.from({ length: 14 }, (_, i) => i * 5000)
 const ALL_DISCOUNT_OPTIONS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
 export default function EditPackPage() {
@@ -49,6 +50,8 @@ export default function EditPackPage() {
   const [discountType, setDiscountType] = useState("all")
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
+  const [genre, setGenre] = useState("")
+  const [subgenre, setSubgenre] = useState("")
 
   const MAX_PRICE = PLAN_FEATURES[userPlan].maxPrice || 65000
   const MAX_DISCOUNT = PLAN_FEATURES[userPlan]?.maxDiscountPercent || 50
@@ -97,15 +100,8 @@ export default function EditPackPage() {
       setPrice(packData.price.toString())
       setDiscountPercent(packData.discount_percent?.toString() || "0")
       setCoverPreview(packData.cover_image_url)
-
-      const { data: discountCodes } = await supabase.from("discount_codes").select("*").eq("pack_id", packId).limit(1)
-
-      if (discountCodes && discountCodes.length > 0) {
-        const discountCode = discountCodes[0]
-        setDiscountCode(discountCode.code || "")
-        setDiscountType(discountCode.for_followers ? "followers" : discountCode.for_first_purchase ? "first" : "all")
-        setDiscountRequiresCode(!!(discountCode.code && discountCode.code.length > 0))
-      }
+      setGenre(packData.genre || "")
+      setSubgenre(packData.subgenre || "")
     } catch (error: any) {
       console.error("Error loading pack:", error)
       toast({
@@ -116,6 +112,62 @@ export default function EditPackPage() {
       router.push("/")
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleGenreChange = (value: string) => {
+    setGenre(value)
+    setSubgenre("")
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+
+    try {
+      let coverUrl = pack.cover_image_url
+
+      if (coverFile) {
+        const fileExt = coverFile.name.split(".").pop()
+        const fileName = `${user.id}/covers/${Date.now()}.${fileExt}`
+
+        const { error: uploadError } = await supabase.storage.from("samplepacks").upload(fileName, coverFile)
+
+        if (uploadError) throw uploadError
+
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("samplepacks").getPublicUrl(fileName)
+        coverUrl = publicUrl
+      }
+
+      const { error } = await supabase
+        .from("packs")
+        .update({
+          price: Number.parseInt(price),
+          discount_percent: Number.parseInt(discountPercent) || 0,
+          cover_image_url: coverUrl,
+          genre,
+          subgenre,
+        })
+        .eq("id", packId)
+
+      if (error) throw error
+
+      toast({
+        title: "Pack actualizado",
+        description: "Los cambios se guardaron exitosamente",
+      })
+
+      router.push(`/pack/${packId}`)
+    } catch (error: any) {
+      console.error("Error saving pack:", error)
+      toast({
+        title: "Error",
+        description: "No se pudo guardar los cambios",
+        variant: "destructive",
+      })
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -151,93 +203,6 @@ export default function EditPackPage() {
     } = supabase.storage.from("samplepacks").getPublicUrl(fileName)
 
     return publicUrl
-  }
-
-  const handleSave = async () => {
-    try {
-      setSaving(true)
-
-      const priceNum = Number.parseInt(price)
-      const discountNum = Number.parseInt(discountPercent) || 0
-      const maxDiscount = getMaxDiscount()
-
-      if (priceNum < 0 || priceNum > MAX_PRICE) {
-        toast({
-          title: "Error",
-          description: `El precio debe estar entre $0 y $${MAX_PRICE.toLocaleString()}`,
-          variant: "destructive",
-        })
-        return
-      }
-
-      if (discountNum < 0 || discountNum > maxDiscount) {
-        toast({
-          title: "Error",
-          description: `El descuento máximo permitido para tu plan es ${maxDiscount}%`,
-          variant: "destructive",
-        })
-        return
-      }
-
-      let coverUrl = pack.cover_image_url
-
-      if (coverFile) {
-        coverUrl = await uploadCoverToStorage(coverFile)
-      }
-
-      const { error } = await supabase
-        .from("packs")
-        .update({
-          price: priceNum,
-          discount_percent: discountNum,
-          has_discount: discountNum > 0,
-          cover_image_url: coverUrl,
-        })
-        .eq("id", packId)
-
-      if (error) throw error
-
-      if (discountNum > 0) {
-        const { data: existingDiscount } = await supabase
-          .from("discount_codes")
-          .select("id")
-          .eq("pack_id", packId)
-          .limit(1)
-
-        const discountCodeData = {
-          pack_id: packId,
-          code: discountRequiresCode ? discountCode || `AUTO-${Date.now().toString(36).toUpperCase()}` : "",
-          discount_percent: discountNum,
-          for_all_users: discountType === "all",
-          for_first_purchase: discountType === "first",
-          for_followers: discountType === "followers",
-        }
-
-        if (existingDiscount && existingDiscount.length > 0) {
-          await supabase.from("discount_codes").update(discountCodeData).eq("pack_id", packId)
-        } else {
-          await supabase.from("discount_codes").insert(discountCodeData)
-        }
-      } else {
-        await supabase.from("discount_codes").delete().eq("pack_id", packId)
-      }
-
-      toast({
-        title: "Pack actualizado",
-        description: "Los cambios se guardaron exitosamente",
-      })
-
-      router.push(`/pack/${packId}`)
-    } catch (error: any) {
-      console.error("Error saving pack:", error)
-      toast({
-        title: "Error al guardar",
-        description: error.message || "Intenta de nuevo más tarde",
-        variant: "destructive",
-      })
-    } finally {
-      setSaving(false)
-    }
   }
 
   const handleDelete = async () => {
@@ -289,7 +254,18 @@ export default function EditPackPage() {
   }
 
   if (!pack) {
-    return null
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 container mx-auto px-4 py-12">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-foreground mb-4">Pack no encontrado</h1>
+            <Button onClick={() => router.push("/")}>Volver al inicio</Button>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    )
   }
 
   const priceNumber = Number.parseFloat(price) || 0
@@ -304,31 +280,67 @@ export default function EditPackPage() {
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
 
-      <main className="flex-1 container mx-auto px-4 py-16">
-        <div className="max-w-3xl mx-auto">
-          <div className="space-y-3 mb-12">
-            <h1 className="text-4xl md:text-5xl font-black text-foreground">Editar Pack</h1>
-            <p className="text-lg text-muted-foreground">Modificá la portada, precio y descuento de tu pack</p>
-            <p className="text-sm text-muted-foreground italic">Nota: El nombre del pack no se puede editar</p>
-          </div>
+      <main className="flex-1 container mx-auto px-4 py-12 max-w-4xl">
+        <div className="mb-8">
+          <h1 className="text-4xl font-black text-foreground mb-2">Editar Pack</h1>
+          <p className="text-lg text-muted-foreground">{pack.title}</p>
+        </div>
 
-          <div className="space-y-8">
-            {/* Current Pack Info */}
-            <Card className="p-6 rounded-3xl border-border bg-accent/30">
-              <div className="flex items-center gap-4">
-                {pack.cover_image_url && (
-                  <img
-                    src={pack.cover_image_url || "/placeholder.svg"}
-                    alt={pack.title}
-                    className="w-20 h-20 rounded-xl object-cover"
-                  />
-                )}
-                <div className="flex-1">
-                  <h2 className="text-2xl font-black text-foreground">{pack.title}</h2>
-                  <p className="text-sm text-muted-foreground">{pack.genre}</p>
-                </div>
+        <div className="space-y-8">
+          <Card className="p-6 rounded-2xl">
+            <h2 className="text-2xl font-bold text-foreground mb-6">Información del Pack</h2>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <Label className="text-sm font-semibold mb-2">Título</Label>
+                <p className="text-sm text-muted-foreground">{pack.title}</p>
               </div>
-            </Card>
+
+              <div>
+                <Label className="text-sm font-semibold mb-2">Descripción</Label>
+                <p className="text-sm text-muted-foreground">{pack.description}</p>
+              </div>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-4 mb-6">
+              <div className="space-y-2">
+                <Label htmlFor="genre" className="text-sm font-semibold">
+                  Género
+                </Label>
+                <Select value={genre} onValueChange={handleGenreChange}>
+                  <SelectTrigger className="h-11 rounded-lg">
+                    <SelectValue placeholder="Seleccionar género" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {GENRES.filter((g) => g !== "Todos").map((genreOption) => (
+                      <SelectItem key={genreOption} value={genreOption}>
+                        {genreOption}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {genre && genre !== "Todos" && (
+                <div className="space-y-2">
+                  <Label htmlFor="subgenre" className="text-sm font-semibold">
+                    Subgénero
+                  </Label>
+                  <Select value={subgenre} onValueChange={setSubgenre}>
+                    <SelectTrigger className="h-11 rounded-lg">
+                      <SelectValue placeholder="Seleccionar subgénero" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {getSubgenres(genre).map((subgenreOption) => (
+                        <SelectItem key={subgenreOption} value={subgenreOption}>
+                          {subgenreOption}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
 
             {/* Cover Image */}
             <div className="space-y-4">
@@ -516,58 +528,43 @@ export default function EditPackPage() {
                 </div>
               </Card>
             )}
+          </Card>
 
-            {/* Actions */}
-            <div className="flex gap-4 pt-6">
-              <Button
-                type="button"
-                onClick={handleSave}
-                disabled={saving || deleting}
-                className="flex-1 h-14 rounded-full text-base font-bold"
-              >
-                {saving ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                    Guardando...
-                  </>
-                ) : (
-                  <>
-                    <Save className="h-5 w-5 mr-2" />
-                    Guardar Cambios
-                  </>
-                )}
-              </Button>
+          <div className="flex justify-between gap-4">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="lg" className="gap-2" disabled={deleting}>
+                  <Trash2 className="h-5 w-5" />
+                  Eliminar Pack
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta acción no se puede deshacer. El pack será eliminado permanentemente.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete}>Eliminar</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
 
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    disabled={saving || deleting}
-                    className="h-14 px-8 rounded-full text-base font-bold"
-                  >
-                    {deleting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Trash2 className="h-5 w-5" />}
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="flex items-center gap-2">
-                      <AlertTriangle className="h-6 w-6 text-destructive" />
-                      ¿Estás seguro?
-                    </AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Esta acción no se puede deshacer. El pack se eliminará permanentemente de la plataforma.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
-                      Eliminar Pack
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </div>
+            <Button size="lg" className="gap-2" onClick={handleSave} disabled={saving}>
+              {saving ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <Save className="h-5 w-5" />
+                  Guardar Cambios
+                </>
+              )}
+            </Button>
           </div>
         </div>
       </main>

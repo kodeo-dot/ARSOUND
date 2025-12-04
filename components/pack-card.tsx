@@ -5,11 +5,12 @@ import type React from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Play, Heart } from 'lucide-react'
+import { Play, Heart } from "lucide-react"
 import { useState } from "react"
 import { useAudioPlayer } from "@/hooks/use-audio-player"
 import Link from "next/link"
 import { getPlanBadge } from "@/lib/plans"
+import { formatGenreDisplay } from "@/lib/genres"
 
 interface Pack {
   id: string
@@ -19,6 +20,7 @@ interface Pack {
   cover_image_url: string | null
   samples_count: number | null
   genre: string | null
+  subgenre: string | null
   bpm: string | null
   tags: string[] | null
   demo_audio_url: string | null
@@ -70,11 +72,8 @@ export function PackCard({ pack }: PackCardProps) {
   }
 
   const isFreepack = pack.price === 0
-  const shouldShowDiscount =
-    !isFreepack && pack.has_discount && pack.discount_percent && pack.discount_percent > 0
-  const finalPrice = shouldShowDiscount
-    ? Math.floor(pack.price * (1 - pack.discount_percent / 100))
-    : pack.price
+  const shouldShowDiscount = !isFreepack && pack.has_discount && pack.discount_percent && pack.discount_percent > 0
+  const finalPrice = shouldShowDiscount ? Math.floor(pack.price * (1 - pack.discount_percent / 100)) : pack.price
 
   const planBadge = pack.producer_plan ? getPlanBadge(pack.producer_plan as any) : null
 
@@ -119,8 +118,8 @@ export function PackCard({ pack }: PackCardProps) {
 
           {/* Genre Badge */}
           {pack.genre && (
-            <Badge className="absolute top-4 left-4 bg-primary/90 backdrop-blur-sm text-primary-foreground font-bold px-3 py-1 rounded-full">
-              {pack.genre}
+            <Badge className="absolute top-4 left-4 bg-primary/90 backdrop-blur-sm text-primary-foreground font-bold px-3 py-1 rounded-full text-xs">
+              {formatGenreDisplay(pack.genre, pack.subgenre)}
             </Badge>
           )}
 
