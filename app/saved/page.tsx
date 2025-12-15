@@ -20,6 +20,7 @@ interface LikedPack {
     cover_image_url: string | null
     genre: string | null
     is_deleted: boolean
+    archived: boolean
   } | null
 }
 
@@ -50,28 +51,55 @@ export default function SavedPage() {
 
       setUser(user)
 
+      console.log("[v0] Loading liked packs for user:", user.id)
+
       const { data: likes, error } = await supabase
         .from("pack_likes")
         .select(`
           pack_id,
-          packs:pack_id (
+          pack:pack_id (
             id,
             title,
             price,
             cover_image_url,
             genre,
-            is_deleted
+            is_deleted,
+            archived
           )
         `)
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
 
+      console.log("[v0] Liked packs raw data:", likes)
+      console.log("[v0] Liked packs error:", error)
+
+      if (error) {
+        console.error("[v0] Error loading saved packs:", error)
+      }
+
       if (!error && likes) {
-        const validLikes = likes.filter((like: any) => like.packs && !like.packs.is_deleted)
+        const validLikes = likes.filter((like: any) => {
+          const pack = like.pack
+          if (!pack) {
+            console.log("[v0] Pack not found for like:", like.pack_id)
+            return false
+          }
+          if (pack.is_deleted) {
+            console.log("[v0] Pack is deleted:", pack.id, pack.title)
+            return false
+          }
+          if (pack.archived) {
+            console.log("[v0] Pack is archived:", pack.id, pack.title)
+            return false
+          }
+          return true
+        })
+
+        console.log("[v0] Valid liked packs after filtering:", validLikes.length)
         setLikedPacks(validLikes as any)
       }
     } catch (error) {
-      console.error("Error loading saved packs:", error)
+      console.error("[v0] Error loading saved packs:", error)
     } finally {
       setLoading(false)
     }
