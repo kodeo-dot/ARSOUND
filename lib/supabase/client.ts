@@ -1,6 +1,22 @@
 import { createBrowserClient } from "@supabase/ssr"
 import type { SupabaseClient } from "@supabase/supabase-js"
 
+function isValidJWT(token: string): boolean {
+  try {
+    const parts = token.split(".")
+    if (parts.length !== 3) return false
+
+    const payload = JSON.parse(atob(parts[1]))
+    // JWT must have 'sub' (subject) claim and not be expired
+    if (!payload.sub) return false
+    if (payload.exp && payload.exp * 1000 < Date.now()) return false
+
+    return true
+  } catch {
+    return false
+  }
+}
+
 function clearAllSupabaseStorage() {
   if (typeof window === "undefined") return
 
@@ -8,7 +24,7 @@ function clearAllSupabaseStorage() {
     const keysToRemove: string[] = []
     for (let i = 0; i < window.localStorage.length; i++) {
       const key = window.localStorage.key(i)
-      if (key && (key.includes("supabase") || key.includes("sb-") || key.includes("auth-token"))) {
+      if (key && (key.includes("supabase") || key.includes("sb-"))) {
         keysToRemove.push(key)
       }
     }
@@ -23,7 +39,8 @@ function clearAllSupabaseStorage() {
 
 if (typeof window !== "undefined") {
   try {
-    // Check all Supabase keys for corruption
+    let hasCorruptedToken = false
+
     for (let i = 0; i < window.localStorage.length; i++) {
       const key = window.localStorage.key(i)
       if (key && key.includes("supabase.auth.token")) {
@@ -31,29 +48,35 @@ if (typeof window !== "undefined") {
         if (value) {
           try {
             const parsed = JSON.parse(value)
-            // Check if the token structure is valid
-            if (parsed && typeof parsed === "object") {
-              // Check for access_token
-              if (parsed.access_token && typeof parsed.access_token === "string") {
-                // Try to decode JWT to check for 'sub' claim
-                const parts = parsed.access_token.split(".")
-                if (parts.length === 3) {
-                  const payload = JSON.parse(atob(parts[1]))
-                  if (!payload.sub) {
-                    console.error("[ARSOUND] JWT missing 'sub' claim, clearing all tokens")
-                    clearAllSupabaseStorage()
-                    break
-                  }
-                }
+
+            // Validate access_token structure
+            if (parsed?.access_token) {
+              if (!isValidJWT(parsed.access_token)) {
+                console.error("[ARSOUND] Invalid or expired JWT detected")
+                hasCorruptedToken = true
+                break
+              }
+            }
+
+            // Validate refresh_token structure
+            if (parsed?.refresh_token) {
+              if (!isValidJWT(parsed.refresh_token)) {
+                console.error("[ARSOUND] Invalid or expired refresh token detected")
+                hasCorruptedToken = true
+                break
               }
             }
           } catch (e) {
-            console.error("[ARSOUND] Invalid token format, clearing all tokens")
-            clearAllSupabaseStorage()
+            console.error("[ARSOUND] Invalid token format detected")
+            hasCorruptedToken = true
             break
           }
         }
       }
+    }
+
+    if (hasCorruptedToken) {
+      clearAllSupabaseStorage()
     }
   } catch (e) {
     console.error("[ARSOUND] Error checking tokens:", e)
@@ -113,6 +136,9 @@ export function createClient() {
     },
     global: {
       headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
         apikey: supabaseAnonKey,
         Authorization: `Bearer ${supabaseAnonKey}`,
         "x-application-name": "arsound",
@@ -131,7 +157,7 @@ export function createClient() {
 export async function clearInvalidSession() {
   clearAllSupabaseStorage()
 
-  // Reset the client
+  // Reset the client to force reinitialization
   client = undefined
 
   console.log("[ARSOUND] Session cleared and client reset")

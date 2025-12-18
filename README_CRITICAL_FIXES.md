@@ -13,13 +13,13 @@ All 9 critical issues in the ARSOUND platform have been comprehensively fixed. T
 - Clear errors reported to user interface
 
 **Key Implementation**:
-\`\`\`typescript
+```typescript
 // app/api/packs/upload/route.ts
 - Validates all required fields
 - Checks upload quota before insertion
 - Returns specific error details instead of empty object
 - Logs errors with context for debugging
-\`\`\`
+```
 
 ### 2. Avatar Not Displaying
 **Status**: ✅ FIXED
@@ -29,12 +29,12 @@ All 9 critical issues in the ARSOUND platform have been comprehensively fixed. T
 - CORS-compatible image rendering
 
 **Key Implementation**:
-\`\`\`typescript
+```typescript
 // lib/supabase/avatar-url.ts
 - getAvatarUrl() - Generates public URLs or fallback
 - getSignedAvatarUrl() - Creates time-limited signed URLs
 - Handles both full URLs and relative paths
-\`\`\`
+```
 
 ### 3. Mercado Pago Split Payments
 **Status**: ✅ FIXED
@@ -47,14 +47,14 @@ All 9 critical issues in the ARSOUND platform have been comprehensively fixed. T
 - All financial data properly recorded
 
 **Key Implementation**:
-\`\`\`javascript
+```javascript
 // app/api/mercadopago/create-preference/route.ts
 preferenceData.marketplace_fee = commissionAmount
 preferenceData.transfer_data = {
   amount: sellerEarnings,
   receiver_account_id: null
 }
-\`\`\`
+```
 
 ### 4-6. Download & Upload Limits
 **Status**: ✅ FIXED
@@ -103,7 +103,7 @@ preferenceData.transfer_data = {
 ## File Changes Summary
 
 ### New Files Created
-\`\`\`
+```
 app/api/packs/upload/route.ts          - Pack upload API with validation
 app/api/avatars/upload/route.ts        - Avatar upload API
 lib/supabase/avatar-url.ts             - Avatar URL utilities
@@ -115,10 +115,10 @@ IMPLEMENTATION_SUMMARY.md               - Detailed implementation guide
 MIGRATION_GUIDE.md                      - Database setup instructions
 app/api/health/route.ts                - Health check endpoint
 README_CRITICAL_FIXES.md               - This file
-\`\`\`
+```
 
 ### Modified Files
-\`\`\`
+```
 app/upload/page.tsx                     - Better error handling
 app/api/mercadopago/create-preference/route.ts  - Split payments
 app/api/webhooks/mercadopago/route.ts   - Webhook improvements
@@ -126,7 +126,7 @@ app/api/packs/[id]/download/route.ts   - Download quota enforcement
 components/avatar-upload.tsx            - Improved upload flow
 components/pack-card.tsx                - Fixed discount display
 components/profile-limits-card.tsx      - Real-time quota display
-\`\`\`
+```
 
 ## Deployment Checklist
 
@@ -254,4 +254,4 @@ See MIGRATION_GUIDE.md for detailed troubleshooting steps and common issues.
 
 ## Conclusion
 All critical issues have been comprehensively addressed with proper error handling, security measures, and comprehensive documentation. The system is now ready for production deployment after following the deployment checklist.
-\`\`\`
+```

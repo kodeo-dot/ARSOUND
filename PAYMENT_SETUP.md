@@ -30,14 +30,14 @@ This guide helps you configure the Mercado Pago integration for ARSOUND.
 
 Add the following to your `.env.local` file (create it if it doesn't exist):
 
-\`\`\`env
+```env
 # Mercado Pago Credentials - Development/Testing
 MERCADO_PAGO_ACCESS_TOKEN=TEST_YOUR_ACCESS_TOKEN_HERE
 MERCADO_PAGO_PUBLIC_KEY=TEST_YOUR_PUBLIC_KEY_HERE
 
 # App URL (for payment redirects)
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-\`\`\`
+```
 
 ### For Production Deployment
 
@@ -63,10 +63,10 @@ Webhooks notify your app when payments are completed. This is critical for pack 
    - [LocalTunnel](https://localtunnel.me/)
 
 Example with ngrok:
-\`\`\`bash
+```bash
 ngrok http 3000
 # Then use: https://your-ngrok-url.ngrok.io/api/webhooks/mercadopago
-\`\`\`
+```
 
 ## Step 4: Test Payment Flow
 
@@ -149,33 +149,33 @@ This is calculated in:
 
 ### Create Payment Preference
 
-\`\`\`typescript
+```typescript
 POST /api/mercadopago/create-preference
 {
   packId?: string,        // For pack purchase
   planType?: string,      // For plan upgrade (de_0_a_hit | studio_plus)
   discountCode?: string   // Optional discount code
 }
-\`\`\`
+```
 
 Response:
-\`\`\`json
+```json
 {
   "init_point": "https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=...",
   "preference_id": "..."
 }
-\`\`\`
+```
 
 ### Webhook Payload
 
-\`\`\`json
+```json
 {
   "type": "payment",
   "data": {
     "id": "payment_id_123"
   }
 }
-\`\`\`
+```
 
 ## Security Notes
 

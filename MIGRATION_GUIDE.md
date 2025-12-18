@@ -12,9 +12,9 @@ This guide walks through setting up the ARSOUND database with all critical fixes
 
 ### Step 1: Initialize Core Database Schema
 Execute this script in Supabase SQL editor:
-\`\`\`
+```
 ./scripts/init-database-v2.sql
-\`\`\`
+```
 
 **What this does**:
 - Creates all necessary tables (profiles, packs, purchases, etc.)
@@ -25,9 +25,9 @@ Execute this script in Supabase SQL editor:
 
 ### Step 2: Create RPC Functions
 Execute this script in Supabase SQL editor:
-\`\`\`
+```
 ./scripts/create-rpc-functions.sql
-\`\`\`
+```
 
 **What this does**:
 - `get_packs_this_month` - Count monthly uploads
@@ -40,9 +40,9 @@ Execute this script in Supabase SQL editor:
 
 ### Step 3: Set Up Storage RLS Policies
 Execute this script in Supabase SQL editor:
-\`\`\`
+```
 ./scripts/lib/supabase/setup-storage-rls.sql
-\`\`\`
+```
 
 **What this does**:
 - Enables RLS on storage buckets
@@ -52,9 +52,9 @@ Execute this script in Supabase SQL editor:
 
 ### Step 4: Create Purchase Tables & Triggers
 Execute this script in Supabase SQL editor:
-\`\`\`
+```
 ./scripts/create-purchase-tables.sql
-\`\`\`
+```
 
 **What this does**:
 - Ensures purchases table has all required columns
@@ -75,7 +75,7 @@ In Supabase Dashboard:
    - Max upload size: 5MB
 
 ### Step 6: Deploy Application Code
-\`\`\`bash
+```bash
 # Update these files in your project:
 - app/api/packs/upload/route.ts (NEW)
 - app/api/avatars/upload/route.ts (NEW)
@@ -86,7 +86,7 @@ In Supabase Dashboard:
 - components/pack-card.tsx (UPDATED)
 - components/profile-limits-card.tsx (UPDATED)
 - lib/supabase/avatar-url.ts (NEW)
-\`\`\`
+```
 
 ### Step 7: Test the System
 1. **Sign up and create a profile**

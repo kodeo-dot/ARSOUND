@@ -25,20 +25,20 @@
 
 Creá o actualizá tu archivo `.env.local`:
 
-\`\`\`bash
+```bash
 # Para desarrollo (usar credenciales de prueba)
 MERCADO_PAGO_ACCESS_TOKEN=TEST-1198984687200600-111414-88ec6350a433f2fb1547e9b91eea7b6c-231259676
 MERCADO_PAGO_PUBLIC_KEY=TEST-d02df8db-9796-477a-bfa0-bc0485c6e9b4
 
 # URL de tu aplicación
 NEXT_PUBLIC_APP_URL=http://localhost:3000
-\`\`\`
+```
 
 ### 4. Instalar SDK de Mercado Pago
 
-\`\`\`bash
+```bash
 npm install mercadopago
-\`\`\`
+```
 
 ### 5. Activar el Código Real en los Endpoints
 
@@ -59,10 +59,10 @@ Descomentá el código de Mercado Pago (líneas marcadas con TODO) y comentá el
    - Eventos: Seleccioná "Pagos"
 
 **Para testing local con ngrok:**
-\`\`\`bash
+```bash
 ngrok http 3000
 # Usá la URL de ngrok + /api/webhooks/mercadopago
-\`\`\`
+```
 
 ## Flujo de Pago
 

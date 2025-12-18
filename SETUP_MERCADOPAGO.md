@@ -8,7 +8,7 @@ Para que funcione el sistema de pagos y conexión con Mercado Pago, necesitás a
 
 Agregá estas variables en tu proyecto de Vercel (Settings > Environment Variables):
 
-\`\`\`bash
+```bash
 # Mercado Pago OAuth
 MERCADO_PAGO_APP_ID=tu_app_id_de_mercadopago
 MERCADO_PAGO_CLIENT_SECRET=tu_client_secret_de_mercadopago
@@ -19,7 +19,7 @@ NEXT_PUBLIC_APP_URL=https://arsound.com.ar
 # Token de acceso de la plataforma (para recibir comisiones)
 MERCADO_PAGO_ACCESS_TOKEN=tu_access_token
 MERCADO_PAGO_PUBLIC_KEY=tu_public_key
-\`\`\`
+```
 
 ### 2. Cómo obtener las credenciales de Mercado Pago
 
@@ -42,14 +42,14 @@ MERCADO_PAGO_PUBLIC_KEY=tu_public_key
 ### 3. URLs de Redirect según ambiente
 
 **Desarrollo Local:**
-\`\`\`
+```
 http://localhost:3000/api/mercadopago/callback
-\`\`\`
+```
 
 **Producción:**
-\`\`\`
+```
 https://arsound.com.ar/api/mercadopago/callback
-\`\`\`
+```
 
 ### 4. Permisos requeridos
 

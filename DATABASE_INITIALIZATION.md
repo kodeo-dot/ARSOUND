@@ -25,7 +25,7 @@ Copia y pega **CADA UNO** de estos scripts EN ORDEN en el SQL Editor:
 
 ## Script 1: Crear tabla `profiles`
 
-\`\`\`sql
+```sql
 CREATE TABLE IF NOT EXISTS public.profiles (
   id uuid PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   username text UNIQUE NOT NULL,
@@ -44,7 +44,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS profiles_username_idx ON public.profiles(username);
 CREATE INDEX IF NOT EXISTS profiles_plan_idx ON public.profiles(plan);
-\`\`\`
+```
 
 Después de ejecutar, haz clic en **Run** (o Ctrl+Enter).
 
@@ -52,7 +52,7 @@ Después de ejecutar, haz clic en **Run** (o Ctrl+Enter).
 
 ## Script 2: Crear tabla `packs`
 
-\`\`\`sql
+```sql
 CREATE TABLE IF NOT EXISTS public.packs (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -79,13 +79,13 @@ ALTER TABLE public.packs ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS packs_user_id_idx ON public.packs(user_id);
 CREATE INDEX IF NOT EXISTS packs_price_idx ON public.packs(price);
 CREATE INDEX IF NOT EXISTS packs_genre_idx ON public.packs(genre);
-\`\`\`
+```
 
 ---
 
 ## Script 3: Crear tabla `pack_likes`
 
-\`\`\`sql
+```sql
 CREATE TABLE IF NOT EXISTS public.pack_likes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -97,13 +97,13 @@ CREATE TABLE IF NOT EXISTS public.pack_likes (
 ALTER TABLE public.pack_likes ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS pack_likes_user_id_idx ON public.pack_likes(user_id);
 CREATE INDEX IF NOT EXISTS pack_likes_pack_id_idx ON public.pack_likes(pack_id);
-\`\`\`
+```
 
 ---
 
 ## Script 4: Crear tabla `purchases`
 
-\`\`\`sql
+```sql
 CREATE TABLE IF NOT EXISTS public.purchases (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   pack_id uuid NOT NULL REFERENCES public.packs(id),
@@ -123,13 +123,13 @@ ALTER TABLE public.purchases ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS purchases_buyer_id_idx ON public.purchases(buyer_id);
 CREATE INDEX IF NOT EXISTS purchases_seller_id_idx ON public.purchases(seller_id);
 CREATE INDEX IF NOT EXISTS purchases_pack_id_idx ON public.purchases(pack_id);
-\`\`\`
+```
 
 ---
 
 ## Script 5: Crear tabla `pack_downloads`
 
-\`\`\`sql
+```sql
 CREATE TABLE IF NOT EXISTS public.pack_downloads (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -141,13 +141,13 @@ ALTER TABLE public.pack_downloads ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS pack_downloads_user_id_idx ON public.pack_downloads(user_id);
 CREATE INDEX IF NOT EXISTS pack_downloads_pack_id_idx ON public.pack_downloads(pack_id);
 CREATE INDEX IF NOT EXISTS pack_downloads_created_at_idx ON public.pack_downloads(created_at);
-\`\`\`
+```
 
 ---
 
 ## Script 6: Crear tabla `discount_codes`
 
-\`\`\`sql
+```sql
 CREATE TABLE IF NOT EXISTS public.discount_codes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   code text UNIQUE NOT NULL,
@@ -160,13 +160,13 @@ CREATE TABLE IF NOT EXISTS public.discount_codes (
 
 ALTER TABLE public.discount_codes ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS discount_codes_code_idx ON public.discount_codes(code);
-\`\`\`
+```
 
 ---
 
 ## Script 7: Crear tabla `followers`
 
-\`\`\`sql
+```sql
 CREATE TABLE IF NOT EXISTS public.followers (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   follower_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
@@ -178,13 +178,13 @@ CREATE TABLE IF NOT EXISTS public.followers (
 ALTER TABLE public.followers ENABLE ROW LEVEL SECURITY;
 CREATE INDEX IF NOT EXISTS followers_follower_id_idx ON public.followers(follower_id);
 CREATE INDEX IF NOT EXISTS followers_following_id_idx ON public.followers(following_id);
-\`\`\`
+```
 
 ---
 
 ## Script 8: Crear Funciones RPC
 
-\`\`\`sql
+```sql
 -- Función para verificar si se puede descargar (free plan)
 CREATE OR REPLACE FUNCTION public.can_download_free_pack(
   p_user_id uuid,
@@ -271,7 +271,7 @@ BEGIN
   WHERE id = p_pack_id;
 END;
 $$ LANGUAGE plpgsql;
-\`\`\`
+```
 
 ---
 

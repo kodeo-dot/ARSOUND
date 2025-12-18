@@ -28,9 +28,9 @@ This document summarizes all fixes and improvements made to the ARSOUND platform
 
 ### Testing:
 - Add credentials to `.env.local`:
-  \`\`\`
+  ```
 
-  \`\`\`
+  ```
 - See `PAYMENT_SETUP.md` for detailed configuration
 
 ---
@@ -49,7 +49,7 @@ This document summarizes all fixes and improvements made to the ARSOUND platform
 - Commission display in checkout reflects actual rates
 
 ### Before/After:
-\`\`\`
+```
 Free Plan:
   Before: 10% → After: 15%
   
@@ -58,7 +58,7 @@ De 0 a Hit Plan:
   
 Studio Plus Plan:
   Before: 0% → After: 3%
-\`\`\`
+```
 
 ---
 
@@ -173,7 +173,7 @@ Studio Plus Plan:
 ## 7. Configuration & Environment Variables
 
 ### Required Environment Variables:
-\`\`\`env
+```env
 # Mercado Pago - Test/Development
 MERCADO_PAGO_ACCESS_TOKEN=TEST_YOUR_TOKEN_HERE
 MERCADO_PAGO_PUBLIC_KEY=TEST_YOUR_PUBLIC_KEY_HERE
@@ -181,7 +181,7 @@ MERCADO_PAGO_PUBLIC_KEY=TEST_YOUR_PUBLIC_KEY_HERE
 # Application URL for redirects
 NEXT_PUBLIC_APP_URL=http://localhost:3000 (dev)
 NEXT_PUBLIC_APP_URL=https://your-domain.com (production)
-\`\`\`
+```
 
 ### For Vercel Deployment:
 1. Go to Project Settings → Environment Variables
