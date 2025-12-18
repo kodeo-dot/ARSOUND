@@ -3,7 +3,8 @@
 import type React from "react"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { createBrowserClient } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/components/auth-provider"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
@@ -28,7 +29,7 @@ import {
   Crown,
   Percent,
 } from "lucide-react"
-import { toast } from "@/components/ui/use-toast"
+import { useToast } from "@/hooks/use-toast"
 import type { PlanType } from "@/lib/plans"
 import { validatePackUpload } from "@/lib/pack-validation"
 import { PLAN_FEATURES } from "@/lib/plans"
@@ -61,7 +62,10 @@ export default function UploadPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const router = useRouter()
-  const supabase = createBrowserClient()
+  const { toast } = useToast()
+  const { user, loading: authLoading } = useAuth()
+  const [userPlan, setUserPlan] = useState<PlanType>("free")
+  const supabase = createClient()
 
   // Form states
   const [title, setTitle] = useState("")
@@ -93,7 +97,6 @@ export default function UploadPage() {
   const [tags, setTags] = useState<string[]>([])
   const [tagInput, setTagInput] = useState("")
 
-  const [userPlan, setUserPlan] = useState<PlanType>("free")
   const [uploadError, setUploadError] = useState<string | null>(null)
   const [fileSizeError, setFileSizeError] = useState<string | null>(null)
 
@@ -123,64 +126,73 @@ export default function UploadPage() {
   const youWillReceive = priceAfterDiscount - commissionAmount
 
   useEffect(() => {
-    const checkAuth = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) {
-        router.push("/login")
-      } else {
-        setIsAuthenticated(true)
+    if (authLoading) return
 
-        try {
-          console.log("[v0] Fetching plan for user:", user.id)
+    if (!user) {
+      router.push("/login")
+      return
+    }
 
-          const { data: existingProfile, error: fetchError } = await supabase
-            .from("profiles")
-            .select("plan, mp_connected")
-            .eq("id", user.id)
-            .single()
+    setIsAuthenticated(true)
 
-          if (fetchError?.code === "PGRST116") {
-            // Profile doesn't exist, create it
-            console.log("[v0] Profile doesn't exist, creating one...")
-            const { error: createError } = await supabase.from("profiles").insert({
-              id: user.id,
-              username: user.email?.split("@")[0] || "user_" + user.id.slice(0, 8),
-              plan: "free",
-              mp_connected: false,
-            })
+    // Fetch user plan
+    const fetchUserPlan = async () => {
+      try {
+        console.log("[v0] Fetching plan for user:", user.id)
 
-            if (createError) {
-              console.warn("[v0] Could not create profile:", createError.message)
-            } else {
-              console.log("[v0] Profile created successfully")
-            }
+        const { data: existingProfile, error: fetchError } = await supabase
+          .from("profiles")
+          .select("plan, mp_connected")
+          .eq("id", user.id)
+          .single()
+
+        if (fetchError?.code === "PGRST116") {
+          // Profile doesn't exist, create it
+          const newProfile = {
+            id: user.id,
+            username: user.email?.split("@")[0] || `user_${user.id.slice(0, 8)}`,
+            plan: "free" as PlanType,
+            mp_connected: false,
+          }
+          const { error: insertError } = await supabase.from("profiles").insert(newProfile)
+          if (!insertError) {
+            console.log("[v0] Profile created successfully")
             setUserPlan("free")
             setMpConnected(false)
-          } else if (fetchError) {
-            console.warn("[v0] Error fetching profile:", fetchError.message)
-            setUserPlan("free")
-            setMpConnected(false)
-          } else if (existingProfile) {
-            let plan = (existingProfile.plan as string) || "free"
-            plan = plan.replace(/-/g, "_")
-            setUserPlan(plan as PlanType)
-            setMpConnected(existingProfile.mp_connected || false)
-
-            const uploadCheck = await canUserUploadPack(user.id, plan as PlanType)
+            const uploadCheck = await canUserUploadPack(user.id, "free")
             setCanUpload(uploadCheck.canUpload)
             setUploadBlockReason(uploadCheck.reason || null)
+          } else {
+            console.warn("[v0] Could not create profile:", insertError.message)
+            setUserPlan("free")
+            setMpConnected(false)
+            setCanUpload(true)
           }
-        } catch (err) {
-          console.warn("[v0] Could not fetch plan, using default", err)
+        } else if (fetchError) {
+          console.warn("[v0] Error fetching profile:", fetchError.message)
           setUserPlan("free")
           setMpConnected(false)
+          setCanUpload(true)
+        } else if (existingProfile) {
+          let plan = (existingProfile.plan as string) || "free"
+          plan = plan.replace(/-/g, "_")
+          setUserPlan(plan as PlanType)
+          setMpConnected(existingProfile.mp_connected || false)
+          console.log("[v0] User plan:", plan)
+          const uploadCheck = await canUserUploadPack(user.id, plan as PlanType)
+          setCanUpload(uploadCheck.canUpload)
+          setUploadBlockReason(uploadCheck.reason || null)
         }
+      } catch (error) {
+        console.warn("[v0] Could not fetch plan, using default", error)
+        setUserPlan("free")
+        setMpConnected(false)
+        setCanUpload(true)
       }
     }
-    checkAuth()
-  }, [supabase, router])
+
+    fetchUserPlan()
+  }, [user, authLoading, router, supabase])
 
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -287,9 +299,6 @@ export default function UploadPage() {
   }
 
   const uploadFileToStorage = async (file: File, folder: string) => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
     if (!user) throw new Error("No user found")
 
     const fileExt = file.name.split(".").pop()
@@ -303,14 +312,11 @@ export default function UploadPage() {
 
       if (error) {
         if (error.message.includes("bucket")) {
-          throw new Error(`Storage error: Bucket not accessible. ${error.message}`)
-        } else if (error.message.includes("permission")) {
-          throw new Error(`Storage error: Permission denied. Check RLS policies.`)
-        } else if (error.message.includes("size")) {
-          throw new Error(`File too large. Maximum size: ${MAX_FILE_SIZE_MB}MB`)
-        } else {
-          throw new Error(`Storage upload failed: ${error.message}`)
+          console.error("[v0] Bucket error:", error)
+          throw new Error("Error de configuración de storage. Contacta al soporte.")
         }
+        console.error(`[v0] Error uploading ${folder} file:`, error)
+        throw error
       }
 
       if (!data) {
@@ -328,7 +334,7 @@ export default function UploadPage() {
       return publicUrl
     } catch (error: any) {
       console.error(`[v0] Error uploading ${folder} file:`, error)
-      throw error
+      throw new Error(error.message || `Error uploading ${folder} file`)
     }
   }
 
@@ -381,7 +387,7 @@ export default function UploadPage() {
     }
   }
 
-  // Adding handleGenreChange to reset subgenre
+  // Added handleGenreChange to reset subgenre
   const handleGenreChange = (value: string) => {
     setGenre(value)
     setSubgenre("") // Reset subgenre when genre changes
@@ -389,13 +395,19 @@ export default function UploadPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setIsLoading(true)
+    setUploadError(null)
+    setUploadProgress(0)
 
-    if (!canUpload) {
+    // Validation
+    if (!title || !genre || !price || !coverFile || !demoFile || !packFile || !ownershipConfirmed) {
+      setUploadError("Por favor completá todos los campos requeridos")
       toast({
-        title: "No puedes subir packs",
-        description: uploadBlockReason || "Alcanzaste tu límite de uploads",
+        title: "Campos incompletos",
+        description: "Por favor completá todos los campos requeridos",
         variant: "destructive",
       })
+      setIsLoading(false)
       return
     }
 
@@ -405,15 +417,7 @@ export default function UploadPage() {
         description: "Necesitás conectar tu cuenta de Mercado Pago para vender packs. Andá a tu perfil.",
         variant: "destructive",
       })
-      return
-    }
-
-    if (!title || !description || !genre || !subgenre || !price || !demoFile || !packFile || !ownershipConfirmed) {
-      toast({
-        title: "Error",
-        description: "Por favor completá todos los campos requeridos",
-        variant: "destructive",
-      })
+      setIsLoading(false)
       return
     }
 
@@ -424,6 +428,7 @@ export default function UploadPage() {
         description: `El archivo (${fileSizeMB} MB) excede el límite de ${MAX_FILE_SIZE_MB} MB para tu plan.`,
         variant: "destructive",
       })
+      setIsLoading(false)
       return
     }
 
@@ -433,13 +438,11 @@ export default function UploadPage() {
         description: `Tu plan permite máximo ${MAX_DISCOUNT}% de descuento`,
         variant: "destructive",
       })
+      setIsLoading(false)
       return
     }
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
       if (!user) throw new Error("No user found")
 
       const validation = await validatePackUpload(user.id, userPlan, priceNumber)
@@ -454,17 +457,18 @@ export default function UploadPage() {
         return
       }
     } catch (error) {
-      console.error("Validation error:", error)
+      console.error("[v0] Validation error:", error)
+      setUploadError("Error validating pack upload")
+      toast({
+        title: "Error de validación",
+        description: "Ocurrió un error al validar los datos del pack",
+        variant: "destructive",
+      })
       setIsLoading(false)
       return
     }
 
-    setUploadProgress(0)
-
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
       if (!user) throw new Error("No user found")
 
       // Upload files
@@ -592,8 +596,24 @@ export default function UploadPage() {
     }
   }
 
-  if (!isAuthenticated) {
-    return null
+  if (authLoading || !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header />
+        <main className="flex-1 container mx-auto px-4 py-12">
+          <Card className="p-8 rounded-3xl border-border animate-pulse">
+            <div className="h-8 bg-muted rounded w-48 mb-4" />
+            <div className="h-4 bg-muted rounded w-96 mb-8" />
+            <div className="space-y-6">
+              <div className="h-12 bg-muted rounded" />
+              <div className="h-12 bg-muted rounded" />
+              <div className="h-12 bg-muted rounded" />
+            </div>
+          </Card>
+        </main>
+        <Footer />
+      </div>
+    )
   }
 
   const MUSICAL_KEYS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]

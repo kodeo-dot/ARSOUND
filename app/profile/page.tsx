@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
+import { useAuth } from "@/components/auth-provider"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
@@ -13,8 +14,6 @@ import { MapPin, Calendar, Package, Upload } from "lucide-react"
 import Link from "next/link"
 import type { PlanType } from "@/lib/plans"
 import { ProfileLimitsCard } from "@/components/profile-limits-card"
-// Removed ProfilePurchasesTab import
-// import { StudioPlusAnalytics } from "@/components/studio-plus-analytics"
 import { BlockWarningBanner } from "@/components/block-warning-banner"
 import { useBlockStatus } from "@/hooks/use-block-status"
 
@@ -50,8 +49,8 @@ interface Pack {
 
 export default function ProfilePage() {
   const router = useRouter()
+  const { user, loading: authLoading } = useAuth()
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [userPlan, setUserPlan] = useState<PlanType>("free")
   const [userPacks, setUserPacks] = useState<Pack[]>([])
@@ -65,8 +64,15 @@ export default function ProfilePage() {
   const supabase = createClient()
 
   useEffect(() => {
+    if (authLoading) return
+
+    if (!user) {
+      router.push("/login")
+      return
+    }
+
     loadUserData()
-  }, [])
+  }, [user, authLoading])
 
   useEffect(() => {
     if (profile?.id) {
@@ -79,17 +85,10 @@ export default function ProfilePage() {
     try {
       setLoading(true)
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
-
-      if (userError || !user) {
+      if (!user) {
         router.push("/login")
         return
       }
-
-      setUser(user)
 
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
@@ -173,7 +172,7 @@ export default function ProfilePage() {
   const canShow4Cards = userPlan === "de_0_a_hit" || userPlan === "studio_plus"
   const showUpgradeCTA = userPlan === "free"
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <Header />
