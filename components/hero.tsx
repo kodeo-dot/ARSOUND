@@ -9,7 +9,7 @@ export function Hero() {
         <div className="max-w-5xl mx-auto text-center space-y-8">
           <div className="inline-flex items-center gap-2 rounded-full bg-muted px-4 py-2 text-xs font-semibold text-foreground border border-border">
             <Play className="h-3 w-3 fill-current" />
-            Sample Packs para LATAM
+            Plataforma de Sample Packs
           </div>
 
           <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight text-balance leading-[1.05]">
@@ -17,11 +17,11 @@ export function Hero() {
           </h1>
 
           <p className="text-xl md:text-2xl lg:text-3xl text-foreground/80 font-medium text-balance max-w-3xl mx-auto leading-relaxed">
-            Sample Packs para productores de LATAM
+            Sample Packs de calidad profesional
           </p>
 
           <p className="text-base md:text-lg text-muted-foreground text-balance max-w-2xl mx-auto leading-relaxed">
-            Sonidos profesionales creados por productores latinoamericanos. Trap, reggaetón, cumbia y todos los géneros
+            Sonidos profesionales creados por productores verificados. Trap, reggaetón, cumbia y todos los géneros
             urbanos en un solo lugar.
           </p>
 
@@ -44,21 +44,6 @@ export function Hero() {
                 Ver Creadores
               </Button>
             </Link>
-          </div>
-
-          <div className="grid grid-cols-3 gap-8 pt-12 max-w-2xl mx-auto">
-            <div className="space-y-1">
-              <div className="text-3xl md:text-4xl font-black text-foreground">1000+</div>
-              <div className="text-xs md:text-sm text-muted-foreground font-medium">Sample Packs</div>
-            </div>
-            <div className="space-y-1">
-              <div className="text-3xl md:text-4xl font-black text-foreground">500+</div>
-              <div className="text-xs md:text-sm text-muted-foreground font-medium">Productores</div>
-            </div>
-            <div className="space-y-1">
-              <div className="text-3xl md:text-4xl font-black text-foreground">LATAM</div>
-              <div className="text-xs md:text-sm text-muted-foreground font-medium">Comunidad</div>
-            </div>
           </div>
         </div>
       </div>

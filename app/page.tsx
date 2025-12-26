@@ -22,9 +22,9 @@ export default function Home() {
               </p>
             </div>
             <div className="text-center space-y-3">
-              <div className="text-4xl font-black">Sonidos LATAM</div>
+              <div className="text-4xl font-black">Sonidos Urbanos</div>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                Ritmos y melodías auténticas de América Latina
+                Ritmos y melodías auténticas para tus producciones
               </p>
             </div>
             <div className="text-center space-y-3">
