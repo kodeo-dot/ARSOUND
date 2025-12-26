@@ -40,7 +40,7 @@
 **Cómo cambiar planes manualmente (para testing):**
 
 En la consola SQL de Supabase:
-```sql
+\`\`\`sql
 -- Ver el plan actual de un usuario
 SELECT * FROM user_plans WHERE user_id = 'tu-user-id';
 
@@ -55,17 +55,17 @@ INSERT INTO user_plans (user_id, plan_type, is_active, expires_at)
 VALUES ('tu-user-id', 'studio_plus', true, NULL)
 ON CONFLICT (user_id) DO UPDATE 
 SET plan_type = 'studio_plus', is_active = true;
-```
+\`\`\`
 
 Desde el código (para testing):
-```typescript
+\`\`\`typescript
 import { testChangePlan } from '@/lib/plans-actions'
 
 // Cambia el plan del usuario actual
 await testChangePlan('de_0_a_hit')
 await testChangePlan('studio_plus')
 await testChangePlan('free')
-```
+\`\`\`
 
 ---
 
@@ -93,10 +93,10 @@ await testChangePlan('free')
 **Con Stripe:**
 1. Instalar: `npm install stripe`
 2. Agregar variables de entorno:
-   ```
+   \`\`\`
    STRIPE_SECRET_KEY=sk_live_...
    STRIPE_WEBHOOK_SECRET=whsec_...
-   ```
+   \`\`\`
 3. Crear productos y precios en Stripe Dashboard
 4. Descomentar código en `app/plans/actions.ts`
 5. Descomentar código en `app/api/webhooks/stripe/route.ts`
@@ -112,7 +112,7 @@ await testChangePlan('free')
 ## 🗂️ Estructura de la Base de Datos
 
 ### Tabla: `user_plans`
-```sql
+\`\`\`sql
 CREATE TABLE user_plans (
   id UUID PRIMARY KEY,
   user_id UUID REFERENCES auth.users(id),
@@ -123,7 +123,7 @@ CREATE TABLE user_plans (
   created_at TIMESTAMPTZ,
   updated_at TIMESTAMPTZ
 )
-```
+\`\`\`
 
 ### Función RPC: `get_user_plan(user_id UUID)`
 - Retorna el plan activo del usuario

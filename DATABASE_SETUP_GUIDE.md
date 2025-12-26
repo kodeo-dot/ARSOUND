@@ -14,11 +14,11 @@ La base de datos se configurará automáticamente cuando despliegues la aplicaci
 
 1. **Crea un proyecto en Supabase** (https://supabase.com)
 2. **Copia las variables de entorno** a tu `.env.local`:
-   ```
+   \`\`\`
    NEXT_PUBLIC_SUPABASE_URL=your_project_url
    NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
    SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-   ```
+   \`\`\`
 
 3. **Ejecuta los scripts SQL** en el SQL Editor de Supabase:
    - `scripts/001_create_profiles_table.sql`

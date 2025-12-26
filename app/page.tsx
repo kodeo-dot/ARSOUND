@@ -4,49 +4,41 @@ import { Header } from "@/components/header"
 import { Hero } from "@/components/hero"
 import { PackGrid } from "@/components/pack-grid"
 import { FeaturedProducers } from "@/components/featured-producers"
-import { AudioPlayer } from "@/components/audio-player"
-import { TopMonthlyPacks } from "@/components/top-monthly-packs"
 import { Footer } from "@/components/footer"
-import { Card } from "@/components/ui/card"
-import Link from "next/link"
-import { useState, useEffect } from "react"
-import { createClient } from "@/lib/supabase/client"
 
 export default function Home() {
-  const [producersLoading, setProducersLoading] = useState(true)
-  const [topProducers, setTopProducers] = useState([])
-  const supabase = createClient()
-
-  useEffect(() => {
-    async function fetchTopProducers() {
-      try {
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("id, username, avatar_url, bio, followers_count")
-          .order("followers_count", { ascending: false })
-          .limit(6)
-
-        if (error) throw error
-        setTopProducers(data || [])
-      } catch (error) {
-        console.error("Error fetching producers:", error)
-        setTopProducers([])
-      } finally {
-        setProducersLoading(false)
-      }
-    }
-
-    fetchTopProducers()
-  }, [])
-
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background">
       <Header />
       <Hero />
+
+      <section className="py-20 bg-muted/30">
+        <div className="container mx-auto px-4">
+          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            <div className="text-center space-y-3">
+              <div className="text-4xl font-black">Alta Calidad</div>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Samples profesionales creados por productores verificados
+              </p>
+            </div>
+            <div className="text-center space-y-3">
+              <div className="text-4xl font-black">Sonidos LATAM</div>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Ritmos y melodías auténticas de América Latina
+              </p>
+            </div>
+            <div className="text-center space-y-3">
+              <div className="text-4xl font-black">Licencias Claras</div>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Usa los samples en tus producciones sin complicaciones
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <PackGrid />
-      <TopMonthlyPacks />
       <FeaturedProducers />
-      <AudioPlayer />
       <Footer />
     </div>
   )

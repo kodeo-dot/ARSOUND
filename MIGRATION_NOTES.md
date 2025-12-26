@@ -36,9 +36,9 @@ If you have existing users where `display_name` was generated from email (e.g., 
 
 ### Data Cleanup (Optional):
 If you want to clean up old `display_name` values, you can run:
-```sql
+\`\`\`sql
 UPDATE public.profiles SET display_name = NULL WHERE display_name IS NOT NULL;
-```
+\`\`\`
 
 ## Testing Checklist
 - [x] New user signup creates username only

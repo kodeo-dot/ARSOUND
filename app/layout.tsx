@@ -6,14 +6,22 @@ import { Analytics } from "@vercel/analytics/next"
 import { AuthProvider } from "@/components/auth-provider"
 import "./globals.css"
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
-const _geistMono = Geist_Mono({ subsets: ["latin"] })
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+})
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  variable: "--font-mono",
+  display: "swap",
+})
 
 export const metadata: Metadata = {
-  title: "ARSOUND - El marketplace de samples de Argentina",
+  title: "ARSOUND - Sample Packs para Productores de LATAM",
   description:
-    "Comprá y vendé samples, loops y packs de audio profesionales. La plataforma líder para productores musicales en Argentina.",
-  generator: "mixflp",
+    "Plataforma profesional para comprar y vender sample packs de alta calidad. La comunidad líder de productores musicales en América Latina.",
+  generator: "ARSOUND",
   icons: {
     icon: [
       {
@@ -31,16 +39,16 @@ export const metadata: Metadata = {
     ],
     apple: "/apple-icon.png",
   },
-  keywords: ["samples", "loops", "audio", "producción musical", "Argentina", "beats", "sonidos"],
+  keywords: ["sample packs", "producción musical", "audio profesional", "LATAM", "beats", "loops", "sonidos"],
   authors: [{ name: "ARSOUND" }],
   creator: "ARSOUND",
   publisher: "ARSOUND",
   openGraph: {
     type: "website",
-    locale: "es_AR",
-    url: "https://arsound.com.ar",
-    title: "ARSOUND - El marketplace de samples de Argentina",
-    description: "Comprá y vendé samples, loops y packs de audio profesionales",
+    locale: "es_419",
+    url: "https://arsound.com",
+    title: "ARSOUND - Sample Packs para Productores de LATAM",
+    description: "Plataforma profesional para comprar y vender sample packs de alta calidad",
     siteName: "ARSOUND",
   },
 }
@@ -52,7 +60,7 @@ export const viewport = {
   userScalable: true,
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a0a0a" },
+    { media: "(prefers-color-scheme: dark)", color: "#1e1e1e" },
   ],
 }
 
@@ -62,8 +70,8 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es">
-      <body className={`${inter.className} font-sans antialiased`}>
+    <html lang="es" className={`${inter.variable} ${geistMono.variable}`}>
+      <body className="font-sans antialiased">
         <AuthProvider>{children}</AuthProvider>
         <Analytics />
       </body>

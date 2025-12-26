@@ -30,12 +30,12 @@
 ## 🚀 Deployment Steps
 
 ### Step 1: Download & Install
-```bash
+\`\`\`bash
 # Install dependencies (automatic with Next.js)
 npm install
 # or
 yarn install
-```
+\`\`\`
 
 ### Step 2: Set Environment Variables in Vercel
 In the **Vars** section of the in-chat sidebar, ensure these are configured:
@@ -52,14 +52,14 @@ The database will initialize automatically when the app loads:
 **No manual SQL scripts needed!**
 
 ### Step 4: Test Locally or Deploy
-```bash
+\`\`\`bash
 # Local testing
 npm run dev
 # Then visit http://localhost:3000
 
 # Deploy to Vercel
 # Click "Publish" button in v0
-```
+\`\`\`
 
 ## ✅ Testing Checklist
 

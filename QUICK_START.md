@@ -14,12 +14,12 @@
 
 ### Step 1: Run Database Scripts
 Execute in Supabase SQL Editor (in order):
-```
+\`\`\`
 1. scripts/init-database-v2.sql
 2. scripts/create-rpc-functions.sql
 3. scripts/create-purchase-tables.sql
 4. lib/supabase/setup-storage-rls.sql
-```
+\`\`\`
 
 ### Step 2: Deploy Code
 Copy all new/modified files to your project (see IMPLEMENTATION_SUMMARY.md for full list)
@@ -29,7 +29,7 @@ Copy all new/modified files to your project (see IMPLEMENTATION_SUMMARY.md for f
 - Ensure `MERCADO_PAGO_ACCESS_TOKEN` is in environment variables
 
 ### Step 4: Test
-```bash
+\`\`\`bash
 # Upload a pack
 curl -X POST /api/packs/upload
 
@@ -38,7 +38,7 @@ curl -X GET /api/packs/[id]/download
 
 # Check health
 curl -X GET /api/health
-```
+\`\`\`
 
 ## Key Features Now Working
 
@@ -90,4 +90,4 @@ curl -X GET /api/health
 See IMPLEMENTATION_SUMMARY.md for detailed documentation
 See MIGRATION_GUIDE.md for troubleshooting
 See README_CRITICAL_FIXES.md for complete overview
-```
+\`\`\`

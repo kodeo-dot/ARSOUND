@@ -277,9 +277,9 @@ export default function PackDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-background">
         <Header />
-        <main className="flex-1 container mx-auto px-4 py-12 flex items-center justify-center">
+        <main className="flex-1 container mx-auto px-4 py-16 flex items-center justify-center">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
         </main>
         <Footer />
@@ -289,9 +289,9 @@ export default function PackDetailPage() {
 
   if (!pack) {
     return (
-      <div className="min-h-screen flex flex-col">
+      <div className="min-h-screen flex flex-col bg-background">
         <Header />
-        <main className="flex-1 container mx-auto px-4 py-12">
+        <main className="flex-1 container mx-auto px-4 py-16">
           <div className="text-center">
             <h1 className="text-3xl font-bold text-foreground mb-4">Pack no encontrado</h1>
             <Link href="/">
@@ -305,13 +305,13 @@ export default function PackDetailPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-background">
       <Header />
 
-      <main className="flex-1 container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+      <main className="flex-1 container mx-auto px-4 py-16">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 max-w-7xl mx-auto">
           <div className="space-y-6">
-            <Card className="overflow-hidden rounded-3xl border-border">
+            <Card className="overflow-hidden rounded-2xl border-border">
               <div className="relative aspect-square bg-muted group overflow-hidden">
                 <img
                   src={pack.cover_image_url || "/placeholder.svg?height=800&width=800"}
@@ -322,91 +322,91 @@ export default function PackDetailPage() {
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
                   <Button
                     size="lg"
-                    className="rounded-full h-24 w-24 p-0 bg-primary text-primary-foreground shadow-2xl hover:scale-110 transition-transform"
+                    className="rounded-full h-20 w-20 p-0 bg-primary text-primary-foreground shadow-2xl hover:scale-110 transition-transform"
                     onClick={handlePlay}
                     disabled={!pack.demo_audio_url}
                   >
-                    <Play className="h-10 w-10 ml-1" fill="currentColor" />
+                    <Play className="h-8 w-8 ml-1" fill="currentColor" />
                   </Button>
                 </div>
 
                 {pack.genre && (
-                  <Badge className="absolute top-4 left-4 bg-primary text-primary-foreground font-bold px-4 py-2 text-sm">
+                  <Badge className="absolute top-4 left-4 bg-primary text-primary-foreground font-bold px-4 py-2 text-sm rounded-full">
                     {formatGenreDisplay(pack.genre, pack.subgenre)}
                   </Badge>
                 )}
               </div>
             </Card>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-3 gap-4">
               {pack.bpm && (
-                <Card className="p-4 text-center rounded-2xl border-border">
-                  <Clock className="h-6 w-6 mx-auto mb-2 text-primary" />
-                  <div className="text-xl font-black text-foreground">{pack.bpm}</div>
-                  <div className="text-xs text-muted-foreground">BPM</div>
+                <Card className="p-5 text-center rounded-xl border-border">
+                  <Clock className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
+                  <div className="text-2xl font-black text-foreground">{pack.bpm}</div>
+                  <div className="text-xs text-muted-foreground font-medium">BPM</div>
                 </Card>
               )}
-              <Card className="p-4 text-center rounded-2xl border-border">
-                <Disc className="h-6 w-6 mx-auto mb-2 text-primary" />
-                <div className="text-xl font-black text-foreground">WAV</div>
-                <div className="text-xs text-muted-foreground">Formato</div>
+              <Card className="p-5 text-center rounded-xl border-border">
+                <Disc className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
+                <div className="text-2xl font-black text-foreground">WAV</div>
+                <div className="text-xs text-muted-foreground font-medium">Formato</div>
               </Card>
-              <Card className="p-4 text-center rounded-2xl border-border">
-                <Download className="h-6 w-6 mx-auto mb-2 text-primary" />
-                <div className="text-xl font-black text-foreground">{pack.downloads_count || 0}</div>
-                <div className="text-xs text-muted-foreground">Descargas</div>
+              <Card className="p-5 text-center rounded-xl border-border">
+                <Download className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
+                <div className="text-2xl font-black text-foreground">{pack.downloads_count || 0}</div>
+                <div className="text-xs text-muted-foreground font-medium">Descargas</div>
               </Card>
             </div>
           </div>
 
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-5xl font-black text-foreground mb-4 text-balance">{pack.title}</h1>
+          <div className="space-y-8">
+            <div className="space-y-4">
+              <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-foreground text-balance leading-tight">
+                {pack.title}
+              </h1>
               <Link
                 href={`/profile/${pack.profiles?.username}`}
-                className="flex items-center gap-3 text-muted-foreground hover:text-primary transition-colors"
+                className="flex items-center gap-3 hover:opacity-80 transition-opacity w-fit"
               >
                 {pack.profiles?.avatar_url ? (
                   <img
                     src={pack.profiles.avatar_url || "/placeholder.svg"}
                     alt={pack.profiles.username || ""}
-                    className="h-12 w-12 rounded-full object-cover"
+                    className="h-10 w-10 rounded-full object-cover"
                   />
                 ) : (
-                  <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold">
+                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-sm">
                     {(pack.profiles?.username || "U")[0].toUpperCase()}
                   </div>
                 )}
                 <div>
-                  <div className="text-sm text-muted-foreground">Creado por</div>
-                  <div className="text-lg font-bold text-foreground">{pack.profiles?.username || "Usuario"}</div>
+                  <div className="text-xs text-muted-foreground font-medium">Creado por</div>
+                  <div className="text-base font-bold text-foreground">{pack.profiles?.username || "Usuario"}</div>
                 </div>
               </Link>
             </div>
 
-            <Card className="p-6 rounded-3xl border-border bg-accent/50">
-              <div className="flex items-center justify-between mb-6">
+            <Card className="p-8 rounded-2xl border-border">
+              <div className="flex items-start justify-between mb-6">
                 <div>
                   {pack.price === 0 || pack.free === true ? (
-                    <div>
-                      <div className="text-5xl font-black text-green-600">GRATIS</div>
-                    </div>
+                    <div className="text-5xl font-black text-green-600">GRATIS</div>
                   ) : appliedDiscount > 0 ? (
                     <div>
-                      <div className="text-2xl font-bold text-muted-foreground line-through">
+                      <div className="text-xl font-bold text-muted-foreground line-through">
                         ${formatPrice(pack.price)}
                       </div>
-                      <div className="text-5xl font-black text-primary">
+                      <div className="text-5xl font-black text-foreground">
                         ${formatPrice(pack.price - appliedDiscount)}
                       </div>
-                      <div className="text-sm text-orange-500 font-semibold mt-1">
+                      <div className="text-sm text-orange-500 font-semibold mt-2">
                         Ahorrás ${formatPrice(appliedDiscount)} ARS
                       </div>
                     </div>
                   ) : (
                     <div>
                       <div className="text-5xl font-black text-foreground">${formatPrice(pack.price)}</div>
-                      <div className="text-sm text-muted-foreground font-semibold">ARS</div>
+                      <div className="text-sm text-muted-foreground font-medium mt-1">ARS</div>
                     </div>
                   )}
                 </div>
@@ -414,7 +414,7 @@ export default function PackDetailPage() {
                   <Button
                     variant="outline"
                     size="icon"
-                    className="rounded-full h-12 w-12 bg-transparent relative"
+                    className="rounded-full h-11 w-11 bg-transparent relative"
                     onClick={handleLike}
                     disabled={isLiking}
                   >
@@ -430,10 +430,9 @@ export default function PackDetailPage() {
                   <Button
                     variant="outline"
                     size="icon"
-                    className="rounded-full h-12 w-12 bg-transparent"
+                    className="rounded-full h-11 w-11 bg-transparent"
                     onClick={handleSharePack}
                     disabled={!pack}
-                    title={pack ? "Copiar enlace" : "Pack no disponible"}
                   >
                     {isShareCopied ? <Check className="h-5 w-5 text-green-500" /> : <Share2 className="h-5 w-5" />}
                   </Button>
@@ -441,19 +440,19 @@ export default function PackDetailPage() {
               </div>
 
               {discountReason && (pack.has_discount || activeOffer) && (
-                <div className="mb-4 p-3 rounded-xl bg-orange-500/10 border border-orange-500/20">
+                <div className="mb-6 p-4 rounded-xl bg-orange-500/10 border border-orange-500/20">
                   <p className="text-sm font-semibold text-orange-600 text-center">{discountReason}</p>
                 </div>
               )}
 
               {isOwner ? (
-                <Button className="w-full gap-2 rounded-full h-14 text-base font-bold" onClick={handleEdit}>
+                <Button className="w-full gap-2 rounded-full h-12 text-base font-bold" onClick={handleEdit}>
                   <Edit className="h-5 w-5" />
                   Editar Pack
                 </Button>
               ) : (
                 <Button
-                  className="w-full gap-2 rounded-full h-14 text-base font-bold"
+                  className="w-full gap-2 rounded-full h-12 text-base font-bold"
                   onClick={handlePurchase}
                   disabled={isPurchasing}
                 >
@@ -478,21 +477,23 @@ export default function PackDetailPage() {
             </Card>
 
             {pack.description && (
-              <Card className="p-6 rounded-3xl border-border">
-                <h2 className="text-2xl font-black text-foreground mb-4">Descripción</h2>
-                <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">{pack.description}</p>
-              </Card>
+              <div className="space-y-3">
+                <h2 className="text-2xl font-black text-foreground">Descripción</h2>
+                <p className="text-base text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                  {pack.description}
+                </p>
+              </div>
             )}
 
             {pack.tags && pack.tags.length > 0 && (
-              <div>
-                <h3 className="text-sm font-bold text-muted-foreground mb-3">TAGS</h3>
+              <div className="space-y-3">
+                <h3 className="text-sm font-bold text-muted-foreground uppercase">Tags</h3>
                 <div className="flex flex-wrap gap-2">
                   {pack.tags.map((tag: string, index: number) => (
                     <Badge
                       key={index}
                       variant="outline"
-                      className="px-4 py-2 rounded-full border-border hover:bg-accent cursor-pointer"
+                      className="px-4 py-1.5 rounded-full border-border hover:bg-accent cursor-pointer text-sm"
                     >
                       {tag}
                     </Badge>
