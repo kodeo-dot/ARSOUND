@@ -24,6 +24,8 @@ export function Header() {
   const [profile, setProfile] = useState<any>(null)
   const router = useRouter()
 
+  console.log("[v0] Header - user:", user?.id, "loading:", loading)
+
   useEffect(() => {
     if (!user) {
       setProfile(null)
@@ -38,9 +40,10 @@ export function Header() {
           .select("username, avatar_url, display_name")
           .eq("id", user.id)
           .single()
+        console.log("[v0] Header - loaded profile:", profileData)
         setProfile(profileData)
       } catch (error) {
-        console.error("[ARSOUND] Error loading profile:", error)
+        console.error("[v0] Header - error loading profile:", error)
       }
     }
 
@@ -92,7 +95,7 @@ export function Header() {
                 </Link>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <button className="hidden md:flex focus:outline-none focus:ring-2 focus:ring-primary rounded-full transition-all">
+                    <button className="hidden md:flex focus:outline-none focus:ring-2 focus:ring-foreground rounded-full transition-all">
                       <UserAvatar
                         avatarUrl={profile?.avatar_url}
                         username={profile?.username}

@@ -54,14 +54,18 @@ export default function SettingsPage() {
   const [mpUserId, setMpUserId] = useState<string | null>(null)
   const [mpConnecting, setMpConnecting] = useState(false)
 
+  console.log("[v0] Settings - user:", user?.id, "authLoading:", authLoading, "loading:", loading)
+
   useEffect(() => {
     if (!authLoading && !user) {
+      console.log("[v0] Settings - No user, redirecting to login")
       router.push("/login")
     }
   }, [user, authLoading, router])
 
   useEffect(() => {
     if (user && !authLoading) {
+      console.log("[v0] Settings - Loading data for user:", user.id)
       loadData()
     }
   }, [user, authLoading])
@@ -121,6 +125,7 @@ export default function SettingsPage() {
         .single()
 
       if (!profileError && profileData) {
+        console.log("[v0] Settings - Profile loaded:", profileData)
         setProfile(profileData as Profile)
         setMpConnected(profileData.mp_connected || false)
         setMpUserId(profileData.mp_user_id || null)
@@ -132,7 +137,7 @@ export default function SettingsPage() {
         })
       }
     } catch (error) {
-      console.error("Error loading data:", error)
+      console.error("[v0] Settings - Error loading data:", error)
     } finally {
       setLoading(false)
     }
@@ -385,8 +390,8 @@ export default function SettingsPage() {
       <main className="flex-1 container mx-auto px-4 py-12 max-w-3xl">
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-              <Settings className="h-6 w-6 text-primary" />
+            <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
+              <Settings className="h-6 w-6 text-foreground" />
             </div>
             <h1 className="text-4xl font-black text-foreground">Configuración</h1>
           </div>
@@ -415,8 +420,8 @@ export default function SettingsPage() {
             <div
               className={`p-4 rounded-xl font-medium mb-6 ${
                 message.type === "success"
-                  ? "bg-green-500/10 text-green-600 border border-green-500/20"
-                  : "bg-red-500/10 text-red-600 border border-red-500/20"
+                  ? "bg-muted text-foreground border border-border"
+                  : "bg-destructive/10 text-destructive border border-destructive/20"
               }`}
             >
               {message.text}
@@ -433,10 +438,10 @@ export default function SettingsPage() {
                   <img
                     src={avatarPreview || profile?.avatar_url || ""}
                     alt="Avatar preview"
-                    className="w-full h-full rounded-full object-cover border-4 border-primary/20"
+                    className="w-full h-full rounded-full object-cover border-4 border-border"
                   />
                 ) : (
-                  <div className="w-full h-full rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-4xl font-black text-white">
+                  <div className="w-full h-full rounded-full bg-muted flex items-center justify-center text-4xl font-black text-foreground">
                     {getAvatarInitials()}
                   </div>
                 )}
@@ -444,7 +449,7 @@ export default function SettingsPage() {
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-0 right-0 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full p-2.5 shadow-lg transition-all"
+                  className="absolute bottom-0 right-0 bg-foreground hover:bg-foreground/90 text-background rounded-full p-2.5 shadow-lg transition-all"
                 >
                   <Camera className="h-5 w-5" />
                 </button>
@@ -474,7 +479,7 @@ export default function SettingsPage() {
                         fileInputRef.current.value = ""
                       }
                     }}
-                    className="gap-2 rounded-full text-red-600 hover:text-red-600 hover:bg-red-500/10"
+                    className="gap-2 rounded-full text-destructive hover:text-destructive hover:bg-destructive/10"
                   >
                     <X className="h-4 w-4" />
                     Cancelar Cambio
@@ -503,9 +508,9 @@ export default function SettingsPage() {
                   {usernameChecking ? (
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   ) : usernameAvailable === true ? (
-                    <Check className="h-5 w-5 text-green-600" />
+                    <Check className="h-5 w-5 text-foreground" />
                   ) : usernameAvailable === false ? (
-                    <X className="h-5 w-5 text-red-600" />
+                    <X className="h-5 w-5 text-destructive" />
                   ) : null}
                 </div>
               </div>
@@ -534,8 +539,8 @@ export default function SettingsPage() {
 
         <Card className="p-8 rounded-3xl border-border">
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-[#009EE3]/10 flex items-center justify-center">
-              <svg className="w-7 h-7" viewBox="0 0 24 24" fill="#009EE3">
+            <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
+              <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor" className="text-foreground">
                 <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
               </svg>
             </div>
@@ -547,18 +552,18 @@ export default function SettingsPage() {
 
           {mpConnected ? (
             <div className="space-y-6">
-              <div className="p-6 rounded-2xl bg-green-500/10 border-2 border-green-500/20">
+              <div className="p-6 rounded-2xl bg-muted border-2 border-border">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0">
-                    <Check className="h-6 w-6 text-white" />
+                  <div className="w-12 h-12 rounded-full bg-foreground flex items-center justify-center flex-shrink-0">
+                    <Check className="h-6 w-6 text-background" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-bold text-green-600 text-lg mb-1">Cuenta conectada exitosamente</h3>
-                    <p className="text-green-600/80 text-sm mb-3">
+                    <h3 className="font-bold text-foreground text-lg mb-1">Cuenta conectada exitosamente</h3>
+                    <p className="text-muted-foreground text-sm mb-3">
                       Ya podés vender packs y recibir pagos automáticamente
                     </p>
                     {mpUserId && (
-                      <p className="text-xs text-muted-foreground font-mono bg-background/50 px-3 py-2 rounded-lg inline-block">
+                      <p className="text-xs text-muted-foreground font-mono bg-background px-3 py-2 rounded-lg inline-block">
                         ID de cuenta: {mpUserId}
                       </p>
                     )}
@@ -601,7 +606,7 @@ export default function SettingsPage() {
                 <Button
                   variant="outline"
                   onClick={handleDisconnectMercadoPago}
-                  className="gap-2 rounded-full text-red-600 hover:text-red-600 hover:bg-red-500/10 border-red-500/20 bg-transparent"
+                  className="gap-2 rounded-full text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/20 bg-transparent"
                 >
                   <X className="h-4 w-4" />
                   Desconectar cuenta
