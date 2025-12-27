@@ -4,19 +4,19 @@ import Link from "next/link"
 
 export function Hero() {
   return (
-    <section className="relative bg-background">
+    <section className="relative bg-gradient-to-b from-background via-primary/5 to-background">
       <div className="container mx-auto px-4 py-24 md:py-32 lg:py-40">
         <div className="max-w-5xl mx-auto text-center space-y-8">
-          <div className="inline-flex items-center gap-2 rounded-full bg-muted px-4 py-2 text-xs font-semibold text-foreground border border-border">
+          <div className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-xs font-semibold text-primary border border-primary/20">
             <Play className="h-3 w-3 fill-current" />
             Plataforma de Sample Packs
           </div>
 
-          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight text-balance leading-[1.05]">
+          <h1 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight text-balance leading-[1.05] bg-gradient-to-br from-foreground via-foreground to-foreground/60 bg-clip-text text-transparent">
             ARSOUND
           </h1>
 
-          <p className="text-xl md:text-2xl lg:text-3xl text-foreground/80 font-medium text-balance max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl md:text-2xl lg:text-3xl text-foreground font-semibold text-balance max-w-3xl mx-auto leading-relaxed">
             Sample Packs de calidad profesional
           </p>
 
@@ -29,7 +29,7 @@ export function Hero() {
             <Link href="/#packs">
               <Button
                 size="lg"
-                className="gap-2 text-base h-12 px-8 rounded-full font-semibold w-full sm:w-auto min-w-[200px]"
+                className="gap-2 text-base h-12 px-8 rounded-full font-semibold w-full sm:w-auto min-w-[200px] shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all"
               >
                 Explorar Sample Packs
                 <ChevronRight className="h-4 w-4" />
@@ -39,7 +39,7 @@ export function Hero() {
               <Button
                 size="lg"
                 variant="outline"
-                className="text-base h-12 px-8 rounded-full font-semibold bg-background w-full sm:w-auto min-w-[200px]"
+                className="text-base h-12 px-8 rounded-full font-semibold bg-background w-full sm:w-auto min-w-[200px] border-2 hover:border-primary/50 transition-all"
               >
                 Ver Creadores
               </Button>

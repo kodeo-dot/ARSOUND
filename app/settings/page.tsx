@@ -16,6 +16,7 @@ import { Settings, Check, X, Loader2, Upload, Camera, AlertCircle } from "lucide
 import { toast } from "@/components/ui/use-toast"
 import { PLAN_FEATURES } from "@/lib/plans"
 import type { PlanType } from "@/lib/plans"
+import { useAuth } from "@/components/auth-provider"
 
 interface Profile {
   id: string
@@ -31,9 +32,9 @@ interface Profile {
 export default function SettingsPage() {
   const router = useRouter()
   const supabase = createClient()
+  const { user, loading: authLoading } = useAuth()
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [user, setUser] = useState<any>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
@@ -54,8 +55,16 @@ export default function SettingsPage() {
   const [mpConnecting, setMpConnecting] = useState(false)
 
   useEffect(() => {
-    loadData()
-  }, [])
+    if (!authLoading && !user) {
+      router.push("/login")
+    }
+  }, [user, authLoading, router])
+
+  useEffect(() => {
+    if (user && !authLoading) {
+      loadData()
+    }
+  }, [user, authLoading])
 
   useEffect(() => {
     const checkUsername = async () => {
@@ -95,23 +104,15 @@ export default function SettingsPage() {
 
     const timeoutId = setTimeout(checkUsername, 500)
     return () => clearTimeout(timeoutId)
-  }, [editForm.username])
+  }, [editForm.username, profile?.username, supabase])
 
   async function loadData() {
     try {
       setLoading(true)
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser()
-
-      if (userError || !user) {
-        router.push("/login")
+      if (!user) {
         return
       }
-
-      setUser(user)
 
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
@@ -202,7 +203,7 @@ export default function SettingsPage() {
           }
 
           const fileExt = avatarFile.name.split(".").pop()
-          const fileName = `${user.id}-${Date.now()}.${fileExt}`
+          const fileName = `${user!.id}-${Date.now()}.${fileExt}`
           const filePath = `avatars/${fileName}`
 
           const { error: uploadError } = await supabase.storage.from("avatars").upload(filePath, avatarFile, {
@@ -231,7 +232,7 @@ export default function SettingsPage() {
           bio: editForm.bio,
           avatar_url: avatarUrl,
         })
-        .eq("id", user.id)
+        .eq("id", user!.id)
 
       if (error) throw error
 
@@ -324,7 +325,6 @@ export default function SettingsPage() {
         title: "Conectado exitosamente",
         description: "Tu cuenta de Mercado Pago fue conectada correctamente",
       })
-      loadData()
       window.history.replaceState({}, "", "/settings")
     }
 
@@ -352,7 +352,7 @@ export default function SettingsPage() {
     return username.substring(0, 2).toUpperCase()
   }
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <Header />
@@ -372,6 +372,10 @@ export default function SettingsPage() {
         <Footer />
       </div>
     )
+  }
+
+  if (!user) {
+    return null
   }
 
   return (

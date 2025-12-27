@@ -20,7 +20,7 @@ import { useAuth } from "@/components/auth-provider"
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
   const [profile, setProfile] = useState<any>(null)
   const router = useRouter()
 
@@ -45,7 +45,7 @@ export function Header() {
     }
 
     loadProfile()
-  }, [user]) // Updated dependency array to useExhaustiveDependencies lint rule
+  }, [user])
 
   const handleLogout = async () => {
     const supabase = createClient()
@@ -80,85 +80,87 @@ export function Header() {
           </nav>
 
           <div className="flex items-center gap-3">
-            {user && (
-              <Link href="/upload" className="hidden sm:block">
-                <Button variant="outline" size="sm" className="gap-2 rounded-full font-semibold bg-transparent">
-                  <Upload className="h-4 w-4" />
-                  Subir
-                </Button>
-              </Link>
-            )}
-            {user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="hidden md:flex focus:outline-none focus:ring-2 focus:ring-primary rounded-full transition-all">
-                    <UserAvatar
-                      avatarUrl={profile?.avatar_url}
-                      username={profile?.username}
-                      displayName={profile?.display_name}
-                      size="sm"
-                    />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>
-                    <Link href="/profile" className="flex items-center gap-3">
+            {loading ? (
+              <div className="w-20 h-9 bg-muted/50 animate-pulse rounded-full" />
+            ) : user ? (
+              <>
+                <Link href="/upload" className="hidden sm:block">
+                  <Button variant="outline" size="sm" className="gap-2 rounded-full font-semibold bg-transparent">
+                    <Upload className="h-4 w-4" />
+                    Subir
+                  </Button>
+                </Link>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="hidden md:flex focus:outline-none focus:ring-2 focus:ring-primary rounded-full transition-all">
                       <UserAvatar
                         avatarUrl={profile?.avatar_url}
                         username={profile?.username}
                         displayName={profile?.display_name}
                         size="sm"
                       />
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-sm">
-                          {profile?.display_name || profile?.username || "Usuario"}
-                        </span>
-                        <span className="text-xs text-muted-foreground">Ver perfil</span>
-                      </div>
-                    </Link>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/statistics" className="flex items-center gap-2 cursor-pointer">
-                      <BarChart3 className="h-4 w-4" />
-                      Estadísticas
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/saved" className="flex items-center gap-2 cursor-pointer">
-                      <Heart className="h-4 w-4" />
-                      Guardados
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/purchases" className="flex items-center gap-2 cursor-pointer">
-                      <ShoppingBag className="h-4 w-4" />
-                      Mis compras
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/settings" className="flex items-center gap-2 cursor-pointer">
-                      <Settings className="h-4 w-4" />
-                      Configuración
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/plans" className="flex items-center gap-2 cursor-pointer">
-                      <Zap className="h-4 w-4" />
-                      Mejorar plan
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={handleLogout}
-                    className="flex items-center gap-2 cursor-pointer text-destructive"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Cerrar sesión
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>
+                      <Link href="/profile" className="flex items-center gap-3">
+                        <UserAvatar
+                          avatarUrl={profile?.avatar_url}
+                          username={profile?.username}
+                          displayName={profile?.display_name}
+                          size="sm"
+                        />
+                        <div className="flex flex-col">
+                          <span className="font-semibold text-sm">
+                            {profile?.display_name || profile?.username || "Usuario"}
+                          </span>
+                          <span className="text-xs text-muted-foreground">Ver perfil</span>
+                        </div>
+                      </Link>
+                    </DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/statistics" className="flex items-center gap-2 cursor-pointer">
+                        <BarChart3 className="h-4 w-4" />
+                        Estadísticas
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/saved" className="flex items-center gap-2 cursor-pointer">
+                        <Heart className="h-4 w-4" />
+                        Guardados
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/purchases" className="flex items-center gap-2 cursor-pointer">
+                        <ShoppingBag className="h-4 w-4" />
+                        Mis compras
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild>
+                      <Link href="/settings" className="flex items-center gap-2 cursor-pointer">
+                        <Settings className="h-4 w-4" />
+                        Configuración
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link href="/plans" className="flex items-center gap-2 cursor-pointer">
+                        <Zap className="h-4 w-4" />
+                        Mejorar plan
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={handleLogout}
+                      className="flex items-center gap-2 cursor-pointer text-destructive"
+                    >
+                      <LogOut className="h-4 w-4" />
+                      Cerrar sesión
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
             ) : (
               <Link href="/login" className="hidden md:block">
                 <Button size="sm" className="rounded-full font-semibold">
