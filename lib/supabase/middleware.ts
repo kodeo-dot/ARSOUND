@@ -45,6 +45,8 @@ export async function updateSession(request: NextRequest) {
     },
   })
 
+  let hasValidSession = false
+
   try {
     const {
       data: { session },
@@ -62,9 +64,16 @@ export async function updateSession(request: NextRequest) {
           supabaseResponse.cookies.delete(cookie.name)
         }
       })
+      hasValidSession = false
     }
 
     if (session) {
+      const isExpired = session.expires_at && session.expires_at * 1000 <= Date.now()
+
+      if (isExpired) {
+        console.log("[ARSOUND] Session expired, attempting refresh")
+      }
+
       const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
 
       if (refreshError) {
@@ -72,8 +81,10 @@ export async function updateSession(request: NextRequest) {
         // Clear cookies if refresh fails
         supabaseResponse.cookies.delete("sb-access-token")
         supabaseResponse.cookies.delete("sb-refresh-token")
+        hasValidSession = false
       } else if (refreshData.session) {
         console.log("[ARSOUND] Session refreshed successfully in middleware")
+        hasValidSession = true
       }
     }
   } catch (error) {
@@ -81,14 +92,17 @@ export async function updateSession(request: NextRequest) {
     // Clear all cookies on unexpected error
     supabaseResponse.cookies.delete("sb-access-token")
     supabaseResponse.cookies.delete("sb-refresh-token")
+    hasValidSession = false
   }
 
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
+  const hasValidUser = user && user.id && user.aud === "authenticated"
+
   // Now we can safely use the user data for routing logic
-  if (user) {
+  if (hasValidUser) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("is_blocked, blocked_reason, blocked_at")
@@ -110,17 +124,40 @@ export async function updateSession(request: NextRequest) {
   }
 
   // Protect routes that require authentication
-  if (!user && (request.nextUrl.pathname.startsWith("/profile") || request.nextUrl.pathname.startsWith("/upload"))) {
+  if (
+    !hasValidUser &&
+    (request.nextUrl.pathname.startsWith("/profile") || request.nextUrl.pathname.startsWith("/upload"))
+  ) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
     return NextResponse.redirect(url)
   }
 
-  // Redirect authenticated users away from auth pages
-  if (user && (request.nextUrl.pathname.startsWith("/login") || request.nextUrl.pathname.startsWith("/signup"))) {
+  if (
+    hasValidUser &&
+    hasValidSession &&
+    (request.nextUrl.pathname.startsWith("/login") || request.nextUrl.pathname.startsWith("/signup"))
+  ) {
+    console.log("[ARSOUND] Valid authenticated user accessing auth page, redirecting to home")
     const url = request.nextUrl.clone()
     url.pathname = "/"
     return NextResponse.redirect(url)
+  }
+
+  if (
+    hasValidUser &&
+    !hasValidSession &&
+    (request.nextUrl.pathname.startsWith("/login") || request.nextUrl.pathname.startsWith("/signup"))
+  ) {
+    console.log("[ARSOUND] User with invalid session accessing auth page, allowing access")
+    // Clear cookies and allow access to login
+    supabaseResponse.cookies.delete("sb-access-token")
+    supabaseResponse.cookies.delete("sb-refresh-token")
+    request.cookies.getAll().forEach((cookie) => {
+      if (cookie.name.includes("sb-") || cookie.name.includes("supabase")) {
+        supabaseResponse.cookies.delete(cookie.name)
+      }
+    })
   }
 
   return supabaseResponse
