@@ -1030,7 +1030,7 @@ export default function UploadPage() {
               Precio máximo permitido: ${MAX_PRICE.toLocaleString()} ARS
             </p>
 
-            <div className="bg-accent rounded-xl p-6 space-y-6 border border-border mt-6">
+            <div className="bg-card rounded-xl p-6 space-y-6 border-2 border-border mt-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Tag className="h-5 w-5 text-primary" />
@@ -1200,7 +1200,7 @@ export default function UploadPage() {
           </div>
 
           {/* Ownership Confirmation */}
-          <div className="flex items-start gap-3 p-4 rounded-xl bg-accent border border-border">
+          <div className="flex items-start gap-3 p-4 rounded-xl bg-card border-2 border-border">
             <input
               type="checkbox"
               id="ownership"

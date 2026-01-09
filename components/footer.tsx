@@ -89,27 +89,27 @@ export function Footer() {
             <div className="flex gap-2 mb-6">
               <a
                 href="#"
-                className="h-10 w-10 rounded-full bg-accent hover:bg-primary hover:text-primary-foreground transition-colors flex items-center justify-center"
+                className="h-10 w-10 rounded-full bg-accent hover:bg-primary transition-colors flex items-center justify-center group"
               >
-                <Instagram className="h-5 w-5" />
+                <Instagram className="h-5 w-5 text-white" />
               </a>
               <a
                 href="#"
-                className="h-10 w-10 rounded-full bg-accent hover:bg-primary hover:text-primary-foreground transition-colors flex items-center justify-center"
+                className="h-10 w-10 rounded-full bg-accent hover:bg-primary transition-colors flex items-center justify-center group"
               >
-                <Twitter className="h-5 w-5" />
+                <Twitter className="h-5 w-5 text-white" />
               </a>
               <a
                 href="#"
-                className="h-10 w-10 rounded-full bg-accent hover:bg-primary hover:text-primary-foreground transition-colors flex items-center justify-center"
+                className="h-10 w-10 rounded-full bg-accent hover:bg-primary transition-colors flex items-center justify-center group"
               >
-                <Youtube className="h-5 w-5" />
+                <Youtube className="h-5 w-5 text-white" />
               </a>
               <a
                 href="mailto:soporte@arsound.com.ar"
-                className="h-10 w-10 rounded-full bg-accent hover:bg-primary hover:text-primary-foreground transition-colors flex items-center justify-center"
+                className="h-10 w-10 rounded-full bg-accent hover:bg-primary transition-colors flex items-center justify-center group"
               >
-                <Mail className="h-5 w-5" />
+                <Mail className="h-5 w-5 text-white" />
               </a>
             </div>
             <ul className="space-y-2 text-sm">
