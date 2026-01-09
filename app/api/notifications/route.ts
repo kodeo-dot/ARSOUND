@@ -22,23 +22,9 @@ export async function GET(request: NextRequest) {
     const limit = Number.parseInt(searchParams.get("limit") || "20")
     const offset = Number.parseInt(searchParams.get("offset") || "0")
 
-    // Get notifications with actor and pack data
     const { data: notifications, error: notifError } = await supabase
       .from("notifications")
-      .select(`
-        *,
-        actor:profiles!notifications_actor_id_fkey (
-          id,
-          username,
-          display_name,
-          avatar_url
-        ),
-        pack:packs!notifications_pack_id_fkey (
-          id,
-          name,
-          cover_url
-        )
-      `)
+      .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1)
@@ -46,9 +32,38 @@ export async function GET(request: NextRequest) {
     console.log("[v0] Notifications query result:", { notifications, error: notifError })
 
     if (notifError) {
+      console.error("[v0] Supabase error:", notifError)
       logger.error("Error fetching notifications", { error: notifError })
-      return errorResponse("Error al obtener notificaciones", 500)
+      return errorResponse(`Error al obtener notificaciones: ${notifError.message}`, 500)
     }
+
+    const enrichedNotifications = await Promise.all(
+      (notifications || []).map(async (notif) => {
+        const enriched: any = { ...notif }
+
+        // Fetch actor profile
+        if (notif.actor_id) {
+          const { data: actor } = await supabase
+            .from("profiles")
+            .select("id, username, display_name, avatar_url")
+            .eq("id", notif.actor_id)
+            .single()
+          enriched.actor = actor
+        }
+
+        // Fetch pack data
+        if (notif.pack_id) {
+          const { data: pack } = await supabase
+            .from("packs")
+            .select("id, name, cover_url")
+            .eq("id", notif.pack_id)
+            .single()
+          enriched.pack = pack
+        }
+
+        return enriched
+      }),
+    )
 
     // Get unread count
     const { count: unreadCount } = await supabase
@@ -58,10 +73,10 @@ export async function GET(request: NextRequest) {
       .eq("is_read", false)
 
     console.log("[v0] Unread count:", unreadCount)
-    console.log("[v0] Total notifications:", notifications?.length)
+    console.log("[v0] Total notifications:", enrichedNotifications?.length)
 
     return successResponse({
-      notifications: notifications || [],
+      notifications: enrichedNotifications || [],
       unread_count: unreadCount || 0,
     })
   } catch (error) {
