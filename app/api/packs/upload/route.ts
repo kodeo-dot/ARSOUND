@@ -75,7 +75,6 @@ export async function POST(request: Request) {
         title: body.title,
         description: body.description,
         genre: body.genre,
-        subgenre: body.subgenre,
         bpm: body.bpm || null,
         price: body.price,
         cover_image_url: body.cover_image_url || null,
@@ -84,7 +83,7 @@ export async function POST(request: Request) {
         tags: body.tags || [],
         has_discount: body.has_discount || false,
         discount_percent: body.has_discount ? body.discount_percent || 0 : 0,
-        status: "published",
+        is_deleted: false, // Use is_deleted instead of status
       })
       .select()
       .single()
