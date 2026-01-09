@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Bell, Check, Loader2 } from "lucide-react"
+import { Bell, Check, Loader2, Heart, ShoppingBag, UserPlus, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { UserAvatar } from "@/components/user-avatar"
 import Link from "next/link"
@@ -98,9 +98,35 @@ export default function NotificationsPage() {
     }
   }
 
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case "follow":
+        return <UserPlus className="h-4 w-4" />
+      case "like":
+        return <Heart className="h-4 w-4" />
+      case "purchase":
+        return <ShoppingBag className="h-4 w-4" />
+      default:
+        return <Bell className="h-4 w-4" />
+    }
+  }
+
+  const getNotificationColor = (type: string) => {
+    switch (type) {
+      case "follow":
+        return "bg-blue-500/10 text-blue-600 dark:text-blue-400"
+      case "like":
+        return "bg-pink-500/10 text-pink-600 dark:text-pink-400"
+      case "purchase":
+        return "bg-green-500/10 text-green-600 dark:text-green-400"
+      default:
+        return "bg-accent text-foreground"
+    }
+  }
+
   if (loading) {
     return (
-      <div className="container max-w-2xl py-8">
+      <div className="container max-w-4xl py-8">
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -109,84 +135,128 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="container max-w-2xl py-8">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Bell className="h-6 w-6" />
-          <h1 className="text-2xl font-bold">Notificaciones</h1>
-          {unreadCount > 0 && (
-            <span className="bg-primary text-primary-foreground text-xs font-bold px-2 py-1 rounded-full">
-              {unreadCount}
-            </span>
-          )}
+    <div className="min-h-screen bg-background">
+      <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+        <div className="container max-w-4xl py-4 px-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-primary/10 rounded-lg">
+                <Bell className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold">Notificaciones</h1>
+                {unreadCount > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {unreadCount} {unreadCount === 1 ? "nueva" : "nuevas"}
+                  </p>
+                )}
+              </div>
+            </div>
+            {unreadCount > 0 && (
+              <Button variant="outline" size="sm" onClick={markAllAsRead}>
+                <Check className="h-4 w-4 mr-2" />
+                Marcar todas como leídas
+              </Button>
+            )}
+          </div>
         </div>
-        {unreadCount > 0 && (
-          <Button variant="outline" size="sm" onClick={markAllAsRead}>
-            <Check className="h-4 w-4 mr-2" />
-            Marcar todas como leídas
-          </Button>
-        )}
       </div>
 
-      {/* Notifications List */}
-      {notifications.length === 0 ? (
-        <div className="text-center py-12">
-          <Bell className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-          <p className="text-muted-foreground">No tienes notificaciones</p>
-        </div>
-      ) : (
-        <div className="space-y-2">
-          {notifications.map((notif) => (
-            <Link
-              key={notif.id}
-              href={getNotificationLink(notif)}
-              onClick={() => !notif.is_read && markAsRead(notif.id)}
-              className={`block p-4 rounded-lg border transition-colors hover:bg-accent/50 ${
-                !notif.is_read ? "bg-accent/30" : "bg-card"
-              }`}
-            >
-              <div className="flex items-start gap-3">
-                <UserAvatar
-                  avatarUrl={notif.actor?.avatar_url}
-                  username={notif.actor?.username}
-                  displayName={notif.actor?.display_name}
-                  size="md"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm">
-                    <span className="font-semibold">{notif.actor?.display_name || notif.actor?.username}</span>{" "}
-                    <span className="text-muted-foreground">{getNotificationText(notif)}</span>
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {formatDistanceToNow(new Date(notif.created_at), {
-                      addSuffix: true,
-                      locale: es,
-                    })}
-                  </p>
-                </div>
-                {!notif.is_read && <div className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0" />}
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
+      <div className="container max-w-4xl py-8 px-4">
+        {notifications.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="inline-flex items-center justify-center p-4 bg-muted rounded-2xl mb-4">
+              <Bell className="h-12 w-12 text-muted-foreground" />
+            </div>
+            <h3 className="text-lg font-semibold mb-2">No tienes notificaciones</h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              Cuando alguien interactúe con tu contenido, aparecerá aquí
+            </p>
+            <Button asChild>
+              <Link href="/">Explorar ARSOUND</Link>
+            </Button>
+          </div>
+        ) : (
+          <>
+            <div className="space-y-3">
+              {notifications.map((notif) => (
+                <Link
+                  key={notif.id}
+                  href={getNotificationLink(notif)}
+                  onClick={() => !notif.is_read && markAsRead(notif.id)}
+                  className={`block p-5 rounded-xl border transition-all hover:shadow-md hover:border-primary/30 ${
+                    !notif.is_read ? "bg-primary/5 border-primary/20 shadow-sm" : "bg-card hover:bg-accent/50"
+                  }`}
+                >
+                  <div className="flex items-start gap-4">
+                    <div className="relative">
+                      <UserAvatar
+                        avatarUrl={notif.actor?.avatar_url}
+                        username={notif.actor?.username}
+                        displayName={notif.actor?.display_name}
+                        size="lg"
+                      />
+                      <div
+                        className={`absolute -bottom-1 -right-1 p-1.5 rounded-full border-2 border-background ${getNotificationColor(
+                          notif.type,
+                        )}`}
+                      >
+                        {getNotificationIcon(notif.type)}
+                      </div>
+                    </div>
 
-      {/* Load More */}
-      {hasMore && notifications.length > 0 && (
-        <div className="mt-6 text-center">
-          <Button variant="outline" onClick={() => loadNotifications(notifications.length)} disabled={loadingMore}>
-            {loadingMore ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Cargando...
-              </>
-            ) : (
-              "Cargar más"
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm leading-relaxed">
+                        <span className="font-semibold text-foreground">
+                          {notif.actor?.display_name || notif.actor?.username}
+                        </span>{" "}
+                        <span className="text-muted-foreground">{getNotificationText(notif)}</span>
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        {formatDistanceToNow(new Date(notif.created_at), {
+                          addSuffix: true,
+                          locale: es,
+                        })}
+                      </p>
+                    </div>
+
+                    {!notif.is_read && (
+                      <div className="flex items-center gap-2">
+                        <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
+                        <span className="text-xs font-medium text-primary">Nueva</span>
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              ))}
+            </div>
+
+            {hasMore && (
+              <div className="mt-8 text-center">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={() => loadNotifications(notifications.length)}
+                  disabled={loadingMore}
+                  className="min-w-[200px]"
+                >
+                  {loadingMore ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Cargando...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Cargar más notificaciones
+                    </>
+                  )}
+                </Button>
+              </div>
             )}
-          </Button>
-        </div>
-      )}
+          </>
+        )}
+      </div>
     </div>
   )
 }
