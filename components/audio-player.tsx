@@ -1,9 +1,7 @@
 "use client"
-
-import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
-import { Play, Pause, SkipBack, SkipForward, Volume2, X } from 'lucide-react'
+import { Play, Pause, SkipBack, SkipForward, Volume2, X } from "lucide-react"
 import { useAudioPlayer } from "@/hooks/use-audio-player"
 import { useEffect, useState, useRef } from "react"
 import { createBrowserClient } from "@/lib/supabase/client"
@@ -74,11 +72,7 @@ export function AudioPlayer() {
         data: { user },
       } = await supabase.auth.getUser()
 
-      const { data: pack } = await supabase
-        .from("packs")
-        .select("user_id")
-        .eq("id", currentPack.id)
-        .single()
+      const { data: pack } = await supabase.from("packs").select("user_id").eq("id", currentPack.id).single()
 
       if (pack?.user_id === user?.id) {
         console.log("[v0] Play not registered: user is pack owner")
@@ -92,13 +86,15 @@ export function AudioPlayer() {
         ip_address: null,
       })
 
-      await supabase.rpc("increment_counter", {
-        table_name: "packs",
-        row_id: currentPack.id,
-        column_name: "total_plays_count",
-      }).catch((err) => {
-        console.error("[v0] Error incrementing total_plays_count:", err)
-      })
+      await supabase
+        .rpc("increment_counter", {
+          table_name: "packs",
+          row_id: currentPack.id,
+          column_name: "total_plays_count",
+        })
+        .catch((err) => {
+          console.error("[v0] Error incrementing total_plays_count:", err)
+        })
 
       console.log("[v0] Play registered for pack:", currentPack.id)
       setPlayRegistered(true)
@@ -143,62 +139,60 @@ export function AudioPlayer() {
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-card/95 backdrop-blur-lg supports-[backdrop-filter]:bg-card/80">
+    <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-lg supports-[backdrop-filter]:bg-background/80 shadow-lg">
       <div className="container mx-auto px-4 py-3">
-        <Card className="border-0 shadow-none bg-transparent">
-          <div className="flex flex-col gap-3">
-            {/* Progress Bar */}
-            <div className="flex items-center gap-3">
-              <span className="text-xs text-muted-foreground min-w-[40px]">{formatTime(currentTime)}</span>
-              <Slider value={[progress]} onValueChange={handleProgressChange} max={100} step={0.1} className="flex-1" />
-              <span className="text-xs text-muted-foreground min-w-[40px]">{formatTime(duration)}</span>
+        <div className="flex flex-col gap-3">
+          {/* Progress Bar */}
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground min-w-[40px]">{formatTime(currentTime)}</span>
+            <Slider value={[progress]} onValueChange={handleProgressChange} max={100} step={0.1} className="flex-1" />
+            <span className="text-xs text-muted-foreground min-w-[40px]">{formatTime(duration)}</span>
+          </div>
+
+          {/* Controls */}
+          <div className="flex items-center justify-between gap-4">
+            {/* Track Info */}
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <img
+                src={currentPack.image || "/placeholder.svg"}
+                alt={currentPack.title}
+                className="h-14 w-14 rounded-md object-cover shadow-md"
+              />
+              <div className="min-w-0 flex-1">
+                <h4 className="font-semibold text-sm text-foreground truncate">{currentPack.title}</h4>
+                <p className="text-xs text-muted-foreground truncate">{currentPack.producer}</p>
+              </div>
             </div>
 
-            {/* Controls */}
-            <div className="flex items-center justify-between">
-              {/* Track Info */}
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <img
-                  src={currentPack.image || "/placeholder.svg"}
-                  alt={currentPack.title}
-                  className="h-12 w-12 rounded object-cover"
-                />
-                <div className="min-w-0 flex-1">
-                  <h4 className="font-semibold text-sm text-foreground truncate">{currentPack.title}</h4>
-                  <p className="text-xs text-muted-foreground truncate">{currentPack.producer}</p>
-                </div>
-              </div>
+            {/* Playback Controls */}
+            <div className="flex items-center gap-2">
+              <Button size="icon" variant="ghost" className="h-9 w-9 hidden sm:flex">
+                <SkipBack className="h-4 w-4" />
+              </Button>
+              <Button size="icon" className="h-10 w-10 rounded-full" onClick={togglePlay}>
+                {isPlaying ? (
+                  <Pause className="h-5 w-5" fill="currentColor" />
+                ) : (
+                  <Play className="h-5 w-5 ml-0.5" fill="currentColor" />
+                )}
+              </Button>
+              <Button size="icon" variant="ghost" className="h-9 w-9 hidden sm:flex">
+                <SkipForward className="h-4 w-4" />
+              </Button>
+            </div>
 
-              {/* Playback Controls */}
-              <div className="flex items-center gap-2">
-                <Button size="icon" variant="ghost" className="h-8 w-8">
-                  <SkipBack className="h-4 w-4" />
-                </Button>
-                <Button size="icon" className="h-10 w-10 rounded-full" onClick={togglePlay}>
-                  {isPlaying ? (
-                    <Pause className="h-4 w-4" fill="currentColor" />
-                  ) : (
-                    <Play className="h-4 w-4 ml-0.5" fill="currentColor" />
-                  )}
-                </Button>
-                <Button size="icon" variant="ghost" className="h-8 w-8">
-                  <SkipForward className="h-4 w-4" />
-                </Button>
+            {/* Volume & Close */}
+            <div className="flex items-center gap-3 flex-1 justify-end">
+              <div className="hidden md:flex items-center gap-2 w-32">
+                <Volume2 className="h-4 w-4 text-muted-foreground" />
+                <Slider value={[volume]} onValueChange={(value) => setVolume(value[0])} max={100} step={1} />
               </div>
-
-              {/* Volume & Close */}
-              <div className="flex items-center gap-3 flex-1 justify-end">
-                <div className="hidden md:flex items-center gap-2 w-32">
-                  <Volume2 className="h-4 w-4 text-muted-foreground" />
-                  <Slider value={[volume]} onValueChange={(value) => setVolume(value[0])} max={100} step={1} />
-                </div>
-                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={closePlayer}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
+              <Button size="icon" variant="ghost" className="h-9 w-9" onClick={closePlayer}>
+                <X className="h-4 w-4" />
+              </Button>
             </div>
           </div>
-        </Card>
+        </div>
       </div>
     </div>
   )

@@ -4,6 +4,7 @@ import { Inter } from "next/font/google"
 import { Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { AuthProvider } from "@/components/auth-provider"
+import { AudioPlayer } from "@/components/audio-player"
 import "./globals.css"
 
 const inter = Inter({
@@ -72,7 +73,10 @@ export default function RootLayout({
   return (
     <html lang="es" className={`${inter.variable} ${geistMono.variable}`}>
       <body className="font-sans antialiased">
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          {children}
+          <AudioPlayer />
+        </AuthProvider>
         <Analytics />
       </body>
     </html>

@@ -17,6 +17,8 @@ interface PreferenceData {
     quantity: number
     unit_price: number
     currency_id: string
+    picture_url?: string
+    description?: string
   }>
   back_urls: {
     success: string
@@ -97,6 +99,8 @@ export async function createPackPreference(
         quantity: 1,
         unit_price: finalPrice,
         currency_id: "ARS",
+        picture_url: pack.cover_url || undefined,
+        description: `Sample Pack - ${pack.genre}`,
       },
     ],
     back_urls: {
