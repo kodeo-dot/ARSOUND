@@ -1,42 +1,33 @@
-import { createServerClient } from "@/lib/supabase/server-client"
-import { NextResponse } from "next/server"
+import { requireSession } from "@/lib/auth/session"
+import { getProfile } from "@/lib/database/queries"
+import { createServerClient } from "@/lib/database/supabase.client"
+import { successResponse, errorResponse, validationErrorResponse } from "@/lib/utils/response"
+import { logger } from "@/lib/utils/logger"
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createServerClient()
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const user = await requireSession()
 
     const body = await request.json()
     const { message } = body
 
-    if (!message || !message.trim()) {
-      return NextResponse.json({ error: "Message is required" }, { status: 400 })
+    if (!message?.trim()) {
+      return validationErrorResponse("Message is required", ["message"])
     }
 
-    // Check if user is actually blocked
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("is_blocked, blocked_reason, username")
-      .eq("id", user.id)
-      .single()
+    const profile = await getProfile(user.id)
 
-    if (profileError) {
-      console.error("[v0] Error fetching profile:", profileError)
-      return NextResponse.json({ error: "Could not verify profile" }, { status: 500 })
+    if (!profile) {
+      return errorResponse("Profile not found", 404)
     }
 
-    if (!profile?.is_blocked) {
-      return NextResponse.json({ error: "User is not blocked" }, { status: 400 })
+    if (!profile.is_blocked) {
+      return errorResponse("User is not blocked", 400)
     }
 
-    const { data: appeal, error: appealError } = await supabase
+    const supabase = await createServerClient()
+
+    const { data: appeal, error } = await supabase
       .from("appeals")
       .insert({
         user_id: user.id,
@@ -46,27 +37,23 @@ export async function POST(request: Request) {
       .select()
       .single()
 
-    if (appealError) {
-      console.error("[v0] Error creating appeal:", appealError)
-      return NextResponse.json({ error: "Could not create appeal" }, { status: 500 })
+    if (error) {
+      logger.error("Error creating appeal", "API", error)
+      return errorResponse("Could not create appeal", 500)
     }
 
-    // Log for admin notification
-    console.log("[APPEAL RECEIVED]", {
-      appeal_id: appeal.id,
-      user_id: user.id,
+    logger.info("Appeal submitted", "API", {
+      appealId: appeal.id,
+      userId: user.id,
       username: profile.username,
-      blocked_reason: profile.blocked_reason,
-      timestamp: new Date().toISOString(),
     })
 
-    return NextResponse.json({
-      success: true,
-      message: "Appeal submitted successfully",
+    return successResponse({
       appeal_id: appeal.id,
+      message: "Appeal submitted successfully",
     })
-  } catch (error: any) {
-    console.error("[v0] Appeal submission error:", error)
-    return NextResponse.json({ error: "Internal server error", details: error.message }, { status: 500 })
+  } catch (error) {
+    logger.error("Appeal submission error", "API", error)
+    return errorResponse("Internal server error", 500)
   }
 }
