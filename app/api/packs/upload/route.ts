@@ -1,6 +1,6 @@
 import { requireSession } from "@/lib/auth/session"
 import { getUserPlan, getProfile } from "@/lib/database/queries"
-import { createSupabaseServerClient } from "@/lib/supabase/server-client"
+import { createServerClient } from "@/lib/supabase/server-client"
 import { createAdminClient } from "@/lib/supabase/admin-client"
 import { hashFileFromUrl } from "@/lib/storage/file-hash"
 import { checkReuploadProtection } from "@/lib/storage/reupload-protection"
@@ -56,7 +56,7 @@ export async function POST(request: Request) {
     }
 
     // 7️⃣ Duplicate check (🔥 FIX REAL ACÁ)
-    const supabase = await createSupabaseServerClient()
+    const supabase = await createServerClient()
 
     const { data: existingPack, error: existingPackError } = await supabase
       .from("packs")
