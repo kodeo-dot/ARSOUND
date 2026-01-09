@@ -254,39 +254,48 @@ export default function SettingsPage() {
 
   const handleConnectMercadoPago = async () => {
     try {
+      console.log("[v0] MP Connect - Starting connection...")
       setMpConnecting(true)
 
       const response = await fetch("/api/mercadopago/connect", {
         method: "POST",
       })
 
+      console.log("[v0] MP Connect - Response status:", response.status)
+
       const data = await response.json()
+      console.log("[v0] MP Connect - Response data:", data)
 
       if (!response.ok) {
+        console.error("[v0] MP Connect - Error response:", data)
         toast({
           title: "Error de configuración",
           description: data.error || "No se pudo conectar con Mercado Pago",
           variant: "destructive",
         })
+        setMpConnecting(false)
         return
       }
 
       if (data.oauthUrl) {
+        console.log("[v0] MP Connect - Redirecting to:", data.oauthUrl)
         window.location.href = data.oauthUrl
       } else {
+        console.error("[v0] MP Connect - No OAuth URL in response")
         toast({
           title: "Error",
           description: "No se pudo generar la URL de conexión",
           variant: "destructive",
         })
+        setMpConnecting(false)
       }
     } catch (error) {
+      console.error("[v0] MP Connect - Exception:", error)
       toast({
         title: "Error",
         description: "Hubo un error al conectar con Mercado Pago. Por favor, intentá de nuevo.",
         variant: "destructive",
       })
-    } finally {
       setMpConnecting(false)
     }
   }

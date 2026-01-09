@@ -11,11 +11,18 @@ import type { UploadPackRequest } from "@/lib/types/api.types"
 
 export async function POST(request: Request) {
   try {
+    console.log("[v0] Starting pack upload")
+
     const user = await requireSession()
+    console.log("[v0] User authenticated:", user.id)
+
     const body: UploadPackRequest = await request.json()
+    console.log("[v0] Request body received:", { title: body.title, price: body.price })
 
     // Get user plan and profile
+    console.log("[v0] Fetching user plan and profile")
     const [planType, profile] = await Promise.all([getUserPlan(user.id), getProfile(user.id)])
+    console.log("[v0] Plan type:", planType, "Profile found:", !!profile)
 
     if (!profile) {
       return errorResponse("Profile not found", 404)
@@ -30,22 +37,29 @@ export async function POST(request: Request) {
     }
 
     // Validate pack data and plan limits
+    console.log("[v0] Validating pack upload")
     await validatePackUpload(user.id, planType, body)
+    console.log("[v0] Validation passed")
 
     // Generate file hash
+    console.log("[v0] Generating file hash")
     let fileHash: string
     try {
       fileHash = await hashFileFromUrl(body.file_url)
+      console.log("[v0] File hash generated:", fileHash.substring(0, 16) + "...")
     } catch (error) {
+      console.error("[v0] Error generating file hash:", error)
       logger.error("Error generating file hash", "UPLOAD", error)
       return errorResponse("Error al procesar el archivo. Intentá de nuevo.", 500)
     }
 
     // Check for duplicate files
+    console.log("[v0] Checking for duplicate files")
     const supabase = await createServerClient()
     const { data: existingPack } = await supabase.from("packs").select("id, user_id").eq("file_hash", fileHash).single()
 
     if (existingPack && existingPack.user_id !== user.id) {
+      console.log("[v0] Duplicate file detected, checking reupload protection")
       const protectionResult = await checkReuploadProtection(user.id, fileHash, existingPack.user_id)
 
       if (!protectionResult.isAllowed) {
@@ -57,6 +71,7 @@ export async function POST(request: Request) {
     }
 
     // Create pack
+    console.log("[v0] Creating pack in database")
     const adminSupabase = await createAdminClient()
     const { data: pack, error: packError } = await adminSupabase
       .from("packs")
@@ -81,12 +96,16 @@ export async function POST(request: Request) {
       .single()
 
     if (packError || !pack) {
+      console.error("[v0] Error creating pack:", packError)
       logger.error("Error creating pack", "UPLOAD", packError)
       return errorResponse("Error al crear el pack", 500)
     }
 
+    console.log("[v0] Pack created successfully:", pack.id)
+
     // Create discount code if applicable
     if (body.has_discount && body.discountCode && pack.id) {
+      console.log("[v0] Creating discount code")
       const { error: discountError } = await adminSupabase.from("discount_codes").insert({
         pack_id: pack.id,
         code: body.discountCode.toUpperCase(),
@@ -99,16 +118,24 @@ export async function POST(request: Request) {
       })
 
       if (discountError) {
+        console.error("[v0] Error creating discount code:", discountError)
         logger.error("Error creating discount code", "UPLOAD", discountError)
       }
     }
 
-    // Increment pack counter
-    await adminSupabase.rpc("increment", {
-      table_name: "profiles",
-      row_id: user.id,
-      column_name: "packs_count",
-    })
+    console.log("[v0] Incrementing pack counter")
+    try {
+      const { error: incrementError } = await adminSupabase.rpc("increment_pack_count", {
+        user_id_input: user.id,
+      })
+
+      if (incrementError) {
+        console.error("[v0] Error incrementing pack count:", incrementError)
+      }
+    } catch (incrementErr) {
+      console.error("[v0] Failed to increment pack count:", incrementErr)
+      // Don't fail the whole upload if increment fails
+    }
 
     logger.info("Pack uploaded successfully", "UPLOAD", {
       packId: pack.id,
@@ -116,6 +143,7 @@ export async function POST(request: Request) {
       price: pack.price,
     })
 
+    console.log("[v0] Upload complete")
     return successResponse(
       {
         pack,
@@ -125,6 +153,7 @@ export async function POST(request: Request) {
       201,
     )
   } catch (error) {
+    console.error("[v0] Upload error:", error)
     const errorDetails = handleApiError(error)
     logger.error("Upload error", "UPLOAD", errorDetails)
     return errorResponse(errorDetails.message, errorDetails.statusCode, errorDetails.details)

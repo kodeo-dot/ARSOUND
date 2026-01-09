@@ -16,8 +16,18 @@ export function getMercadoPagoConfig(): MercadoPagoConfig {
   const appId = process.env.MERCADO_PAGO_APP_ID
   const clientSecret = process.env.MERCADO_PAGO_CLIENT_SECRET
 
+  console.log("[v0] MP Config - Test mode:", testMode)
+  console.log("[v0] MP Config - Has access token:", !!accessToken)
+  console.log("[v0] MP Config - Has public key:", !!publicKey)
+  console.log("[v0] MP Config - Has app ID:", !!appId)
+  console.log("[v0] MP Config - Has client secret:", !!clientSecret)
+
   if (!accessToken || !publicKey) {
     throw new Error("Mercado Pago credentials not configured")
+  }
+
+  if (!appId || !clientSecret) {
+    throw new Error("Mercado Pago OAuth credentials (APP_ID or CLIENT_SECRET) not configured")
   }
 
   return {
@@ -38,6 +48,8 @@ export function getOAuthUrl(userId: string, redirectUri: string): string {
   url.searchParams.set("platform_id", "mp")
   url.searchParams.set("redirect_uri", redirectUri)
   url.searchParams.set("state", userId)
+
+  console.log("[v0] OAuth URL generated:", url.toString())
 
   return url.toString()
 }
