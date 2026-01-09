@@ -13,18 +13,16 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { createClient, clearInvalidSession } from "@/lib/supabase/client"
+import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { UserAvatar } from "@/components/user-avatar"
 import { useAuth } from "@/components/auth-provider"
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const { user, loading } = useAuth()
+  const { user, loading, signOut } = useAuth()
   const [profile, setProfile] = useState<any>(null)
   const router = useRouter()
-
-  console.log("[v0] Header - user:", user?.id, "loading:", loading)
 
   useEffect(() => {
     if (!user) {
@@ -40,10 +38,9 @@ export function Header() {
           .select("username, avatar_url, display_name")
           .eq("id", user.id)
           .single()
-        console.log("[v0] Header - loaded profile:", profileData)
         setProfile(profileData)
       } catch (error) {
-        console.error("[v0] Header - error loading profile:", error)
+        console.error("[ARSOUND] Error loading profile:", error)
       }
     }
 
@@ -51,9 +48,7 @@ export function Header() {
   }, [user])
 
   const handleLogout = async () => {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    await clearInvalidSession()
+    await signOut()
     router.push("/")
     router.refresh()
   }

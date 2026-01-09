@@ -1,26 +1,35 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import { createClient } from "@/lib/supabase/client"
+import { createClient, clearInvalidSession } from "@/lib/supabase/client"
 import type { User, Session } from "@supabase/supabase-js"
-import { clearInvalidSession } from "@/lib/supabase/client"
 
 interface AuthContextType {
   user: User | null
   session: Session | null
   loading: boolean
+  signOut: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
   loading: true,
+  signOut: async () => {},
 })
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+
+  const signOut = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    await clearInvalidSession()
+    setUser(null)
+    setSession(null)
+  }
 
   useEffect(() => {
     const supabase = createClient()
@@ -33,29 +42,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } = await supabase.auth.getSession()
 
         if (error) {
-          console.error("[ARSOUND] Error getting initial session:", error.message)
-
-          if (
-            error.message?.includes("invalid claim") ||
-            error.message?.includes("bad_jwt") ||
-            error.message?.includes("missing sub claim") ||
-            error.message?.includes("Invalid token")
-          ) {
-            await clearInvalidSession()
-            setUser(null)
-            setSession(null)
-          }
+          console.error("[ARSOUND] Error getting session:", error.message)
+          await clearInvalidSession()
+          setUser(null)
+          setSession(null)
+        } else if (initialSession) {
+          setSession(initialSession)
+          setUser(initialSession.user)
         } else {
-          if (initialSession && initialSession.expires_at && initialSession.expires_at * 1000 > Date.now()) {
-            setSession(initialSession)
-            setUser(initialSession.user)
-          } else {
-            setSession(null)
-            setUser(null)
-          }
+          setUser(null)
+          setSession(null)
         }
-      } catch (error: any) {
-        console.error("[ARSOUND] Unexpected error initializing auth:", error)
+      } catch (error) {
+        console.error("[ARSOUND] Unexpected error:", error)
         await clearInvalidSession()
         setUser(null)
         setSession(null)
@@ -75,16 +74,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null)
         setSession(null)
         await clearInvalidSession()
-      } else if (event === "TOKEN_REFRESHED") {
-        console.log("[ARSOUND] Token refreshed successfully")
+      } else if (currentSession) {
         setSession(currentSession)
-        setUser(currentSession?.user ?? null)
-      } else if (event === "SIGNED_IN") {
-        setSession(currentSession)
-        setUser(currentSession?.user ?? null)
-      } else if (event === "USER_UPDATED") {
-        setSession(currentSession)
-        setUser(currentSession?.user ?? null)
+        setUser(currentSession.user)
+      } else {
+        setUser(null)
+        setSession(null)
       }
 
       setLoading(false)
@@ -95,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  return <AuthContext.Provider value={{ user, session, loading }}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, session, loading, signOut }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

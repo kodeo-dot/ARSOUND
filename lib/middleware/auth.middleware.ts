@@ -1,6 +1,5 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
-import { logger } from "../utils/logger"
 
 function clearAuthCookies(response: NextResponse, request: NextRequest) {
   response.cookies.delete("sb-access-token")
@@ -31,68 +30,23 @@ export async function updateSession(request: NextRequest) {
       setAll(cookiesToSet) {
         cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
         supabaseResponse = NextResponse.next({ request })
-        cookiesToSet.forEach(({ name, value, options }) =>
-          supabaseResponse.cookies.set(name, value, {
-            ...options,
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-          }),
-        )
+        cookiesToSet.forEach(({ name, value, options }) => supabaseResponse.cookies.set(name, value, options ?? {}))
       },
     },
   })
 
-  let hasValidSession = false
-  let user = null
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  try {
-    const {
-      data: { session },
-      error: sessionError,
-    } = await supabase.auth.getSession()
-
-    if (sessionError) {
-      logger.error("Session error in middleware", "MIDDLEWARE", sessionError.message)
-      clearAuthCookies(supabaseResponse, request)
-    } else if (session) {
-      // Only attempt refresh if we have a session
-      const isExpired = session.expires_at && session.expires_at * 1000 <= Date.now()
-
-      if (isExpired) {
-        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
-
-        if (refreshError) {
-          logger.error("Refresh failed", "MIDDLEWARE", refreshError.message)
-          clearAuthCookies(supabaseResponse, request)
-        } else if (refreshData.session) {
-          hasValidSession = true
-          user = refreshData.user
-        }
-      } else {
-        hasValidSession = true
-        user = session.user
-      }
-    }
-  } catch (error) {
-    logger.error("Error in session validation", "MIDDLEWARE", error)
-    clearAuthCookies(supabaseResponse, request)
-  }
-
-  if (hasValidSession && user) {
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("is_blocked, blocked_reason, blocked_at")
-      .eq("id", user.id)
-      .single()
+  if (user) {
+    const { data: profile } = await supabase.from("profiles").select("is_blocked").eq("id", user.id).single()
 
     if (profile?.is_blocked) {
       const isBlockedPage = request.nextUrl.pathname === "/blocked"
       const isAppealAPI = request.nextUrl.pathname === "/api/appeal"
-      const isAuthAPI = request.nextUrl.pathname.startsWith("/api/auth")
 
-      if (!isBlockedPage && !isAppealAPI && !isAuthAPI) {
-        logger.info("Redirecting blocked user", "MIDDLEWARE", { userId: user.id })
+      if (!isBlockedPage && !isAppealAPI) {
         const url = request.nextUrl.clone()
         url.pathname = "/blocked"
         return NextResponse.redirect(url)
@@ -103,18 +57,17 @@ export async function updateSession(request: NextRequest) {
   const protectedPaths = ["/profile", "/upload", "/studio", "/settings", "/purchases", "/saved", "/statistics"]
   const isProtectedPath = protectedPaths.some((path) => request.nextUrl.pathname.startsWith(path))
 
-  if (!hasValidSession && isProtectedPath) {
-    logger.debug("Redirecting unauthenticated user to login", "MIDDLEWARE")
+  if (!user && isProtectedPath) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
+    url.searchParams.set("redirect", request.nextUrl.pathname)
     return NextResponse.redirect(url)
   }
 
   const authPaths = ["/login", "/signup"]
   const isAuthPath = authPaths.some((path) => request.nextUrl.pathname.startsWith(path))
 
-  if (hasValidSession && isAuthPath) {
-    logger.debug("Redirecting authenticated user away from auth page", "MIDDLEWARE")
+  if (user && isAuthPath) {
     const url = request.nextUrl.clone()
     url.pathname = "/"
     return NextResponse.redirect(url)

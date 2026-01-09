@@ -10,10 +10,9 @@ import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
 import { Waves, Mail, Lock } from "lucide-react"
 import Link from "next/link"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
-import { useAuth } from "@/components/auth-provider"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -21,14 +20,6 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
-  const { user, loading } = useAuth()
-
-  useEffect(() => {
-    if (!loading && user) {
-      console.log("[v0] Login page - authenticated user detected, redirecting to home")
-      router.push("/")
-    }
-  }, [user, loading, router])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -51,18 +42,6 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false)
     }
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1 flex items-center justify-center px-4 py-12">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        </main>
-        <Footer />
-      </div>
-    )
   }
 
   return (

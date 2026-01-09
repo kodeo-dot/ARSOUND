@@ -26,13 +26,6 @@ export async function createServerClient() {
         }
       },
     },
-    global: {
-      headers: {
-        apikey: supabaseAnonKey,
-        Authorization: `Bearer ${supabaseAnonKey}`,
-        "x-application-name": "arsound",
-      },
-    },
   })
 }
 
@@ -55,13 +48,6 @@ export async function createAdminClient() {
         return []
       },
       setAll() {},
-    },
-    global: {
-      headers: {
-        apikey: serviceRoleKey,
-        Authorization: `Bearer ${serviceRoleKey}`,
-        "x-application-name": "arsound-admin",
-      },
     },
   })
 }
