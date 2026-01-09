@@ -263,25 +263,27 @@ export default function SettingsPage() {
 
       console.log("[v0] MP Connect - Response status:", response.status)
 
-      const data = await response.json()
-      console.log("[v0] MP Connect - Response data:", data)
+      const result = await response.json()
+      console.log("[v0] MP Connect - Response data:", result)
 
       if (!response.ok) {
-        console.error("[v0] MP Connect - Error response:", data)
+        console.error("[v0] MP Connect - Error response:", result)
         toast({
           title: "Error de configuración",
-          description: data.error || "No se pudo conectar con Mercado Pago",
+          description: result.error || "No se pudo conectar con Mercado Pago",
           variant: "destructive",
         })
         setMpConnecting(false)
         return
       }
 
-      if (data.oauthUrl) {
-        console.log("[v0] MP Connect - Redirecting to:", data.oauthUrl)
-        window.location.href = data.oauthUrl
+      const oauthUrl = result.data?.oauthUrl
+
+      if (oauthUrl) {
+        console.log("[v0] MP Connect - Redirecting to:", oauthUrl)
+        window.location.href = oauthUrl
       } else {
-        console.error("[v0] MP Connect - No OAuth URL in response")
+        console.error("[v0] MP Connect - No OAuth URL in response. Full result:", result)
         toast({
           title: "Error",
           description: "No se pudo generar la URL de conexión",

@@ -26,14 +26,24 @@ export async function POST(request: Request) {
 
     logger.info("Generating MP OAuth URL", "MP_CONNECT", { userId: user.id, redirectUri })
 
-    const oauthUrl = getOAuthUrl(user.id, redirectUri)
+    let oauthUrl: string
+    try {
+      oauthUrl = getOAuthUrl(user.id, redirectUri)
+      console.log("[v0] MP Connect - OAuth URL generated successfully:", oauthUrl)
+    } catch (configError: any) {
+      console.error("[v0] MP Connect - Config error:", configError.message)
+      return errorResponse(configError.message || "Missing Mercado Pago OAuth configuration", 500)
+    }
 
-    console.log("[v0] MP Connect - OAuth URL generated:", oauthUrl)
+    if (!oauthUrl) {
+      console.error("[v0] MP Connect - OAuth URL is empty")
+      return errorResponse("Failed to generate OAuth URL", 500)
+    }
 
     return successResponse({ oauthUrl })
-  } catch (error) {
+  } catch (error: any) {
     console.error("[v0] MP Connect - Error:", error)
     logger.error("Error generating OAuth URL", "MP_CONNECT", error)
-    return errorResponse("Failed to generate OAuth URL", 500)
+    return errorResponse(error.message || "Failed to generate OAuth URL", 500)
   }
 }
