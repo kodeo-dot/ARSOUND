@@ -293,7 +293,7 @@ export default function PublicProfilePage() {
                     onClick={toggleFollow}
                     disabled={followLoading}
                     className={`gap-2 rounded-full h-11 px-6 ${
-                      isFollowing ? "bg-accent text-foreground hover:bg-accent/80" : ""
+                      isFollowing ? "bg-accent text-white hover:bg-accent/80" : ""
                     }`}
                     variant={isFollowing ? "outline" : "default"}
                   >

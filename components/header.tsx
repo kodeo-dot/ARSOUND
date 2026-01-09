@@ -219,6 +219,56 @@ export function Header() {
                       Subir Pack
                     </Button>
                   </Link>
+                  <Link href="/statistics" onClick={() => setMobileMenuOpen(false)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-2 rounded-full justify-start bg-transparent"
+                    >
+                      <BarChart3 className="h-4 w-4" />
+                      Estadísticas
+                    </Button>
+                  </Link>
+                  <Link href="/saved" onClick={() => setMobileMenuOpen(false)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-2 rounded-full justify-start bg-transparent"
+                    >
+                      <Heart className="h-4 w-4" />
+                      Guardados
+                    </Button>
+                  </Link>
+                  <Link href="/purchases" onClick={() => setMobileMenuOpen(false)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-2 rounded-full justify-start bg-transparent"
+                    >
+                      <ShoppingBag className="h-4 w-4" />
+                      Mis Compras
+                    </Button>
+                  </Link>
+                  <Link href="/settings" onClick={() => setMobileMenuOpen(false)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-2 rounded-full justify-start bg-transparent"
+                    >
+                      <Settings className="h-4 w-4" />
+                      Configuración
+                    </Button>
+                  </Link>
+                  <Link href="/plans" onClick={() => setMobileMenuOpen(false)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-2 rounded-full justify-start bg-transparent"
+                    >
+                      <Zap className="h-4 w-4" />
+                      Mejorar Plan
+                    </Button>
+                  </Link>
                   <Button
                     variant="outline"
                     size="sm"
