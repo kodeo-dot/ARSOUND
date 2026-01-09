@@ -1,9 +1,6 @@
 import { requireSession } from "@/lib/auth/session"
 import { getUserPlan, getProfile } from "@/lib/database/queries"
-import { createServerClient } from "@/lib/supabase/server-client"
-import { createAdminClient } from "@/lib/supabase/server-client"
-import { hashFileFromUrl } from "@/lib/storage/file-hash"
-import { checkReuploadProtection } from "@/lib/storage/reupload-protection"
+import { createAdminClient } from "@/lib/database/supabase.client"
 import { validatePackUpload } from "@/lib/storage/pack-validator"
 import { successResponse, errorResponse } from "@/lib/utils/response"
 import { handleApiError } from "@/lib/utils/errors"
@@ -12,81 +9,39 @@ import type { UploadPackRequest } from "@/lib/types/api.types"
 
 export async function POST(request: Request) {
   try {
-    console.log("[UPLOAD] Starting pack upload")
+    console.log("[v0] Starting pack upload")
 
-    // 1️⃣ Auth
     const user = await requireSession()
-    console.log("[UPLOAD] User authenticated:", user.id)
+    console.log("[v0] User authenticated:", user.id)
 
-    // 2️⃣ Body
     const body: UploadPackRequest = await request.json()
-    console.log("[UPLOAD] Body received:", {
-      title: body.title,
-      price: body.price,
-    })
+    console.log("[v0] Request body received:", { title: body.title, price: body.price })
 
-    // 3️⃣ User plan + profile
-    const [planType, profile] = await Promise.all([
-      getUserPlan(user.id),
-      getProfile(user.id),
-    ])
+    // Get user plan and profile
+    console.log("[v0] Fetching user plan and profile")
+    const [planType, profile] = await Promise.all([getUserPlan(user.id), getProfile(user.id)])
+    console.log("[v0] Plan type:", planType, "Profile found:", !!profile)
 
     if (!profile) {
       return errorResponse("Profile not found", 404)
     }
 
-    // 4️⃣ Mercado Pago validation
+    // Validate if user can sell (needs Mercado Pago for paid packs)
     if (body.price > 0 && !profile.mp_connected) {
       return errorResponse(
-        "Necesitás conectar tu cuenta de Mercado Pago para vender packs.",
+        "Necesitás conectar tu cuenta de Mercado Pago para vender packs. Andá a tu perfil para conectarla.",
         403,
       )
     }
 
-    // 5️⃣ Pack validation (limits, fields, etc)
+    // Validate pack data and plan limits
+    console.log("[v0] Validating pack upload")
     await validatePackUpload(user.id, planType, body)
+    console.log("[v0] Validation passed")
 
-    // 6️⃣ Hash file
-    let fileHash: string
-    try {
-      fileHash = await hashFileFromUrl(body.file_url)
-    } catch (err) {
-      logger.error("File hash error", "UPLOAD", err)
-      return errorResponse("Error al procesar el archivo", 500)
-    }
-
-    // 7️⃣ Duplicate check (🔥 FIX REAL ACÁ)
-    const supabase = await createServerClient()
-
-    const { data: existingPack, error: existingPackError } = await supabase
-      .from("packs")
-      .select("id, user_id")
-      .eq("file_hash", fileHash)
-      .maybeSingle()
-
-    if (existingPackError) {
-      console.error("[UPLOAD] Duplicate check error:", existingPackError)
-    }
-
-    if (existingPack && existingPack.user_id !== user.id) {
-      const protection = await checkReuploadProtection(
-        user.id,
-        fileHash,
-        existingPack.user_id,
-      )
-
-      if (!protection.isAllowed) {
-        return errorResponse(
-          protection.message || "Duplicate file detected",
-          protection.isBlocked ? 403 : 400,
-        )
-      }
-    }
-
-    // 8️⃣ Create pack (ADMIN)
+    // Create pack
+    console.log("[v0] Creating pack in database")
     const adminSupabase = await createAdminClient()
-
-
     const { data: pack, error: packError } = await adminSupabase
       .from("packs")
       .insert({
@@ -102,52 +57,61 @@ export async function POST(request: Request) {
         file_url: body.file_url,
         tags: body.tags || [],
         has_discount: body.has_discount || false,
-        discount_percent: body.has_discount
-          ? body.discount_percent || 0
-          : 0,
-        file_hash: fileHash,
+        discount_percent: body.has_discount ? body.discount_percent || 0 : 0,
         status: "published",
       })
       .select()
       .single()
 
     if (packError || !pack) {
-      logger.error("Pack insert error", "UPLOAD", packError)
+      console.error("[v0] Error creating pack:", packError)
+      logger.error("Error creating pack", "UPLOAD", packError)
       return errorResponse("Error al crear el pack", 500)
     }
 
-    // 9️⃣ Discount code
-    if (body.has_discount && body.discountCode) {
-      const { error: discountError } = await adminSupabase
-        .from("discount_codes")
-        .insert({
-          pack_id: pack.id,
-          code: body.discountCode.toUpperCase(),
-          discount_percent: body.discount_percent || 0,
-          for_all_users: body.discountType === "all",
-          for_first_purchase: body.discountType === "first",
-          for_followers: body.discountType === "followers",
-        })
+    console.log("[v0] Pack created successfully:", pack.id)
+
+    // Create discount code if applicable
+    if (body.has_discount && body.discountCode && pack.id) {
+      console.log("[v0] Creating discount code")
+      const { error: discountError } = await adminSupabase.from("discount_codes").insert({
+        pack_id: pack.id,
+        code: body.discountCode.toUpperCase(),
+        discount_percent: body.discount_percent || 0,
+        for_all_users: body.discountType === "all",
+        for_first_purchase: body.discountType === "first",
+        for_followers: body.discountType === "followers",
+        max_uses: null,
+        expires_at: null,
+      })
 
       if (discountError) {
-        console.error("[UPLOAD] Discount error:", discountError)
+        console.error("[v0] Error creating discount code:", discountError)
+        logger.error("Error creating discount code", "UPLOAD", discountError)
       }
     }
 
-    // 🔟 Increment counter (no crítico)
+    console.log("[v0] Incrementing pack counter")
     try {
-      await adminSupabase.rpc("increment_pack_count", {
+      const { error: incrementError } = await adminSupabase.rpc("increment_pack_count", {
         user_id_input: user.id,
       })
-    } catch (err) {
-      console.warn("[UPLOAD] Counter increment failed:", err)
+
+      if (incrementError) {
+        console.error("[v0] Error incrementing pack count:", incrementError)
+      }
+    } catch (incrementErr) {
+      console.error("[v0] Failed to increment pack count:", incrementErr)
+      // Don't fail the whole upload if increment fails
     }
 
-    logger.info("Pack uploaded", "UPLOAD", {
+    logger.info("Pack uploaded successfully", "UPLOAD", {
       packId: pack.id,
       userId: user.id,
+      price: pack.price,
     })
 
+    console.log("[v0] Upload complete")
     return successResponse(
       {
         pack,
@@ -157,13 +121,9 @@ export async function POST(request: Request) {
       201,
     )
   } catch (error) {
-    console.error("[UPLOAD] Fatal error:", error)
-    const details = handleApiError(error)
-    logger.error("Upload fatal error", "UPLOAD", details)
-    return errorResponse(
-      details.message,
-      details.statusCode,
-      details.details,
-    )
+    console.error("[v0] Upload error:", error)
+    const errorDetails = handleApiError(error)
+    logger.error("Upload error", "UPLOAD", errorDetails)
+    return errorResponse(errorDetails.message, errorDetails.statusCode, errorDetails.details)
   }
 }
