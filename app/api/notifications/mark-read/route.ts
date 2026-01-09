@@ -5,7 +5,7 @@ import { logger } from "@/lib/utils/logger"
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createServerClient()
+    const supabase = await createServerClient()
     const {
       data: { user },
       error: authError,
