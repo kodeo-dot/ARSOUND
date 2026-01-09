@@ -1,7 +1,7 @@
 import { requireSession } from "@/lib/auth/session"
 import { getUserPlan, getProfile } from "@/lib/database/queries"
 import { createServerClient } from "@/lib/supabase/server-client"
-import { createAdminClient } from "@/lib/supabase/admin-client"
+import { createAdminClient } from "@/lib/supabase/server-client"
 import { hashFileFromUrl } from "@/lib/storage/file-hash"
 import { checkReuploadProtection } from "@/lib/storage/reupload-protection"
 import { validatePackUpload } from "@/lib/storage/pack-validator"
@@ -84,7 +84,8 @@ export async function POST(request: Request) {
     }
 
     // 8️⃣ Create pack (ADMIN)
-    const adminSupabase = createAdminClient()
+    const adminSupabase = await createAdminClient()
+
 
     const { data: pack, error: packError } = await adminSupabase
       .from("packs")
