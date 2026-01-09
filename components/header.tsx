@@ -17,6 +17,7 @@ import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { UserAvatar } from "@/components/user-avatar"
 import { useAuth } from "@/components/auth-provider"
+import { NotificationsDropdown } from "@/components/notifications-dropdown"
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -82,6 +83,7 @@ export function Header() {
               <div className="w-20 h-9 bg-muted/50 animate-pulse rounded-full" />
             ) : user ? (
               <>
+                <NotificationsDropdown />
                 <Link href="/upload" className="hidden sm:block">
                   <Button variant="outline" size="sm" className="gap-2 rounded-full font-semibold bg-transparent">
                     <Upload className="h-4 w-4" />
@@ -195,6 +197,7 @@ export function Header() {
             </Link>
             {user ? (
               <>
+                <NotificationsDropdown />
                 <div className="pt-2 border-t border-border space-y-2">
                   <Link href="/profile" onClick={() => setMobileMenuOpen(false)}>
                     <div className="flex items-center gap-3 py-2">
