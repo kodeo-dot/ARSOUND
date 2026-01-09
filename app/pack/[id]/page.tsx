@@ -5,7 +5,7 @@ import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Play, Heart, Download, Share2, Clock, Disc, Loader2, ShoppingCart, Edit, Check } from "lucide-react"
+import { Play, Heart, Download, Share2, Clock, Disc, Loader2, ShoppingCart, Edit, Check, Pause } from "lucide-react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { createBrowserClient } from "@/lib/supabase/client"
@@ -319,17 +319,6 @@ export default function PackDetailPage() {
                   className="w-full h-full object-cover"
                 />
 
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-                  <Button
-                    size="lg"
-                    className="rounded-full h-20 w-20 p-0 bg-primary text-primary-foreground shadow-2xl hover:scale-110 transition-transform"
-                    onClick={handlePlay}
-                    disabled={!pack.demo_audio_url}
-                  >
-                    <Play className="h-8 w-8 ml-1" fill="currentColor" />
-                  </Button>
-                </div>
-
                 {pack.genre && (
                   <Badge className="absolute top-4 left-4 bg-primary text-primary-foreground font-bold px-4 py-2 text-sm rounded-full">
                     {formatGenreDisplay(pack.genre, pack.subgenre)}
@@ -337,6 +326,24 @@ export default function PackDetailPage() {
                 )}
               </div>
             </Card>
+
+            {pack.demo_audio_url && (
+              <Card className="p-6 rounded-2xl border-border bg-card">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-foreground">Demo Preview</h3>
+                    <p className="text-sm text-muted-foreground">{pack.title} - Demo</p>
+                  </div>
+                  <Button size="lg" className="rounded-full h-14 w-14 p-0" onClick={handlePlay}>
+                    {isCurrentlyPlaying ? (
+                      <Pause className="h-6 w-6" fill="currentColor" />
+                    ) : (
+                      <Play className="h-6 w-6 ml-1" fill="currentColor" />
+                    )}
+                  </Button>
+                </div>
+              </Card>
+            )}
 
             <div className="grid grid-cols-3 gap-4">
               {pack.bpm && (
@@ -348,7 +355,7 @@ export default function PackDetailPage() {
               )}
               <Card className="p-5 text-center rounded-xl border-border">
                 <Disc className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
-                <div className="text-2xl font-black text-foreground">.ZIP</div>
+                <div className="text-2xl font-black text-foreground">WAV</div>
                 <div className="text-xs text-muted-foreground font-medium">Formato</div>
               </Card>
               <Card className="p-5 text-center rounded-xl border-border">

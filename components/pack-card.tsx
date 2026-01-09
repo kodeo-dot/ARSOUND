@@ -5,12 +5,12 @@ import type React from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Play, Heart } from "lucide-react"
-import { useState } from "react"
-import { useAudioPlayer } from "@/hooks/use-audio-player"
+import { Heart } from "lucide-react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { getPlanBadge } from "@/lib/plans"
 import { formatGenreDisplay } from "@/lib/genres"
+import { createBrowserClient } from "@/lib/supabase/client"
 
 interface Pack {
   id: string
@@ -27,6 +27,7 @@ interface Pack {
   has_discount?: boolean
   discount_percent?: number
   producer_plan?: string | null
+  likes_count?: number
   profiles?: {
     username: string | null
   }
@@ -38,8 +39,33 @@ interface PackCardProps {
 
 export function PackCard({ pack }: PackCardProps) {
   const [isLiked, setIsLiked] = useState(false)
-  const [isPurchasing, setIsPurchasing] = useState(false)
-  const { playPack } = useAudioPlayer()
+  const [likesCount, setLikesCount] = useState(pack.likes_count || 0)
+  const [isLiking, setIsLiking] = useState(false)
+  const [user, setUser] = useState<any>(null)
+  const supabase = createBrowserClient()
+
+  useEffect(() => {
+    const checkUserAndLike = async () => {
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser()
+
+      setUser(authUser)
+
+      if (authUser && pack.id) {
+        const { data } = await supabase
+          .from("pack_likes")
+          .select("id")
+          .eq("user_id", authUser.id)
+          .eq("pack_id", pack.id)
+          .maybeSingle()
+
+        setIsLiked(!!data)
+      }
+    }
+
+    checkUserAndLike()
+  }, [pack.id, supabase])
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("es-AR", {
@@ -49,26 +75,40 @@ export function PackCard({ pack }: PackCardProps) {
     }).format(price)
   }
 
-  const handlePlay = () => {
-    if (pack.demo_audio_url) {
-      playPack({
-        id: pack.id,
-        title: pack.title,
-        producer: pack.profiles?.username || "Usuario",
-        image: pack.cover_image_url || "/placeholder.svg",
-        audioUrl: pack.demo_audio_url,
-      })
-    }
-  }
-
-  const handlePurchase = async (e: React.MouseEvent) => {
+  const handleLike = async (e: React.MouseEvent) => {
     e.preventDefault()
-    setIsPurchasing(true)
 
-    // TODO: Implement direct purchase flow with payment
-    setTimeout(() => {
-      setIsPurchasing(false)
-    }, 1000)
+    if (!user) {
+      alert("Iniciá sesión para dar like a este pack")
+      return
+    }
+
+    setIsLiking(true)
+
+    try {
+      if (isLiked) {
+        const { error } = await supabase.from("pack_likes").delete().eq("user_id", user.id).eq("pack_id", pack.id)
+
+        if (!error) {
+          setIsLiked(false)
+          setLikesCount((prev) => Math.max(0, prev - 1))
+        }
+      } else {
+        const { error } = await supabase.from("pack_likes").insert({
+          user_id: user.id,
+          pack_id: pack.id,
+        })
+
+        if (!error) {
+          setIsLiked(true)
+          setLikesCount((prev) => prev + 1)
+        }
+      }
+    } catch (error) {
+      console.error("Error toggling like:", error)
+    } finally {
+      setIsLiking(false)
+    }
   }
 
   const isFreepack = pack.price === 0
@@ -88,32 +128,22 @@ export function PackCard({ pack }: PackCardProps) {
             crossOrigin="anonymous"
           />
 
-          {/* Play Button Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
-            <Button
-              size="lg"
-              className="rounded-full h-20 w-20 p-0 bg-primary text-primary-foreground shadow-2xl hover:scale-110 transition-transform"
-              onClick={(e) => {
-                e.preventDefault()
-                handlePlay()
-              }}
-              disabled={!pack.demo_audio_url}
-            >
-              <Play className="h-8 w-8 ml-1" fill="currentColor" />
-            </Button>
-          </div>
-
           {/* Like Button */}
           <Button
             size="icon"
             variant="ghost"
             className="absolute top-4 right-4 bg-background/90 backdrop-blur-sm hover:bg-background rounded-full h-10 w-10"
-            onClick={(e) => {
-              e.preventDefault()
-              setIsLiked(!isLiked)
-            }}
+            onClick={handleLike}
+            disabled={isLiking}
           >
-            <Heart className={`h-5 w-5 ${isLiked ? "fill-red-500 text-red-500" : ""}`} />
+            <Heart
+              className={`h-5 w-5 transition-all ${isLiked ? "fill-red-500 text-red-500 scale-110" : ""} ${isLiking ? "animate-pulse" : ""}`}
+            />
+            {likesCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                {likesCount > 99 ? "99+" : likesCount}
+              </span>
+            )}
           </Button>
 
           {/* Genre Badge */}
