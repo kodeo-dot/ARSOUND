@@ -348,7 +348,7 @@ export default function PackDetailPage() {
               )}
               <Card className="p-5 text-center rounded-xl border-border">
                 <Disc className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
-                <div className="text-2xl font-black text-foreground">WAV</div>
+                <div className="text-2xl font-black text-foreground">.ZIP</div>
                 <div className="text-xs text-muted-foreground font-medium">Formato</div>
               </Card>
               <Card className="p-5 text-center rounded-xl border-border">
