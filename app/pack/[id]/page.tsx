@@ -5,7 +5,20 @@ import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Play, Heart, Download, Share2, Clock, Disc, Loader2, ShoppingCart, Edit, Check, Pause } from "lucide-react"
+import {
+  Play,
+  Heart,
+  Download,
+  Share2,
+  Clock,
+  Disc,
+  Loader2,
+  ShoppingCart,
+  Edit,
+  Check,
+  Pause,
+  FileText,
+} from "lucide-react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { createBrowserClient } from "@/lib/supabase/client"
@@ -491,6 +504,29 @@ export default function PackDetailPage() {
                 </p>
               </div>
             )}
+
+            {/* License Information Section */}
+            <Card className="p-6 rounded-2xl border-border bg-card">
+              <div className="flex items-start gap-4">
+                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <FileText className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-foreground mb-2">Licencia de Uso</h3>
+                  <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
+                    Al comprar o descargar este pack, obtenés una licencia global que te permite usar los samples en tus
+                    producciones comerciales y no comerciales. Los samples no pueden ser redistribuidos ni registrados
+                    en Content ID.
+                  </p>
+                  <Link href="/license" target="_blank">
+                    <Button variant="outline" size="sm" className="gap-2 bg-transparent">
+                      <FileText className="h-4 w-4" />
+                      Ver Licencia Completa
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </Card>
 
             {pack.tags && pack.tags.length > 0 && (
               <div className="space-y-3">

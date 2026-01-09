@@ -114,6 +114,11 @@ export function Footer() {
             </div>
             <ul className="space-y-2 text-sm">
               <li>
+                <Link href="/license" className="text-muted-foreground hover:text-primary transition-colors">
+                  Licencia de Uso
+                </Link>
+              </li>
+              <li>
                 <Link
                   href="/legal/terminos-condiciones"
                   className="text-muted-foreground hover:text-primary transition-colors"

@@ -38,6 +38,8 @@ import { useBlockStatus } from "@/hooks/use-block-status"
 import Link from "next/link"
 import { Switch } from "@/components/ui/switch"
 import { GENRES, getSubgenres } from "@/lib/genres"
+import { LicenseCheckbox } from "@/components/license-checkbox"
+import { UPLOAD_CHECKBOX_TEXT } from "@/lib/config/license.config"
 
 const ALL_PRICE_OPTIONS = Array.from({ length: 14 }, (_, i) => i * 5000) // 0, 5000, 10000... 65000
 const ALL_DISCOUNT_OPTIONS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
@@ -62,6 +64,7 @@ export default function UploadPage() {
   const [fileCount, setFileCount] = useState(0)
   const [price, setPrice] = useState("")
   const [ownershipConfirmed, setOwnershipConfirmed] = useState(false)
+  const [licenseAccepted, setLicenseAccepted] = useState(false)
 
   // File states
   const [coverFile, setCoverFile] = useState<File | null>(null)
@@ -422,11 +425,11 @@ export default function UploadPage() {
     setUploadProgress(0)
 
     // Validation
-    if (!title || !genre || !price || !coverFile || !demoFile || !packFile || !ownershipConfirmed) {
-      setUploadError("Por favor completá todos los campos requeridos")
+    if (!title || !genre || !price || !coverFile || !demoFile || !packFile || !ownershipConfirmed || !licenseAccepted) {
+      setUploadError("Por favor completá todos los campos requeridos y aceptá la licencia")
       toast({
         title: "Campos incompletos",
-        description: "Por favor completá todos los campos requeridos",
+        description: "Por favor completá todos los campos requeridos y aceptá la licencia",
         variant: "destructive",
       })
       setIsLoading(false)
@@ -1262,6 +1265,13 @@ export default function UploadPage() {
               </p>
             </label>
           </div>
+
+          <LicenseCheckbox
+            checked={licenseAccepted}
+            onCheckedChange={setLicenseAccepted}
+            text={UPLOAD_CHECKBOX_TEXT}
+            variant="upload"
+          />
 
           {/* Botones */}
           <div className="flex gap-4 pt-6">
