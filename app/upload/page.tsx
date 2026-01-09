@@ -42,21 +42,6 @@ import { GENRES, getSubgenres } from "@/lib/genres"
 const ALL_PRICE_OPTIONS = Array.from({ length: 14 }, (_, i) => i * 5000) // 0, 5000, 10000... 65000
 const ALL_DISCOUNT_OPTIONS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
-// Mock implementation for canUserUploadPack as it's not provided
-// In a real scenario, this would be imported or defined elsewhere.
-const canUserUploadPack = async (userId: string, plan: PlanType): Promise<{ canUpload: boolean; reason?: string }> => {
-  // Placeholder logic: Replace with actual implementation
-  console.log(`[Mock] Checking upload permission for user ${userId} on plan ${plan}`)
-  if (plan === "free") {
-    // Example: Free users have a limit of 3 uploads
-    const currentUploads = Math.floor(Math.random() * 4) // Simulate current uploads
-    if (currentUploads >= 3) {
-      return { canUpload: false, reason: "Has alcanzado el límite de 3 packs para el plan gratuito." }
-    }
-  }
-  return { canUpload: true }
-}
-
 export default function UploadPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
@@ -159,9 +144,7 @@ export default function UploadPage() {
             console.log("[v0] Profile created successfully")
             setUserPlan("free")
             setMpConnected(false)
-            const uploadCheck = await canUserUploadPack(user.id, "free")
-            setCanUpload(uploadCheck.canUpload)
-            setUploadBlockReason(uploadCheck.reason || null)
+            await checkUploadLimits(user.id, "free")
           } else {
             console.warn("[v0] Could not create profile:", insertError.message)
             setUserPlan("free")
@@ -179,14 +162,53 @@ export default function UploadPage() {
           setUserPlan(plan as PlanType)
           setMpConnected(existingProfile.mp_connected || false)
           console.log("[v0] User plan:", plan)
-          const uploadCheck = await canUserUploadPack(user.id, plan as PlanType)
-          setCanUpload(uploadCheck.canUpload)
-          setUploadBlockReason(uploadCheck.reason || null)
+          await checkUploadLimits(user.id, plan as PlanType)
         }
       } catch (error) {
         console.warn("[v0] Could not fetch plan, using default", error)
         setUserPlan("free")
         setMpConnected(false)
+        setCanUpload(true)
+      }
+    }
+
+    const checkUploadLimits = async (userId: string, plan: PlanType) => {
+      try {
+        const { data: packs, error } = await supabase.from("packs").select("id, created_at").eq("user_id", userId)
+
+        if (error) {
+          console.warn("[v0] Error checking upload limits:", error)
+          setCanUpload(true)
+          return
+        }
+
+        const totalPacks = packs?.length || 0
+        const planLimits = PLAN_FEATURES[plan]
+
+        if (plan === "free" && totalPacks >= 3) {
+          setCanUpload(false)
+          setUploadBlockReason("Has alcanzado el límite de 3 packs para el plan gratuito.")
+          return
+        }
+
+        // Check monthly limits for paid plans
+        if (planLimits.maxPacksPerMonth) {
+          const now = new Date()
+          const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+          const packsThisMonth = packs?.filter((p) => new Date(p.created_at) >= firstDayOfMonth).length || 0
+
+          if (packsThisMonth >= planLimits.maxPacksPerMonth) {
+            setCanUpload(false)
+            setUploadBlockReason(`Has alcanzado el límite de ${planLimits.maxPacksPerMonth} packs por mes.`)
+            return
+          }
+        }
+
+        setCanUpload(true)
+        setUploadBlockReason(null)
+      } catch (error) {
+        console.error("[v0] Error checking limits:", error)
         setCanUpload(true)
       }
     }
@@ -445,8 +467,10 @@ export default function UploadPage() {
     try {
       if (!user) throw new Error("No user found")
 
+      console.log("[v0] Validating pack upload...")
       const validation = await validatePackUpload(user.id, userPlan, priceNumber)
       if (!validation.valid) {
+        console.log("[v0] Validation failed:", validation.errors[0])
         setUploadError(validation.errors[0])
         toast({
           title: "No puedes subir este pack",
@@ -472,13 +496,17 @@ export default function UploadPage() {
       if (!user) throw new Error("No user found")
 
       // Upload files
+      console.log("[v0] Starting file uploads...")
       setUploadProgress(20)
       let coverUrl = null
       try {
         if (coverFile) {
+          console.log("[v0] Uploading cover...")
           coverUrl = await uploadFileToStorage(coverFile, "covers")
+          console.log("[v0] Cover uploaded:", coverUrl)
         }
       } catch (error: any) {
+        console.error("[v0] Cover upload error:", error)
         const message = error.message || "Error uploading cover image"
         setUploadError(message)
         toast({
@@ -493,8 +521,11 @@ export default function UploadPage() {
       setUploadProgress(40)
       let demoUrl: string
       try {
+        console.log("[v0] Uploading demo...")
         demoUrl = await uploadFileToStorage(demoFile, "demos")
+        console.log("[v0] Demo uploaded:", demoUrl)
       } catch (error: any) {
+        console.error("[v0] Demo upload error:", error)
         const message = error.message || "Error uploading demo audio"
         setUploadError(message)
         toast({
@@ -509,8 +540,11 @@ export default function UploadPage() {
       setUploadProgress(60)
       let fileUrl: string
       try {
+        console.log("[v0] Uploading pack file...")
         fileUrl = await uploadFileToStorage(packFile, "packs")
+        console.log("[v0] Pack file uploaded:", fileUrl)
       } catch (error: any) {
+        console.error("[v0] Pack file upload error:", error)
         const message = error.message || "Error uploading pack file"
         setUploadError(message)
         toast({
@@ -523,6 +557,14 @@ export default function UploadPage() {
       }
 
       setUploadProgress(80)
+
+      console.log("[v0] Calling /api/packs/upload with data:", {
+        title,
+        genre,
+        subgenre,
+        price: Number.parseInt(price),
+        has_discount: hasDiscount,
+      })
 
       const response = await fetch("/api/packs/upload", {
         method: "POST",
@@ -546,7 +588,9 @@ export default function UploadPage() {
         }),
       })
 
+      console.log("[v0] API response status:", response.status)
       const result = await response.json()
+      console.log("[v0] API response data:", result)
 
       if (!response.ok) {
         if (response.status === 403 && result.errorCode === "REUPLOAD_FORBIDDEN") {
@@ -561,6 +605,7 @@ export default function UploadPage() {
         }
 
         const errorMsg = result.details || result.error || "Unknown error occurred"
+        console.error("[v0] API error:", errorMsg)
         setUploadError(errorMsg)
         toast({
           title: "Error al crear el pack",
