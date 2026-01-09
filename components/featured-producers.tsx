@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Star, Package, Users } from 'lucide-react'
+import { Star, Package, Users } from "lucide-react"
 import Link from "next/link"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { Loader2 } from 'lucide-react'
+import { Loader2 } from "lucide-react"
 import { hasPlanBadge, getPlanBadge } from "@/lib/plans"
 
 interface ProducerWithPlan {
@@ -83,7 +83,7 @@ export function FeaturedProducers() {
 
   if (isLoading) {
     return (
-      <section className="py-20 bg-accent/30">
+      <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="flex justify-center items-center py-20">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -98,7 +98,7 @@ export function FeaturedProducers() {
   }
 
   return (
-    <section className="py-20 bg-accent/30">
+    <section className="py-20">
       <div className="container mx-auto px-4">
         <div className="mb-12">
           <div className="flex items-center gap-3 mb-3">

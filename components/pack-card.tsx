@@ -145,17 +145,17 @@ export function PackCard({ pack }: PackCardProps) {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground font-medium">
-          {pack.bpm && <span className="bg-accent px-3 py-1 rounded-full">{pack.bpm} BPM</span>}
+        <div className="flex flex-wrap items-center gap-2 text-xs font-medium">
+          {pack.bpm && <span className="bg-accent text-white px-3 py-1 rounded-full">{pack.bpm} BPM</span>}
           {pack.tags && pack.tags.length > 0 && (
             <>
               {pack.tags.slice(0, 2).map((tag: string, index: number) => (
-                <span key={index} className="bg-accent px-3 py-1 rounded-full">
+                <span key={index} className="bg-accent text-white px-3 py-1 rounded-full">
                   {tag}
                 </span>
               ))}
               {pack.tags.length > 2 && (
-                <span className="bg-accent px-3 py-1 rounded-full">+{pack.tags.length - 2}</span>
+                <span className="bg-accent text-white px-3 py-1 rounded-full">+{pack.tags.length - 2}</span>
               )}
             </>
           )}
