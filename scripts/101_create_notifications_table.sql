@@ -57,7 +57,7 @@ CREATE OR REPLACE FUNCTION notify_on_follow()
 RETURNS TRIGGER AS $$
 BEGIN
   PERFORM create_notification(
-    NEW.followed_id,
+    NEW.following_id,
     'follow',
     NEW.follower_id
   );
@@ -66,7 +66,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trigger_notify_on_follow
-  AFTER INSERT ON follows
+  AFTER INSERT ON followers
   FOR EACH ROW
   EXECUTE FUNCTION notify_on_follow();
 
@@ -92,7 +92,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER trigger_notify_on_like
-  AFTER INSERT ON likes
+  AFTER INSERT ON pack_likes
   FOR EACH ROW
   EXECUTE FUNCTION notify_on_like();
 
@@ -102,8 +102,8 @@ RETURNS TRIGGER AS $$
 DECLARE
   pack_owner_id UUID;
 BEGIN
-  -- Only notify on approved purchases
-  IF NEW.status = 'approved' THEN
+  -- Only notify on completed purchases
+  IF NEW.status = 'completed' THEN
     -- Get pack owner
     SELECT user_id INTO pack_owner_id
     FROM packs

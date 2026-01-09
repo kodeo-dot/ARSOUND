@@ -31,13 +31,23 @@ export function NotificationsDropdown() {
 
   const loadNotifications = async () => {
     try {
+      console.log("[v0] Loading notifications...")
       const response = await fetch("/api/notifications?limit=3")
-      if (!response.ok) return
+      console.log("[v0] Response status:", response.status)
+
+      if (!response.ok) {
+        console.log("[v0] Response not OK")
+        return
+      }
 
       const result = await response.json()
+      console.log("[v0] Notifications result:", result)
+
       if (result.success) {
         setNotifications(result.data.notifications)
         setUnreadCount(result.data.unread_count)
+        console.log("[v0] Set notifications:", result.data.notifications.length)
+        console.log("[v0] Unread count:", result.data.unread_count)
       }
     } catch (error) {
       console.error("[ARSOUND] Error loading notifications:", error)
