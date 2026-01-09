@@ -16,7 +16,6 @@ function clearAuthCookies(response: NextResponse, request: NextRequest) {
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
-  // Set cache control headers
   supabaseResponse.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, private")
   supabaseResponse.headers.set("Pragma", "no-cache")
   supabaseResponse.headers.set("Expires", "0")
@@ -45,6 +44,7 @@ export async function updateSession(request: NextRequest) {
   })
 
   let hasValidSession = false
+  let user = null
 
   try {
     const {
@@ -55,40 +55,31 @@ export async function updateSession(request: NextRequest) {
     if (sessionError) {
       logger.error("Session error in middleware", "MIDDLEWARE", sessionError.message)
       clearAuthCookies(supabaseResponse, request)
-      hasValidSession = false
     } else if (session) {
+      // Only attempt refresh if we have a session
       const isExpired = session.expires_at && session.expires_at * 1000 <= Date.now()
 
       if (isExpired) {
-        logger.debug("Session expired, refreshing", "MIDDLEWARE")
-      }
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
 
-      const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession()
-
-      if (refreshError) {
-        logger.error("Refresh failed in middleware", "MIDDLEWARE", refreshError.message)
-        clearAuthCookies(supabaseResponse, request)
-        hasValidSession = false
-      } else if (refreshData.session) {
-        logger.debug("Session refreshed in middleware", "MIDDLEWARE")
+        if (refreshError) {
+          logger.error("Refresh failed", "MIDDLEWARE", refreshError.message)
+          clearAuthCookies(supabaseResponse, request)
+        } else if (refreshData.session) {
+          hasValidSession = true
+          user = refreshData.user
+        }
+      } else {
         hasValidSession = true
+        user = session.user
       }
     }
   } catch (error) {
-    logger.error("Error refreshing session", "MIDDLEWARE", error)
+    logger.error("Error in session validation", "MIDDLEWARE", error)
     clearAuthCookies(supabaseResponse, request)
-    hasValidSession = false
   }
 
-  // Get current user
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  const hasValidUser = user && user.id && user.aud === "authenticated"
-
-  // Check if user is blocked
-  if (hasValidUser) {
+  if (hasValidSession && user) {
     const { data: profile } = await supabase
       .from("profiles")
       .select("is_blocked, blocked_reason, blocked_at")
@@ -109,32 +100,24 @@ export async function updateSession(request: NextRequest) {
     }
   }
 
-  // Protect authenticated routes
-  const protectedPaths = ["/profile", "/upload", "/studio"]
+  const protectedPaths = ["/profile", "/upload", "/studio", "/settings", "/purchases", "/saved", "/statistics"]
   const isProtectedPath = protectedPaths.some((path) => request.nextUrl.pathname.startsWith(path))
 
-  if (!hasValidUser && isProtectedPath) {
+  if (!hasValidSession && isProtectedPath) {
     logger.debug("Redirecting unauthenticated user to login", "MIDDLEWARE")
     const url = request.nextUrl.clone()
     url.pathname = "/login"
     return NextResponse.redirect(url)
   }
 
-  // Redirect authenticated users away from auth pages
   const authPaths = ["/login", "/signup"]
   const isAuthPath = authPaths.some((path) => request.nextUrl.pathname.startsWith(path))
 
-  if (hasValidUser && hasValidSession && isAuthPath) {
+  if (hasValidSession && isAuthPath) {
     logger.debug("Redirecting authenticated user away from auth page", "MIDDLEWARE")
     const url = request.nextUrl.clone()
     url.pathname = "/"
     return NextResponse.redirect(url)
-  }
-
-  // Allow access to auth pages if user has invalid session
-  if (hasValidUser && !hasValidSession && isAuthPath) {
-    logger.debug("Allowing access to auth page for invalid session", "MIDDLEWARE")
-    clearAuthCookies(supabaseResponse, request)
   }
 
   return supabaseResponse

@@ -42,6 +42,8 @@ export default function LoginPage() {
         password,
       })
       if (error) throw error
+
+      await new Promise((resolve) => setTimeout(resolve, 500))
       router.push("/")
       router.refresh()
     } catch (error: unknown) {

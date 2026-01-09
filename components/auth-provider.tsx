@@ -46,8 +46,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setSession(null)
           }
         } else {
-          setSession(initialSession)
-          setUser(initialSession?.user ?? null)
+          if (initialSession && initialSession.expires_at && initialSession.expires_at * 1000 > Date.now()) {
+            setSession(initialSession)
+            setUser(initialSession.user)
+          } else {
+            setSession(null)
+            setUser(null)
+          }
         }
       } catch (error: any) {
         console.error("[ARSOUND] Unexpected error initializing auth:", error)
@@ -67,21 +72,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       console.log("[ARSOUND] Auth state changed:", event)
 
       if (event === "SIGNED_OUT") {
-        // User logged out - clear everything
         setUser(null)
         setSession(null)
         await clearInvalidSession()
       } else if (event === "TOKEN_REFRESHED") {
-        // Token was refreshed - update session
         console.log("[ARSOUND] Token refreshed successfully")
         setSession(currentSession)
         setUser(currentSession?.user ?? null)
       } else if (event === "SIGNED_IN") {
-        // User logged in - set session
         setSession(currentSession)
         setUser(currentSession?.user ?? null)
       } else if (event === "USER_UPDATED") {
-        // User data updated
         setSession(currentSession)
         setUser(currentSession?.user ?? null)
       }
