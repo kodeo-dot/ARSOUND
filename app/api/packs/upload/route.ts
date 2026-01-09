@@ -11,19 +11,41 @@ export async function POST(request: Request) {
   try {
     console.log("[v0] Starting pack upload")
 
-    const user = await requireSession()
-    console.log("[v0] User authenticated:", user.id)
+    let user
+    try {
+      user = await requireSession()
+      console.log("[v0] User authenticated:", user.id)
+    } catch (authError) {
+      console.error("[v0] Auth error:", authError)
+      return errorResponse("No autenticado", 401)
+    }
 
-    const body: UploadPackRequest = await request.json()
-    console.log("[v0] Request body received:", { title: body.title, price: body.price })
+    let body: UploadPackRequest
+    try {
+      body = await request.json()
+      console.log("[v0] Request body received:", { title: body.title, price: body.price })
+    } catch (parseError) {
+      console.error("[v0] JSON parse error:", parseError)
+      return errorResponse("Request inválido", 400)
+    }
 
     // Get user plan and profile
     console.log("[v0] Fetching user plan and profile")
-    const [planType, profile] = await Promise.all([getUserPlan(user.id), getProfile(user.id)])
+    const [planType, profile] = await Promise.all([
+      getUserPlan(user.id).catch((err) => {
+        console.error("[v0] Error getting plan:", err)
+        return "free" as const
+      }),
+      getProfile(user.id).catch((err) => {
+        console.error("[v0] Error getting profile:", err)
+        return null
+      }),
+    ])
+
     console.log("[v0] Plan type:", planType, "Profile found:", !!profile)
 
     if (!profile) {
-      return errorResponse("Profile not found", 404)
+      return errorResponse("Perfil no encontrado", 404)
     }
 
     // Validate if user can sell (needs Mercado Pago for paid packs)
@@ -34,10 +56,14 @@ export async function POST(request: Request) {
       )
     }
 
-    // Validate pack data and plan limits
     console.log("[v0] Validating pack upload")
-    await validatePackUpload(user.id, planType, body)
-    console.log("[v0] Validation passed")
+    try {
+      await validatePackUpload(user.id, planType, body)
+      console.log("[v0] Validation passed")
+    } catch (validationError: any) {
+      console.error("[v0] Validation error:", validationError)
+      return errorResponse(validationError.message || "Error de validación", 400)
+    }
 
     // Create pack
     console.log("[v0] Creating pack in database")
@@ -66,7 +92,7 @@ export async function POST(request: Request) {
     if (packError || !pack) {
       console.error("[v0] Error creating pack:", packError)
       logger.error("Error creating pack", "UPLOAD", packError)
-      return errorResponse("Error al crear el pack", 500)
+      return errorResponse(packError?.message || "Error al crear el pack", 500)
     }
 
     console.log("[v0] Pack created successfully:", pack.id)
@@ -89,20 +115,6 @@ export async function POST(request: Request) {
         console.error("[v0] Error creating discount code:", discountError)
         logger.error("Error creating discount code", "UPLOAD", discountError)
       }
-    }
-
-    console.log("[v0] Incrementing pack counter")
-    try {
-      const { error: incrementError } = await adminSupabase.rpc("increment_pack_count", {
-        user_id_input: user.id,
-      })
-
-      if (incrementError) {
-        console.error("[v0] Error incrementing pack count:", incrementError)
-      }
-    } catch (incrementErr) {
-      console.error("[v0] Failed to increment pack count:", incrementErr)
-      // Don't fail the whole upload if increment fails
     }
 
     logger.info("Pack uploaded successfully", "UPLOAD", {

@@ -30,11 +30,26 @@ export async function updateProfile(userId: string, updates: Partial<Profile>): 
 export async function getUserPlan(userId: string): Promise<PlanType> {
   const supabase = await createServerClient()
 
-  const { data, error } = await supabase.rpc("get_user_plan", { p_user_id: userId })
+  const { data, error } = await supabase
+    .from("user_plans")
+    .select("plan_type")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .order("started_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
   if (error) {
     console.error("[DB] Error fetching user plan:", error)
     return "free"
+  }
+
+  // Check if plan is expired
+  if (data?.expires_at) {
+    const expiresAt = new Date(data.expires_at)
+    if (expiresAt < new Date()) {
+      return "free"
+    }
   }
 
   return (data?.plan_type as PlanType) || "free"
@@ -196,10 +211,20 @@ export async function countUserPacks(userId: string): Promise<{
 }> {
   const supabase = await createServerClient()
 
-  const { data: total } = await supabase.rpc("count_total_packs", { p_user_id: userId })
-  const { data: thisMonth } = await supabase.rpc("count_packs_this_month", {
-    p_user_id: userId,
-  })
+  const { count: total } = await supabase
+    .from("packs")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+
+  const startOfMonth = new Date()
+  startOfMonth.setDate(1)
+  startOfMonth.setHours(0, 0, 0, 0)
+
+  const { count: thisMonth } = await supabase
+    .from("packs")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("created_at", startOfMonth.toISOString())
 
   return {
     total: total || 0,
