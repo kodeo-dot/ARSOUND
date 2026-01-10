@@ -5,6 +5,8 @@ import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { PackReviews } from "@/components/pack-reviews"
+import { PackQuestions } from "@/components/pack-questions"
 import {
   Play,
   Heart,
@@ -44,6 +46,8 @@ export default function PackDetailPage() {
   const [hasPurchasedBefore, setHasPurchasedBefore] = useState(false)
   const [isOwner, setIsOwner] = useState(false)
   const [isShareCopied, setIsShareCopied] = useState(false)
+  const [canReview, setCanReview] = useState(false)
+  const [userReview, setUserReview] = useState<any>(null)
   const { playPack, isPlaying, currentPack } = useAudioPlayer()
   const supabase = createBrowserClient()
 
@@ -287,6 +291,50 @@ export default function PackDetailPage() {
       checkDiscounts()
     }
   }, [pack, activeOffer, user, isFollowing, hasPurchasedBefore])
+
+  useEffect(() => {
+    const checkReviewEligibility = async () => {
+      const {
+        data: { user: authUser },
+      } = await supabase.auth.getUser()
+
+      if (authUser && packId) {
+        // Check if user has purchased or downloaded
+        const { data: hasPurchased } = await supabase
+          .from("purchases")
+          .select("id")
+          .eq("buyer_id", authUser.id)
+          .eq("pack_id", packId)
+          .eq("status", "completed")
+          .maybeSingle()
+
+        const { data: hasDownloaded } = await supabase
+          .from("pack_downloads")
+          .select("id")
+          .eq("user_id", authUser.id)
+          .eq("pack_id", packId)
+          .maybeSingle()
+
+        setCanReview(!!(hasPurchased || hasDownloaded))
+
+        // Check if user already has a review
+        const { data: existingReview } = await supabase
+          .from("pack_reviews")
+          .select("*")
+          .eq("pack_id", packId)
+          .eq("user_id", authUser.id)
+          .maybeSingle()
+
+        if (existingReview) {
+          setUserReview(existingReview)
+        }
+      }
+    }
+
+    if (pack) {
+      checkReviewEligibility()
+    }
+  }, [packId, pack, supabase])
 
   if (loading) {
     return (
@@ -545,6 +593,11 @@ export default function PackDetailPage() {
               </div>
             )}
           </div>
+        </div>
+
+        <div className="max-w-7xl mx-auto mt-16 space-y-12">
+          <PackReviews packId={packId} canReview={canReview} userReview={userReview} />
+          <PackQuestions packId={packId} isAuthenticated={!!user} />
         </div>
       </main>
 

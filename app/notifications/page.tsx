@@ -13,6 +13,9 @@ import {
   Eye,
   AlertCircle,
   ArrowRight,
+  Star,
+  MessageCircle,
+  MessageSquare,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { UserAvatar } from "@/components/user-avatar"
@@ -97,6 +100,14 @@ export default function NotificationsPage() {
         return `descargó tu pack "${notif.pack?.name}"`
       case "profile_view":
         return "vio tu perfil"
+      case "review":
+        const rating = notif.metadata?.rating
+        return `dejó una review ${rating ? `(${rating}⭐)` : ""} en tu pack "${notif.metadata?.pack_name || notif.pack?.name}"`
+      case "question":
+        return `hizo una pregunta sobre tu pack "${notif.metadata?.pack_name || notif.pack?.name}"`
+      case "answer":
+        const isOwner = notif.metadata?.is_pack_owner
+        return `respondió tu pregunta${isOwner ? " (Creador del pack)" : ""}`
       case "limit_reached":
         const resetDate = notif.metadata?.reset_date ? new Date(notif.metadata.reset_date) : null
         const resetText = resetDate ? ` Se restablecen el ${resetDate.getDate()}/${resetDate.getMonth() + 1}` : ""
@@ -114,6 +125,9 @@ export default function NotificationsPage() {
       case "like":
       case "purchase":
       case "download":
+      case "review":
+      case "question":
+      case "answer":
         return `/pack/${notif.pack_id}`
       case "limit_reached":
         return "/plans"
@@ -134,6 +148,12 @@ export default function NotificationsPage() {
         return <Download className="h-4 w-4" />
       case "profile_view":
         return <Eye className="h-4 w-4" />
+      case "review":
+        return <Star className="h-4 w-4" />
+      case "question":
+        return <MessageCircle className="h-4 w-4" />
+      case "answer":
+        return <MessageSquare className="h-4 w-4" />
       case "limit_reached":
         return <AlertCircle className="h-4 w-4" />
       default:
@@ -153,6 +173,12 @@ export default function NotificationsPage() {
         return "bg-purple-500/10 text-purple-600 dark:text-purple-400"
       case "profile_view":
         return "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400"
+      case "review":
+        return "bg-yellow-500/10 text-yellow-600 dark:text-yellow-400"
+      case "question":
+        return "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400"
+      case "answer":
+        return "bg-teal-500/10 text-teal-600 dark:text-teal-400"
       case "limit_reached":
         return "bg-orange-500/10 text-orange-600 dark:text-orange-400"
       default:

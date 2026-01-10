@@ -1,4 +1,13 @@
-export type NotificationType = "follow" | "like" | "purchase" | "limit_reached" | "download" | "profile_view"
+export type NotificationType =
+  | "follow"
+  | "like"
+  | "purchase"
+  | "limit_reached"
+  | "download"
+  | "profile_view"
+  | "review"
+  | "question"
+  | "answer"
 
 export interface Notification {
   id: string

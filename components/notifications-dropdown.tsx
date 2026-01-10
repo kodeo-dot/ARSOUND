@@ -1,6 +1,17 @@
 "use client"
 
-import { Bell, AlertCircle } from "lucide-react"
+import {
+  Bell,
+  AlertCircle,
+  Heart,
+  UserPlus,
+  ShoppingBag,
+  Download,
+  Eye,
+  Star,
+  MessageCircle,
+  MessageSquare,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -81,6 +92,14 @@ export function NotificationsDropdown() {
         return `descargó tu pack "${notif.pack?.name}"`
       case "profile_view":
         return "vio tu perfil"
+      case "review":
+        const rating = notif.metadata?.rating
+        return `dejó una review ${rating ? `(${rating}⭐)` : ""} en tu pack`
+      case "question":
+        return `hizo una pregunta sobre tu pack`
+      case "answer":
+        const isOwner = notif.metadata?.is_pack_owner
+        return `respondió tu pregunta${isOwner ? " (Creador)" : ""}`
       case "limit_reached":
         return `Alcanzaste el límite de descargas. Mejorá tu plan.`
       default:
@@ -96,11 +115,64 @@ export function NotificationsDropdown() {
       case "like":
       case "purchase":
       case "download":
+      case "review":
+      case "question":
+      case "answer":
         return `/pack/${notif.pack_id}`
       case "limit_reached":
         return "/plans"
       default:
         return "/notifications"
+    }
+  }
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case "follow":
+        return <UserPlus className="h-3.5 w-3.5" />
+      case "like":
+        return <Heart className="h-3.5 w-3.5" />
+      case "purchase":
+        return <ShoppingBag className="h-3.5 w-3.5" />
+      case "download":
+        return <Download className="h-3.5 w-3.5" />
+      case "profile_view":
+        return <Eye className="h-3.5 w-3.5" />
+      case "review":
+        return <Star className="h-3.5 w-3.5" />
+      case "question":
+        return <MessageCircle className="h-3.5 w-3.5" />
+      case "answer":
+        return <MessageSquare className="h-3.5 w-3.5" />
+      case "limit_reached":
+        return <AlertCircle className="h-3.5 w-3.5" />
+      default:
+        return <Bell className="h-3.5 w-3.5" />
+    }
+  }
+
+  const getNotificationColor = (type: string) => {
+    switch (type) {
+      case "follow":
+        return "text-blue-600 dark:text-blue-400"
+      case "like":
+        return "text-pink-600 dark:text-pink-400"
+      case "purchase":
+        return "text-green-600 dark:text-green-400"
+      case "download":
+        return "text-purple-600 dark:text-purple-400"
+      case "profile_view":
+        return "text-cyan-600 dark:text-cyan-400"
+      case "review":
+        return "text-yellow-600 dark:text-yellow-400"
+      case "question":
+        return "text-indigo-600 dark:text-indigo-400"
+      case "answer":
+        return "text-teal-600 dark:text-teal-400"
+      case "limit_reached":
+        return "text-orange-600 dark:text-orange-400"
+      default:
+        return "text-foreground"
     }
   }
 
@@ -136,16 +208,25 @@ export function NotificationsDropdown() {
                 <Link href={getNotificationLink(notif)}>
                   <div className="flex items-start gap-3 w-full">
                     {notif.type === "limit_reached" ? (
-                      <div className="p-2 rounded-full bg-white border-2 border-orange-500/20 text-orange-600">
-                        <AlertCircle className="h-4 w-4" />
+                      <div
+                        className={`p-2 rounded-full bg-white border-2 border-orange-500/20 ${getNotificationColor(notif.type)}`}
+                      >
+                        {getNotificationIcon(notif.type)}
                       </div>
                     ) : (
-                      <UserAvatar
-                        avatarUrl={notif.actor?.avatar_url}
-                        username={notif.actor?.username}
-                        displayName={notif.actor?.display_name}
-                        size="sm"
-                      />
+                      <div className="relative">
+                        <UserAvatar
+                          avatarUrl={notif.actor?.avatar_url}
+                          username={notif.actor?.username}
+                          displayName={notif.actor?.display_name}
+                          size="sm"
+                        />
+                        <div
+                          className={`absolute -bottom-0.5 -right-0.5 p-1 rounded-full bg-white border-2 border-background ${getNotificationColor(notif.type)}`}
+                        >
+                          {getNotificationIcon(notif.type)}
+                        </div>
+                      </div>
                     )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm">
