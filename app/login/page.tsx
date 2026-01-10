@@ -48,7 +48,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col">
       <Header />
 
-      <main className="flex-1 flex items-center justify-center px-4 py-12 bg-gradient-to-br from-background via-accent/20 to-background">
+      <main className="flex-1 flex items-center justify-center px-4 py-12 bg-background">
         <Card className="w-full max-w-md p-8 space-y-6 border-border rounded-3xl">
           {/* Logo */}
           <div className="flex flex-col items-center gap-4">

@@ -124,7 +124,7 @@ Si alguna cláusula de esta licencia es declarada inválida o inaplicable, el re
 
 14. CONTACTO
 
-Para consultas sobre esta licencia: soporte@arsound.com.ar
+Para consultas sobre esta licencia: [TU EMAIL DE CONTACTO]
 
 ═══════════════════════════════════════════════════════════════════════════
 
