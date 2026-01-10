@@ -65,6 +65,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     }
 
     console.log("[v0] Creating question for pack:", packId)
+    console.log("[v0] User ID:", user.id)
+    console.log("[v0] Question text:", question.trim())
 
     const { data: newQuestion, error } = await supabase
       .from("pack_questions")
@@ -77,7 +79,6 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         id,
         question,
         created_at,
-        updated_at,
         user:profiles!pack_questions_user_id_fkey(
           id,
           username,
@@ -88,16 +89,38 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       .single()
 
     if (error) {
-      console.error("[v0] Error creating question:", error)
+      console.error("[v0] Supabase error details:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+      })
+
+      if (error.code === "42P01" || error.message.includes("does not exist")) {
+        return NextResponse.json(
+          {
+            success: false,
+            error:
+              "Las tablas de preguntas aún no están creadas. Por favor ejecutá el script 109_create_qa_tables_consolidated.sql en Supabase.",
+          },
+          { status: 500 },
+        )
+      }
+
       throw error
     }
 
     console.log("[v0] Question created successfully:", newQuestion.id)
-    // Notification is created automatically by the trigger
 
     return NextResponse.json({ success: true, question: newQuestion })
   } catch (error: any) {
     console.error("[v0] Error in POST questions:", error)
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: error.message || "Error al crear la pregunta",
+      },
+      { status: 500 },
+    )
   }
 }

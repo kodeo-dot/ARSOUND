@@ -79,6 +79,8 @@ export function PackQuestions({ packId, isAuthenticated }: PackQuestionsProps) {
 
     setIsSubmitting(true)
     try {
+      console.log("[v0] Submitting question for pack:", packId)
+
       const response = await fetch(`/api/packs/${packId}/questions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -86,6 +88,8 @@ export function PackQuestions({ packId, isAuthenticated }: PackQuestionsProps) {
       })
 
       const data = await response.json()
+
+      console.log("[v0] API response:", data)
 
       if (data.success) {
         toast({
@@ -102,6 +106,7 @@ export function PackQuestions({ packId, isAuthenticated }: PackQuestionsProps) {
         })
       }
     } catch (error) {
+      console.error("[v0] Error submitting question:", error)
       toast({
         title: "Error",
         description: "No se pudo publicar la pregunta",
