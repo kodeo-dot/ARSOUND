@@ -10,6 +10,8 @@ export async function createLimitNotification(userId: string, limitType: "downlo
     const planType = await getUserPlan(userId)
     const features = getPlanFeatures(planType)
 
+    console.log("[v0] createLimitNotification called", { userId, limitType, planType })
+
     let shouldNotify = false
     let limitMessage = ""
 
@@ -18,6 +20,8 @@ export async function createLimitNotification(userId: string, limitType: "downlo
       const { data: limitData } = await supabase.rpc("get_download_limit", {
         p_user_id: userId,
       })
+
+      console.log("[v0] Download limit check", { limitData })
 
       if (limitData && limitData.remaining === 0) {
         shouldNotify = true
@@ -29,6 +33,8 @@ export async function createLimitNotification(userId: string, limitType: "downlo
         p_user_id: userId,
       })
 
+      console.log("[v0] Upload limit check", { limitData })
+
       if (limitData && limitData.remaining === 0) {
         shouldNotify = true
         if (planType === "free") {
@@ -39,9 +45,11 @@ export async function createLimitNotification(userId: string, limitType: "downlo
       }
     }
 
+    console.log("[v0] Should notify?", { shouldNotify, limitMessage })
+
     if (shouldNotify) {
       // Create web notification
-      await supabase.from("notifications").insert({
+      const { error: notifError } = await supabase.from("notifications").insert({
         user_id: userId,
         type: "limit_reached",
         title: `Límite alcanzado`,
@@ -52,8 +60,17 @@ export async function createLimitNotification(userId: string, limitType: "downlo
         },
       })
 
+      if (notifError) {
+        console.error("[v0] Error creating notification", notifError)
+        logger.error("Error creating notification in DB", "NOTIFICATION", notifError)
+      } else {
+        console.log("[v0] Notification created successfully")
+      }
+
       // Send email notification
+      console.log("[v0] Sending limit email...")
       await sendLimitReachedEmail(userId, limitType, limitMessage, planType)
+      console.log("[v0] Email sent")
 
       logger.info("Limit notification created", "NOTIFICATION", {
         userId,
@@ -62,6 +79,7 @@ export async function createLimitNotification(userId: string, limitType: "downlo
       })
     }
   } catch (error) {
+    console.error("[v0] Error in createLimitNotification", error)
     logger.error("Error creating limit notification", "NOTIFICATION", error)
   }
 }

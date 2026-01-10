@@ -1,7 +1,6 @@
 import { createAdminClient } from "../database/supabase.client"
 import { recordDownload, incrementPackCounter } from "../database/queries"
 import { logger } from "../utils/logger"
-import { createLimitNotification } from "../notifications/limit-notifications"
 
 export async function downloadPackFile(packId: string, userId: string, fileUrl: string): Promise<Blob> {
   const adminSupabase = await createAdminClient()
@@ -29,8 +28,6 @@ export async function downloadPackFile(packId: string, userId: string, fileUrl: 
 
   // Increment counter
   await incrementPackCounter(packId, "downloads_count")
-
-  await createLimitNotification(userId, "download")
 
   logger.info("Pack downloaded", "DOWNLOAD", { packId, userId })
 

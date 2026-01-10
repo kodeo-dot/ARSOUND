@@ -3,6 +3,7 @@ import { getPlanFeatures } from "../config/plans.config"
 import { NotFoundError } from "../utils/errors"
 import { logger } from "../utils/logger"
 import { createServerClient } from "../database/supabase.client"
+import { createLimitNotification } from "../notifications/limit-notifications"
 
 export async function validatePackDownload(
   userId: string,
@@ -68,6 +69,8 @@ export async function validatePackDownload(
           limit: limitCheck?.limit,
           reason: limitCheck?.reason,
         })
+
+        await createLimitNotification(userId, "download")
 
         return {
           canDownload: false,
