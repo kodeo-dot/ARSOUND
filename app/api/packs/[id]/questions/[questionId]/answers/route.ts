@@ -2,8 +2,9 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
 // POST a new answer
-export async function POST(request: Request, { params }: { params: { id: string; questionId: string } }) {
+export async function POST(request: Request, context: { params: Promise<{ id: string; questionId: string }> }) {
   try {
+    const { id: packId, questionId } = await context.params
     const supabase = await createClient()
     const {
       data: { user },
@@ -13,8 +14,6 @@ export async function POST(request: Request, { params }: { params: { id: string;
       return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 })
     }
 
-    const packId = params.id
-    const questionId = params.questionId
     const { answer } = await request.json()
 
     if (!answer || answer.trim().length === 0) {

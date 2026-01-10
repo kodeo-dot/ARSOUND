@@ -2,10 +2,10 @@ import { NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 
 // GET questions for a pack
-export async function GET(request: Request, { params }: { params: { id: string } }) {
+export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
+    const { id: packId } = await context.params
     const supabase = await createClient()
-    const packId = params.id
 
     const { data: questions, error } = await supabase
       .from("pack_questions")
@@ -46,8 +46,9 @@ export async function GET(request: Request, { params }: { params: { id: string }
 }
 
 // POST a new question
-export async function POST(request: Request, { params }: { params: { id: string } }) {
+export async function POST(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
+    const { id: packId } = await context.params
     const supabase = await createClient()
     const {
       data: { user },
@@ -57,7 +58,6 @@ export async function POST(request: Request, { params }: { params: { id: string 
       return NextResponse.json({ success: false, error: "No autorizado" }, { status: 401 })
     }
 
-    const packId = params.id
     const { question } = await request.json()
 
     if (!question || question.trim().length === 0) {
