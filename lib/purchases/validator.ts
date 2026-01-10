@@ -24,6 +24,13 @@ export async function validatePackDownload(
     const planType = await getUserPlan(userId)
     const features = getPlanFeatures(planType)
 
+    logger.debug("Checking download limit", "DOWNLOAD", {
+      userId,
+      packId,
+      planType,
+      maxFreeDownloads: features.maxFreeDownloads,
+    })
+
     // Check download limit using RPC function
     if (features.maxFreeDownloads !== null) {
       const supabase = await createServerClient()
@@ -34,13 +41,23 @@ export async function validatePackDownload(
       })
 
       if (error) {
-        logger.error("Error checking download limit", "DOWNLOAD", error)
+        logger.error("Error checking download limit", "DOWNLOAD", {
+          error,
+          userId,
+          packId,
+          planType,
+        })
         return {
           canDownload: false,
           pack,
           reason: "Error al verificar límites de descarga",
         }
       }
+
+      logger.debug("RPC response", "DOWNLOAD", {
+        limitCheck,
+        canDownload: limitCheck?.can_download,
+      })
 
       if (!limitCheck?.can_download) {
         logger.warn("Download limit exceeded", "DOWNLOAD", {
@@ -49,6 +66,7 @@ export async function validatePackDownload(
           plan: planType,
           current: limitCheck?.current_downloads,
           limit: limitCheck?.limit,
+          reason: limitCheck?.reason,
         })
 
         return {
