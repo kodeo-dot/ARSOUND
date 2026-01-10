@@ -54,6 +54,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       return NextResponse.json({ success: false, error: "Rating debe estar entre 1 y 5" }, { status: 400 })
     }
 
+    console.log("[v0] Creating review for pack:", packId)
+
     // Check if user has purchased or downloaded the pack
     const { data: hasPurchased } = await supabase
       .from("purchases")
@@ -77,7 +79,6 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       )
     }
 
-    // Insert review
     const { data: review, error: insertError } = await supabase
       .from("pack_reviews")
       .insert({
@@ -86,28 +87,32 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         rating,
         comment,
       })
-      .select()
+      .select(`
+        id,
+        rating,
+        comment,
+        created_at,
+        updated_at,
+        user:profiles(
+          id,
+          username,
+          display_name,
+          avatar_url
+        )
+      `)
       .single()
 
-    if (insertError) throw insertError
-
-    // Get pack owner to send notification
-    const { data: pack } = await supabase.from("packs").select("user_id, title").eq("id", packId).single()
-
-    if (pack && pack.user_id !== user.id) {
-      // Create notification for pack owner
-      await supabase.rpc("create_notification", {
-        p_user_id: pack.user_id,
-        p_type: "review",
-        p_actor_id: user.id,
-        p_pack_id: packId,
-        p_metadata: { rating, pack_name: pack.title },
-      })
+    if (insertError) {
+      console.error("[v0] Error creating review:", insertError)
+      throw insertError
     }
+
+    console.log("[v0] Review created successfully:", review.id)
+    // Notification is created automatically by the trigger
 
     return NextResponse.json({ success: true, review })
   } catch (error: any) {
-    console.error("Error creating review:", error)
+    console.error("[v0] Error in POST reviews:", error)
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
 }

@@ -64,6 +64,8 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
       return NextResponse.json({ success: false, error: "La pregunta no puede estar vacía" }, { status: 400 })
     }
 
+    console.log("[v0] Creating question for pack:", packId)
+
     const { data: newQuestion, error } = await supabase
       .from("pack_questions")
       .insert({
@@ -71,28 +73,31 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
         user_id: user.id,
         question: question.trim(),
       })
-      .select()
+      .select(`
+        id,
+        question,
+        created_at,
+        updated_at,
+        user:profiles!pack_questions_user_id_fkey(
+          id,
+          username,
+          display_name,
+          avatar_url
+        )
+      `)
       .single()
 
-    if (error) throw error
-
-    // Get pack owner to send notification
-    const { data: pack } = await supabase.from("packs").select("user_id, title").eq("id", packId).single()
-
-    if (pack && pack.user_id !== user.id) {
-      // Create notification for pack owner
-      await supabase.rpc("create_notification", {
-        p_user_id: pack.user_id,
-        p_type: "question",
-        p_actor_id: user.id,
-        p_pack_id: packId,
-        p_metadata: { pack_name: pack.title, question: question.substring(0, 100) },
-      })
+    if (error) {
+      console.error("[v0] Error creating question:", error)
+      throw error
     }
+
+    console.log("[v0] Question created successfully:", newQuestion.id)
+    // Notification is created automatically by the trigger
 
     return NextResponse.json({ success: true, question: newQuestion })
   } catch (error: any) {
-    console.error("Error creating question:", error)
+    console.error("[v0] Error in POST questions:", error)
     return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
 }
