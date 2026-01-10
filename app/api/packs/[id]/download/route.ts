@@ -4,7 +4,6 @@ import { downloadPackFile, generateDownloadFilename } from "@/lib/purchases/down
 import { errorResponse } from "@/lib/utils/response"
 import { handleApiError } from "@/lib/utils/errors"
 import { NextResponse } from "next/server"
-import { createServerClient } from "@/lib/database/supabase.client"
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
@@ -20,13 +19,8 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
 
     const pack = validation.pack
 
-    const supabase = await createServerClient()
-    const { data: profile } = await supabase.from("profiles").select("email").eq("id", user.id).single()
-
-    const userEmail = profile?.email || user.email || "usuario@arsound.com"
-
-    // Download file with license
-    const fileData = await downloadPackFile(packId, user.id, pack.file_url, pack.title, userEmail)
+    // Download file
+    const fileData = await downloadPackFile(packId, user.id, pack.file_url)
 
     // Convert to buffer
     const buffer = await fileData.arrayBuffer()

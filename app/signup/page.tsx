@@ -8,11 +8,11 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
-import { Waves, Mail, Lock, UserIcon } from "lucide-react"
+import { Waves, Mail, Lock, UserIcon } from 'lucide-react'
 import Link from "next/link"
 import { useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { useRouter } from "next/navigation"
+import { useRouter } from 'next/navigation'
 
 export default function SignupPage() {
   const [username, setUsername] = useState("")
@@ -155,7 +155,7 @@ export default function SignupPage() {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
-        <main className="flex-1 flex items-center justify-center px-4 py-12 bg-background">
+        <main className="flex-1 flex items-center justify-center px-4 py-12 bg-gradient-to-br from-background via-accent/20 to-background">
           <Card className="w-full max-w-md p-8 space-y-6 border-border rounded-3xl text-center">
             <div className="flex flex-col items-center gap-4">
               <div className="relative">
@@ -180,7 +180,7 @@ export default function SignupPage() {
     <div className="min-h-screen flex flex-col">
       <Header />
 
-      <main className="flex-1 flex items-center justify-center px-4 py-12 bg-background">
+      <main className="flex-1 flex items-center justify-center px-4 py-12 bg-gradient-to-br from-background via-accent/20 to-background">
         <Card className="w-full max-w-md p-8 space-y-6 border-border rounded-3xl">
           {/* Logo */}
           <div className="flex flex-col items-center gap-4">

@@ -1,17 +1,15 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Bell, Check, Loader2, Heart, ShoppingBag, UserPlus, Sparkles, ArrowLeft } from "lucide-react"
+import { Bell, Check, Loader2, Heart, ShoppingBag, UserPlus, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { UserAvatar } from "@/components/user-avatar"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import type { Notification } from "@/lib/types/notifications.types"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
 
 export default function NotificationsPage() {
-  const router = useRouter()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -140,16 +138,13 @@ export default function NotificationsPage() {
     <div className="min-h-screen bg-background">
       <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container max-w-4xl py-4 px-4">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={() => router.back()} className="shrink-0">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div className="p-2 bg-primary/10 rounded-lg shrink-0">
+              <div className="p-2 bg-primary/10 rounded-lg">
                 <Bell className="h-5 w-5 text-primary" />
               </div>
-              <div className="min-w-0">
-                <h1 className="text-xl font-bold truncate">Notificaciones</h1>
+              <div>
+                <h1 className="text-xl font-bold">Notificaciones</h1>
                 {unreadCount > 0 && (
                   <p className="text-xs text-muted-foreground">
                     {unreadCount} {unreadCount === 1 ? "nueva" : "nuevas"}
@@ -158,10 +153,9 @@ export default function NotificationsPage() {
               </div>
             </div>
             {unreadCount > 0 && (
-              <Button variant="outline" size="sm" onClick={markAllAsRead} className="shrink-0 bg-transparent">
+              <Button variant="outline" size="sm" onClick={markAllAsRead}>
                 <Check className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Marcar todas como leídas</span>
-                <span className="sm:hidden">Marcar</span>
+                Marcar todas como leídas
               </Button>
             )}
           </div>
@@ -195,7 +189,7 @@ export default function NotificationsPage() {
                   }`}
                 >
                   <div className="flex items-start gap-4">
-                    <div className="relative shrink-0">
+                    <div className="relative">
                       <UserAvatar
                         avatarUrl={notif.actor?.avatar_url}
                         username={notif.actor?.username}
@@ -212,7 +206,7 @@ export default function NotificationsPage() {
                     </div>
 
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm leading-relaxed break-words">
+                      <p className="text-sm leading-relaxed">
                         <span className="font-semibold text-foreground">
                           {notif.actor?.display_name || notif.actor?.username}
                         </span>{" "}
@@ -227,9 +221,9 @@ export default function NotificationsPage() {
                     </div>
 
                     {!notif.is_read && (
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center gap-2">
                         <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                        <span className="text-xs font-medium text-primary hidden sm:inline">Nueva</span>
+                        <span className="text-xs font-medium text-primary">Nueva</span>
                       </div>
                     )}
                   </div>
