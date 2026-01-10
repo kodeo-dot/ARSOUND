@@ -5,9 +5,8 @@ export type NotificationType =
   | "limit_reached"
   | "download"
   | "profile_view"
-  | "review"
-  | "question"
-  | "answer"
+  | "comment"
+  | "reply"
 
 export interface Notification {
   id: string
