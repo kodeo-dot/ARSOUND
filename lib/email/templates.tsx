@@ -1,4 +1,4 @@
-export function getPackPurchaseEmailHTML(data: {
+export function getPackPurchaseEmailBuyer(data: {
   buyerName: string
   packTitle: string
   amount: number
@@ -6,178 +6,181 @@ export function getPackPurchaseEmailHTML(data: {
   downloadUrl: string
 }): string {
   return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Compra Exitosa - ARSOUND</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
-    .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
-    .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 20px; text-align: center; }
-    .header h1 { color: #ffffff; margin: 0; font-size: 28px; }
-    .content { padding: 40px 30px; }
-    .pack-info { background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0; }
-    .pack-title { font-size: 20px; font-weight: bold; color: #1a202c; margin: 0 0 10px 0; }
-    .purchase-code { background-color: #e2e8f0; border-radius: 4px; padding: 12px; margin: 20px 0; font-family: 'Courier New', monospace; font-size: 16px; text-align: center; letter-spacing: 2px; }
-    .download-btn { display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff !important; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: bold; margin: 20px 0; }
-    .footer { background-color: #f8f9fa; padding: 30px; text-align: center; color: #718096; font-size: 14px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>🎉 ¡Compra Exitosa!</h1>
-    </div>
-    <div class="content">
-      <p>Hola ${data.buyerName},</p>
-      <p>Tu compra se ha procesado exitosamente. Gracias por confiar en ARSOUND.</p>
-      
-      <div class="pack-info">
-        <p class="pack-title">${data.packTitle}</p>
-        <p><strong>Precio pagado:</strong> $${data.amount.toLocaleString("es-AR")}</p>
-      </div>
-
-      <p><strong>Código de compra:</strong></p>
-      <div class="purchase-code">${data.purchaseCode}</div>
-
-      <p>Puedes descargar tu pack haciendo clic en el botón de abajo:</p>
-      
-      <center>
-        <a href="${data.downloadUrl}" class="download-btn">Descargar Pack</a>
-      </center>
-
-      <p style="margin-top: 30px; color: #718096; font-size: 14px;">
-        Este link estará disponible en tu perfil en cualquier momento.
-      </p>
-    </div>
-    <div class="footer">
-      <p>ARSOUND - La plataforma de venta de packs de producción musical</p>
-      <p>© ${new Date().getFullYear()} ARSOUND. Todos los derechos reservados.</p>
-    </div>
-  </div>
-</body>
-</html>
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: white; padding: 30px; border: 1px solid #e0e0e0; border-top: none; }
+          .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+          .code { background: #f5f5f5; padding: 15px; border-radius: 6px; font-family: monospace; font-size: 18px; text-align: center; margin: 20px 0; }
+          .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>¡Gracias por tu compra! 🎵</h1>
+          </div>
+          <div class="content">
+            <p>Hola ${data.buyerName},</p>
+            <p>Confirmamos tu compra de <strong>${data.packTitle}</strong> por $${data.amount}.</p>
+            <p>Tu código de descarga:</p>
+            <div class="code">${data.purchaseCode}</div>
+            <p>Ya podés descargar tu pack:</p>
+            <a href="${data.downloadUrl}" class="button">Descargar Pack</a>
+            <p>Gracias por confiar en ARSOUND. ¡Disfrutá creando música!</p>
+          </div>
+          <div class="footer">
+            <p>ARSOUND - La plataforma para productores musicales</p>
+          </div>
+        </div>
+      </body>
+    </html>
   `
 }
 
-export function getPlanUpgradeEmailHTML(data: {
-  userName: string
-  planName: string
-  planFeatures: string[]
-}): string {
-  const featuresHTML = data.planFeatures.map((feature) => `<li>${feature}</li>`).join("")
-
-  return `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Plan Actualizado - ARSOUND</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f5f5f5; }
-    .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
-    .header { background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); padding: 40px 20px; text-align: center; }
-    .header h1 { color: #ffffff; margin: 0; font-size: 28px; }
-    .content { padding: 40px 30px; }
-    .plan-badge { display: inline-block; background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); color: #ffffff; padding: 8px 20px; border-radius: 20px; font-weight: bold; margin: 20px 0; }
-    .features { background-color: #f8f9fa; border-radius: 8px; padding: 20px; margin: 20px 0; }
-    .features ul { margin: 10px 0; padding-left: 20px; }
-    .features li { margin: 8px 0; color: #2d3748; }
-    .cta-btn { display: inline-block; background: linear-gradient(135deg, #48bb78 0%, #38a169 100%); color: #ffffff !important; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-weight: bold; margin: 20px 0; }
-    .footer { background-color: #f8f9fa; padding: 30px; text-align: center; color: #718096; font-size: 14px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header">
-      <h1>🚀 ¡Plan Actualizado!</h1>
-    </div>
-    <div class="content">
-      <p>Hola ${data.userName},</p>
-      <p>Tu plan ha sido actualizado exitosamente.</p>
-      
-      <center>
-        <span class="plan-badge">${data.planName}</span>
-      </center>
-
-      <div class="features">
-        <p><strong>Características de tu nuevo plan:</strong></p>
-        <ul>
-          ${featuresHTML}
-        </ul>
-      </div>
-
-      <p>Ahora puedes aprovechar todas las ventajas de tu plan mejorado.</p>
-      
-      <center>
-        <a href="https://arsound.vercel.app/upload" class="cta-btn">Subir Pack</a>
-      </center>
-    </div>
-    <div class="footer">
-      <p>ARSOUND - La plataforma de venta de packs de producción musical</p>
-      <p>© ${new Date().getFullYear()} ARSOUND. Todos los derechos reservados.</p>
-    </div>
-  </div>
-</body>
-</html>
-  `
-}
-
-export function getPackPurchaseEmailText(data: {
+export function getPackPurchaseEmailSeller(data: {
+  sellerName: string
   buyerName: string
   packTitle: string
-  amount: number
-  purchaseCode: string
-  downloadUrl: string
+  earnings: number
+  commission: number
 }): string {
   return `
-¡Compra Exitosa!
-
-Hola ${data.buyerName},
-
-Tu compra se ha procesado exitosamente. Gracias por confiar en ARSOUND.
-
-Pack comprado: ${data.packTitle}
-Precio pagado: $${data.amount.toLocaleString("es-AR")}
-
-Código de compra: ${data.purchaseCode}
-
-Descarga tu pack aquí: ${data.downloadUrl}
-
-Este link estará disponible en tu perfil en cualquier momento.
-
----
-ARSOUND - La plataforma de venta de packs de producción musical
-© ${new Date().getFullYear()} ARSOUND. Todos los derechos reservados.
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: white; padding: 30px; border: 1px solid #e0e0e0; border-top: none; }
+          .earnings { background: #f0fdf4; padding: 20px; border-radius: 6px; margin: 20px 0; }
+          .amount { font-size: 32px; font-weight: bold; color: #10b981; }
+          .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>¡Vendiste un pack! 💰</h1>
+          </div>
+          <div class="content">
+            <p>Hola ${data.sellerName},</p>
+            <p><strong>${data.buyerName}</strong> compró tu pack <strong>${data.packTitle}</strong>.</p>
+            <div class="earnings">
+              <p style="margin: 0 0 10px 0; color: #666;">Ganaste:</p>
+              <div class="amount">$${data.earnings}</div>
+              <p style="margin: 10px 0 0 0; font-size: 12px; color: #666;">Comisión de plataforma: $${data.commission}</p>
+            </div>
+            <p>¡Seguí creando y vendiendo en ARSOUND!</p>
+          </div>
+          <div class="footer">
+            <p>ARSOUND - La plataforma para productores musicales</p>
+          </div>
+        </div>
+      </body>
+    </html>
   `
 }
 
-export function getPlanUpgradeEmailText(data: {
+export function getPlanPurchaseEmail(data: {
   userName: string
   planName: string
-  planFeatures: string[]
+  amount: number
+  expiresAt: string
 }): string {
-  const featuresText = data.planFeatures.map((feature) => `- ${feature}`).join("\n")
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: white; padding: 30px; border: 1px solid #e0e0e0; border-top: none; }
+          .plan-info { background: #fffbeb; padding: 20px; border-radius: 6px; margin: 20px 0; }
+          .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>¡Bienvenido a ${data.planName}! 🚀</h1>
+          </div>
+          <div class="content">
+            <p>Hola ${data.userName},</p>
+            <p>Tu suscripción al plan <strong>${data.planName}</strong> está activa.</p>
+            <div class="plan-info">
+              <p><strong>Plan:</strong> ${data.planName}</p>
+              <p><strong>Monto:</strong> $${data.amount}</p>
+              <p><strong>Vence:</strong> ${data.expiresAt}</p>
+            </div>
+            <p>Ahora podés disfrutar de todos los beneficios de tu plan. ¡Empezá a crear!</p>
+          </div>
+          <div class="footer">
+            <p>ARSOUND - La plataforma para productores musicales</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `
+}
+
+export function getLimitReachedEmail(data: {
+  userName: string
+  limitType: "download" | "upload"
+  limitMessage: string
+  planName: string
+  upgradeUrl: string
+}): string {
+  const isDownload = data.limitType === "download"
+  const emoji = isDownload ? "📥" : "📤"
+  const title = isDownload ? "Límite de Descargas Alcanzado" : "Límite de Uploads Alcanzado"
 
   return `
-¡Plan Actualizado!
-
-Hola ${data.userName},
-
-Tu plan ha sido actualizado exitosamente a: ${data.planName}
-
-Características de tu nuevo plan:
-${featuresText}
-
-Ahora puedes aprovechar todas las ventajas de tu plan mejorado.
-
-Sube tu primer pack: https://arsound.vercel.app/upload
-
----
-ARSOUND - La plataforma de venta de packs de producción musical
-© ${new Date().getFullYear()} ARSOUND. Todos los derechos reservados.
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: white; padding: 30px; border: 1px solid #e0e0e0; border-top: none; }
+          .warning { background: #fef2f2; padding: 20px; border-radius: 6px; border-left: 4px solid #ef4444; margin: 20px 0; }
+          .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; margin: 20px 0; }
+          .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>${emoji} ${title}</h1>
+          </div>
+          <div class="content">
+            <p>Hola ${data.userName},</p>
+            <div class="warning">
+              <p style="margin: 0; font-weight: bold;">⚠️ Límite Alcanzado</p>
+              <p style="margin: 10px 0 0 0;">${data.limitMessage}</p>
+            </div>
+            <p>Tu plan actual es: <strong>${data.planName}</strong></p>
+            <p>Para seguir ${isDownload ? "descargando" : "subiendo"} packs, podés mejorar tu plan y obtener más beneficios:</p>
+            <ul>
+              <li>${isDownload ? "Más descargas mensuales" : "Más uploads mensuales"}</li>
+              <li>Estadísticas avanzadas</li>
+              <li>Soporte prioritario</li>
+              <li>Y mucho más...</li>
+            </ul>
+            <a href="${data.upgradeUrl}" class="button">Ver Planes</a>
+          </div>
+          <div class="footer">
+            <p>ARSOUND - La plataforma para productores musicales</p>
+          </div>
+        </div>
+      </body>
+    </html>
   `
 }

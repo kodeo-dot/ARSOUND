@@ -1,6 +1,13 @@
 import { sendEmail } from "./brevo.client"
-import { getPackPurchaseEmailBuyer, getPackPurchaseEmailSeller, getPlanPurchaseEmail } from "./templates"
+import {
+  getPackPurchaseEmailBuyer,
+  getPackPurchaseEmailSeller,
+  getPlanPurchaseEmail,
+  getLimitReachedEmail,
+} from "./templates"
 import { logger } from "../utils/logger"
+import { getProfile } from "../database/queries"
+import type { PlanType } from "../types/database.types"
 
 export async function sendPackPurchaseNotifications(data: {
   buyerEmail: string
@@ -64,5 +71,43 @@ export async function sendPlanPurchaseNotification(data: {
     logger.info("Plan purchase notification sent", "EMAIL", { planName: data.planName })
   } catch (error) {
     logger.error("Error sending plan notification", "EMAIL", error)
+  }
+}
+
+export async function sendLimitReachedEmail(
+  userId: string,
+  limitType: "download" | "upload",
+  limitMessage: string,
+  planType: PlanType,
+): Promise<void> {
+  try {
+    const profile = await getProfile(userId)
+
+    if (!profile?.email) {
+      logger.warn("No email found for limit notification", "EMAIL", { userId })
+      return
+    }
+
+    const planNames: Record<PlanType, string> = {
+      free: "Free",
+      de_0_a_hit: "De 0 a Hit",
+      studio_plus: "Studio Plus",
+    }
+
+    await sendEmail({
+      to: [profile.email],
+      subject: `Límite alcanzado - ARSOUND`,
+      htmlContent: getLimitReachedEmail({
+        userName: profile.display_name || profile.username,
+        limitType,
+        limitMessage,
+        planName: planNames[planType],
+        upgradeUrl: "https://arsound.com.ar/plans",
+      }),
+    })
+
+    logger.info("Limit notification email sent", "EMAIL", { userId, limitType, plan: planType })
+  } catch (error) {
+    logger.error("Error sending limit notification email", "EMAIL", error)
   }
 }
