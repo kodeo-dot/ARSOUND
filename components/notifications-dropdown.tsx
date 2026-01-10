@@ -1,6 +1,6 @@
 "use client"
 
-import { Bell } from "lucide-react"
+import { Bell, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -77,6 +77,12 @@ export function NotificationsDropdown() {
         return `le dio like a tu pack "${notif.pack?.name}"`
       case "purchase":
         return `compró tu pack "${notif.pack?.name}"`
+      case "download":
+        return `descargó tu pack "${notif.pack?.name}"`
+      case "profile_view":
+        return "vio tu perfil"
+      case "limit_reached":
+        return `Alcanzaste el límite de descargas. Mejorá tu plan.`
       default:
         return "interactuó contigo"
     }
@@ -85,10 +91,14 @@ export function NotificationsDropdown() {
   const getNotificationLink = (notif: Notification) => {
     switch (notif.type) {
       case "follow":
+      case "profile_view":
         return `/profile/${notif.actor?.username}`
       case "like":
       case "purchase":
+      case "download":
         return `/pack/${notif.pack_id}`
+      case "limit_reached":
+        return "/plans"
       default:
         return "/notifications"
     }
@@ -125,16 +135,28 @@ export function NotificationsDropdown() {
               >
                 <Link href={getNotificationLink(notif)}>
                   <div className="flex items-start gap-3 w-full">
-                    <UserAvatar
-                      avatarUrl={notif.actor?.avatar_url}
-                      username={notif.actor?.username}
-                      displayName={notif.actor?.display_name}
-                      size="sm"
-                    />
+                    {notif.type === "limit_reached" ? (
+                      <div className="p-2 rounded-full bg-white border-2 border-orange-500/20 text-orange-600">
+                        <AlertCircle className="h-4 w-4" />
+                      </div>
+                    ) : (
+                      <UserAvatar
+                        avatarUrl={notif.actor?.avatar_url}
+                        username={notif.actor?.username}
+                        displayName={notif.actor?.display_name}
+                        size="sm"
+                      />
+                    )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm">
-                        <span className="font-semibold">{notif.actor?.display_name || notif.actor?.username}</span>{" "}
-                        <span className="text-muted-foreground">{getNotificationText(notif)}</span>
+                        {notif.type === "limit_reached" ? (
+                          <span className="text-muted-foreground">{getNotificationText(notif)}</span>
+                        ) : (
+                          <>
+                            <span className="font-semibold">{notif.actor?.display_name || notif.actor?.username}</span>{" "}
+                            <span className="text-muted-foreground">{getNotificationText(notif)}</span>
+                          </>
+                        )}
                       </p>
                       <p className="text-xs text-muted-foreground mt-1">
                         {formatDistanceToNow(new Date(notif.created_at), {

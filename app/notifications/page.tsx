@@ -1,7 +1,19 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Bell, Check, Loader2, Heart, ShoppingBag, UserPlus, Sparkles } from "lucide-react"
+import {
+  Bell,
+  Check,
+  Loader2,
+  Heart,
+  ShoppingBag,
+  UserPlus,
+  Sparkles,
+  Download,
+  Eye,
+  AlertCircle,
+  ArrowRight,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { UserAvatar } from "@/components/user-avatar"
 import Link from "next/link"
@@ -81,6 +93,14 @@ export default function NotificationsPage() {
         return `le dio like a tu pack "${notif.pack?.name}"`
       case "purchase":
         return `compró tu pack "${notif.pack?.name}"`
+      case "download":
+        return `descargó tu pack "${notif.pack?.name}"`
+      case "profile_view":
+        return "vio tu perfil"
+      case "limit_reached":
+        const resetDate = notif.metadata?.reset_date ? new Date(notif.metadata.reset_date) : null
+        const resetText = resetDate ? ` Se restablecen el ${resetDate.getDate()}/${resetDate.getMonth() + 1}` : ""
+        return `Alcanzaste el límite de ${notif.metadata?.max_downloads || 10} descargas mensuales.${resetText}`
       default:
         return "interactuó contigo"
     }
@@ -89,10 +109,14 @@ export default function NotificationsPage() {
   const getNotificationLink = (notif: Notification) => {
     switch (notif.type) {
       case "follow":
+      case "profile_view":
         return `/profile/${notif.actor?.username}`
       case "like":
       case "purchase":
+      case "download":
         return `/pack/${notif.pack_id}`
+      case "limit_reached":
+        return "/plans"
       default:
         return "/notifications"
     }
@@ -106,6 +130,12 @@ export default function NotificationsPage() {
         return <Heart className="h-4 w-4" />
       case "purchase":
         return <ShoppingBag className="h-4 w-4" />
+      case "download":
+        return <Download className="h-4 w-4" />
+      case "profile_view":
+        return <Eye className="h-4 w-4" />
+      case "limit_reached":
+        return <AlertCircle className="h-4 w-4" />
       default:
         return <Bell className="h-4 w-4" />
     }
@@ -119,6 +149,12 @@ export default function NotificationsPage() {
         return "bg-pink-500/10 text-pink-600 dark:text-pink-400"
       case "purchase":
         return "bg-green-500/10 text-green-600 dark:text-green-400"
+      case "download":
+        return "bg-purple-500/10 text-purple-600 dark:text-purple-400"
+      case "profile_view":
+        return "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400"
+      case "limit_reached":
+        return "bg-orange-500/10 text-orange-600 dark:text-orange-400"
       default:
         return "bg-accent text-foreground"
     }
@@ -189,29 +225,48 @@ export default function NotificationsPage() {
                   }`}
                 >
                   <div className="flex items-start gap-4">
-                    <div className="relative">
-                      <UserAvatar
-                        avatarUrl={notif.actor?.avatar_url}
-                        username={notif.actor?.username}
-                        displayName={notif.actor?.display_name}
-                        size="lg"
-                      />
-                      <div
-                        className={`absolute -bottom-1 -right-1 p-1.5 rounded-full border-2 border-background ${getNotificationColor(
-                          notif.type,
-                        )}`}
-                      >
+                    {notif.type === "limit_reached" ? (
+                      <div className={`p-3 rounded-full bg-white ${getNotificationColor(notif.type)}`}>
                         {getNotificationIcon(notif.type)}
                       </div>
-                    </div>
+                    ) : (
+                      <div className="relative">
+                        <UserAvatar
+                          avatarUrl={notif.actor?.avatar_url}
+                          username={notif.actor?.username}
+                          displayName={notif.actor?.display_name}
+                          size="lg"
+                        />
+                        <div
+                          className={`absolute -bottom-1 -right-1 p-1.5 rounded-full bg-white border-2 border-background ${getNotificationColor(
+                            notif.type,
+                          )}`}
+                        >
+                          {getNotificationIcon(notif.type)}
+                        </div>
+                      </div>
+                    )}
 
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm leading-relaxed">
-                        <span className="font-semibold text-foreground">
-                          {notif.actor?.display_name || notif.actor?.username}
-                        </span>{" "}
-                        <span className="text-muted-foreground">{getNotificationText(notif)}</span>
-                      </p>
+                      {notif.type === "limit_reached" ? (
+                        <>
+                          <p className="text-sm font-semibold text-foreground mb-1">Límite de descargas alcanzado</p>
+                          <p className="text-sm text-muted-foreground leading-relaxed">{getNotificationText(notif)}</p>
+                          <Button size="sm" variant="outline" className="mt-3 bg-transparent">
+                            Mejorar plan
+                            <ArrowRight className="h-3 w-3 ml-2" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-sm leading-relaxed">
+                            <span className="font-semibold text-foreground">
+                              {notif.actor?.display_name || notif.actor?.username}
+                            </span>{" "}
+                            <span className="text-muted-foreground">{getNotificationText(notif)}</span>
+                          </p>
+                        </>
+                      )}
                       <p className="text-xs text-muted-foreground mt-2">
                         {formatDistanceToNow(new Date(notif.created_at), {
                           addSuffix: true,

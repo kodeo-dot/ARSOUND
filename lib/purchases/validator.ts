@@ -3,7 +3,6 @@ import { getPlanFeatures } from "../config/plans.config"
 import { NotFoundError } from "../utils/errors"
 import { logger } from "../utils/logger"
 import { createServerClient } from "../database/supabase.client"
-import { createLimitNotification } from "../notifications/limit-notifications"
 
 export async function validatePackDownload(
   userId: string,
@@ -70,7 +69,26 @@ export async function validatePackDownload(
           reason: limitCheck?.reason,
         })
 
-        await createLimitNotification(userId, "download")
+        try {
+          const now = new Date()
+          const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+
+          await supabase.rpc("create_notification", {
+            p_user_id: userId,
+            p_type: "limit_reached",
+            p_actor_id: userId,
+            p_pack_id: null,
+            p_metadata: {
+              max_downloads: features.maxFreeDownloads,
+              current_downloads: limitCheck?.current_downloads || 0,
+              reset_date: nextMonth.toISOString(),
+            },
+          })
+
+          logger.debug("Limit notification created", "DOWNLOAD", { userId })
+        } catch (notifError) {
+          logger.error("Error creating limit notification", "DOWNLOAD", { notifError, userId })
+        }
 
         return {
           canDownload: false,
