@@ -72,8 +72,8 @@ async function createMercadoPagoPreference(planType: string) {
 
   try {
     const planPrices: Record<string, number> = {
-      de_0_a_hit: 100,
-      de_0_a_hit_monthly: 100,
+      de_0_a_hit: 5,
+      de_0_a_hit_monthly: 5,
       studio_plus: 15000,
       studio_plus_monthly: 15000,
     }
