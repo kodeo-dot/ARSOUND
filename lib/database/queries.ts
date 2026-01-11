@@ -58,7 +58,8 @@ export async function getUserPlan(userId: string): Promise<PlanType> {
 export async function updateUserPlan(userId: string, planType: PlanType, expiresAt?: Date | null): Promise<boolean> {
   const supabase = await createAdminClient()
 
-  const { error } = await supabase.from("user_plans").upsert(
+  // Update user_plans table
+  const { error: userPlanError } = await supabase.from("user_plans").upsert(
     {
       user_id: userId,
       plan_type: planType,
@@ -72,8 +73,22 @@ export async function updateUserPlan(userId: string, planType: PlanType, expires
     },
   )
 
-  if (error) {
-    console.error("[DB] Error updating user plan:", error)
+  if (userPlanError) {
+    console.error("[DB] Error updating user_plans:", userPlanError)
+    return false
+  }
+
+  // Also update profiles.plan to keep in sync (primary source of truth)
+  const { error: profileError } = await supabase
+    .from("profiles")
+    .update({
+      plan: planType,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", userId)
+
+  if (profileError) {
+    console.error("[DB] Error updating profile plan:", profileError)
     return false
   }
 
