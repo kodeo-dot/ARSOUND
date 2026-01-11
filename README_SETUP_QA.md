@@ -15,21 +15,21 @@ Ve al dashboard de Supabase:
 
 ### Paso 2: Verificar que las tablas se crearon
 En el SQL Editor, ejecutá:
-```sql
+\`\`\`sql
 SELECT table_name 
 FROM information_schema.tables 
 WHERE table_schema = 'public' 
 AND table_name IN ('pack_questions', 'pack_answers');
-```
+\`\`\`
 
 Deberías ver ambas tablas listadas.
 
 ### Paso 3: Verificar las políticas RLS
-```sql
+\`\`\`sql
 SELECT tablename, policyname 
 FROM pg_policies 
 WHERE tablename IN ('pack_questions', 'pack_answers');
-```
+\`\`\`
 
 Deberías ver las políticas de seguridad para cada tabla.
 

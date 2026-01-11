@@ -110,6 +110,13 @@ async function processPlanSubscription(payment: PaymentData): Promise<boolean> {
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + 30)
 
+    logger.info("Starting plan activation", "MP_WEBHOOK", {
+      paymentId: payment.id,
+      userId: metadata.user_id,
+      planType,
+      expiresAt: expiresAt.toISOString(),
+    })
+
     const success = await updateUserPlan(metadata.user_id, planType, expiresAt)
 
     if (!success) {

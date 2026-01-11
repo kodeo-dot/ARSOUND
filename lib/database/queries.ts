@@ -56,7 +56,7 @@ export async function getUserPlan(userId: string): Promise<PlanType> {
 }
 
 export async function updateUserPlan(userId: string, planType: PlanType, expiresAt?: Date | null): Promise<boolean> {
-  const supabase = await createServerClient()
+  const supabase = await createAdminClient()
 
   // Deactivate existing plans
   await supabase.from("user_plans").update({ is_active: false }).eq("user_id", userId)
