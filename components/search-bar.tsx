@@ -114,7 +114,7 @@ export function SearchBar() {
       </div>
 
       {showResults && results && (
-        <Card className="absolute top-full mt-2 w-full max-h-[500px] overflow-y-auto z-50 p-4 rounded-2xl border-border shadow-xl">
+        <Card className="absolute top-full mt-2 w-full max-h-[500px] overflow-y-auto z-50 p-4 rounded-2xl border-border shadow-xl bg-card">
           {results.totalResults === 0 ? (
             <div className="text-center py-8">
               <p className="text-muted-foreground">No se encontraron resultados para "{query}"</p>
@@ -134,7 +134,7 @@ export function SearchBar() {
                         key={pack.id}
                         href={`/pack/${pack.id}`}
                         onClick={() => setShowResults(false)}
-                        className="flex items-center gap-3 p-3 rounded-xl hover:bg-accent transition-colors"
+                        className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/10 transition-colors"
                       >
                         <img
                           src={pack.cover_image_url || "/placeholder.svg?height=48&width=48"}
@@ -179,7 +179,7 @@ export function SearchBar() {
                         key={user.id}
                         href={`/profile/${user.username}`}
                         onClick={() => setShowResults(false)}
-                        className="flex items-center gap-3 p-3 rounded-xl hover:bg-accent transition-colors"
+                        className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/10 transition-colors"
                       >
                         {user.avatar_url ? (
                           <img

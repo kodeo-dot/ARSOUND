@@ -28,6 +28,7 @@ import {
   Zap,
   Crown,
   FileText,
+  Percent,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import type { PlanType } from "@/lib/plans"
@@ -38,6 +39,7 @@ import { useBlockStatus } from "@/hooks/use-block-status"
 import Link from "next/link"
 import { GENRES, getSubgenres } from "@/lib/genres"
 import { PRODUCT_TYPES, DAW_OPTIONS, type ProductTypeKey } from "@/lib/constants/product-types"
+import { Switch } from "@/components/ui/switch"
 
 const ALL_PRICE_OPTIONS = Array.from({ length: 14 }, (_, i) => i * 5000)
 const ALL_DISCOUNT_OPTIONS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
@@ -1051,10 +1053,104 @@ export default function UploadPage() {
 
           {priceNumber > 0 && (
             <Card className="p-8 rounded-3xl border-border bg-card">
+              <h3 className="font-bold text-foreground mb-4 text-xl flex items-center gap-2">
+                <Percent className="h-5 w-5 text-primary" />
+                Descuentos y Ofertas
+              </h3>
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <Switch
+                    id="hasDiscount"
+                    checked={hasDiscount}
+                    onCheckedChange={setHasDiscount}
+                    disabled={isLoading}
+                  />
+                  <Label htmlFor="hasDiscount" className="font-semibold text-foreground cursor-pointer">
+                    Activar descuento u oferta
+                  </Label>
+                </div>
+
+                {hasDiscount && (
+                  <div className="space-y-4 pl-1">
+                    <div className="space-y-3">
+                      <Label htmlFor="discountPercent" className="text-sm font-semibold text-foreground">
+                        Porcentaje de descuento *
+                      </Label>
+                      <Select value={discountPercent} onValueChange={setDiscountPercent} disabled={isLoading}>
+                        <SelectTrigger className="h-12 rounded-xl bg-card border-border">
+                          <SelectValue placeholder="Seleccionar descuento" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DISCOUNT_OPTIONS.map((discount) => (
+                            <SelectItem key={discount} value={discount.toString()}>
+                              {discount}% OFF
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <p className="text-xs text-muted-foreground">Descuento máximo para tu plan: {MAX_DISCOUNT}%</p>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          id="discountRequiresCode"
+                          checked={discountRequiresCode}
+                          onCheckedChange={(checked) => setDiscountRequiresCode(checked as boolean)}
+                          disabled={isLoading}
+                        />
+                        <Label
+                          htmlFor="discountRequiresCode"
+                          className="text-sm font-medium text-foreground cursor-pointer"
+                        >
+                          Requerir código de descuento
+                        </Label>
+                      </div>
+                      <p className="text-xs text-muted-foreground pl-7">
+                        Si está activado, el descuento solo se aplicará con código. Si no, será público para todos.
+                      </p>
+                    </div>
+
+                    {discountRequiresCode && (
+                      <div className="space-y-3">
+                        <Label htmlFor="discountCode" className="text-sm font-semibold text-foreground">
+                          Código de descuento *
+                        </Label>
+                        <Input
+                          id="discountCode"
+                          placeholder="Ej: VERANO2024"
+                          value={discountCode}
+                          onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                          className="h-12 rounded-xl bg-card border-border uppercase font-mono"
+                          disabled={isLoading}
+                        />
+                      </div>
+                    )}
+
+                    <div className="space-y-3">
+                      <Label className="text-sm font-semibold text-foreground">Tipo de descuento</Label>
+                      <Select value={discountType} onValueChange={setDiscountType} disabled={isLoading}>
+                        <SelectTrigger className="h-12 rounded-xl bg-card border-border">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Para todos</SelectItem>
+                          <SelectItem value="new_users">Solo nuevos usuarios</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {priceNumber > 0 && (
+            <Card className="p-8 rounded-3xl border-border bg-card">
               <h3 className="font-bold text-foreground mb-4 text-xl">Resumen de Ganancia</h3>
               <div className="space-y-3 text-base">
                 <div className="flex justify-between items-center">
-                  <span className="text-foreground/80">Precio del pack:</span>
+                  <span className="text-foreground">Precio del pack:</span>
                   <span className="font-bold text-foreground text-lg">
                     ${new Intl.NumberFormat("es-AR").format(priceNumber)} ARS
                   </span>
@@ -1062,13 +1158,13 @@ export default function UploadPage() {
                 {hasDiscount && !discountRequiresCode && discountPercentNumber > 0 && (
                   <>
                     <div className="flex justify-between items-center">
-                      <span className="text-foreground/80">Descuento público ({discountPercentNumber}%):</span>
+                      <span className="text-foreground">Descuento público ({discountPercentNumber}%):</span>
                       <span className="font-bold text-orange-500 text-lg">
                         - ${new Intl.NumberFormat("es-AR").format(discountAmount)} ARS
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-foreground/80">Precio para el comprador:</span>
+                      <span className="text-foreground">Precio para el comprador:</span>
                       <span className="font-bold text-primary text-lg">
                         ${new Intl.NumberFormat("es-AR").format(priceAfterDiscount)} ARS
                       </span>
@@ -1085,7 +1181,7 @@ export default function UploadPage() {
                 )}
                 <div className="border-t border-border pt-3">
                   <div className="flex justify-between items-center">
-                    <span className="text-foreground/80">Comisión plataforma ({(commission * 100).toFixed(0)}%):</span>
+                    <span className="text-foreground">Comisión plataforma ({(commission * 100).toFixed(0)}%):</span>
                     <span className="font-bold text-red-500 text-lg">
                       - ${new Intl.NumberFormat("es-AR").format(commissionAmount)} ARS
                     </span>
@@ -1145,7 +1241,7 @@ export default function UploadPage() {
               Acuerdos y Licencia
             </h3>
             <div className="space-y-4">
-              <div className="flex items-start gap-4 p-4 bg-accent/30 border border-border rounded-xl">
+              <div className="flex items-start gap-4 p-5 border-2 border-border rounded-xl">
                 <Checkbox
                   id="ownership"
                   checked={ownershipConfirmed}
@@ -1153,12 +1249,15 @@ export default function UploadPage() {
                   disabled={isLoading}
                   className="mt-1"
                 />
-                <Label htmlFor="ownership" className="text-sm text-foreground cursor-pointer leading-relaxed">
+                <Label
+                  htmlFor="ownership"
+                  className="text-sm text-foreground cursor-pointer leading-relaxed font-medium"
+                >
                   Confirmo que soy el creador original de este contenido y tengo todos los derechos para venderlo *
                 </Label>
               </div>
 
-              <div className="flex items-start gap-4 p-4 bg-accent/30 border border-border rounded-xl">
+              <div className="flex items-start gap-4 p-5 border-2 border-border rounded-xl">
                 <Checkbox
                   id="license"
                   checked={licenseAccepted}
@@ -1166,7 +1265,7 @@ export default function UploadPage() {
                   disabled={isLoading}
                   className="mt-1"
                 />
-                <Label htmlFor="license" className="text-sm cursor-pointer leading-relaxed flex-1">
+                <Label htmlFor="license" className="text-sm cursor-pointer leading-relaxed flex-1 font-medium">
                   <span className="text-foreground">
                     Acepto los{" "}
                     <Link href="/license" target="_blank" className="text-primary hover:underline font-semibold">
