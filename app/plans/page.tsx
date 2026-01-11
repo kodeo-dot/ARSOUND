@@ -95,7 +95,7 @@ export default function PlansPage() {
       id: "de_0_a_hit",
       name: "De 0 a Hit",
       icon: Zap,
-      price: 100,
+      price: 5000,
       priceLabel: "5.000 ARS",
       subtitle: "Para productores activos",
       features: [
