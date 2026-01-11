@@ -80,9 +80,6 @@ export default function UploadPage() {
 
   const [hasDiscount, setHasDiscount] = useState(false)
   const [discountPercent, setDiscountPercent] = useState("")
-  const [discountCode, setDiscountCode] = useState("")
-  const [discountType, setDiscountType] = useState("all")
-  const [discountRequiresCode, setDiscountRequiresCode] = useState(true)
 
   // Tags state
   const [tags, setTags] = useState<string[]>([])
@@ -110,7 +107,7 @@ export default function UploadPage() {
   const priceNumber = Math.min(Number.parseFloat(price) || 0, MAX_PRICE)
 
   const discountPercentNumber = Math.min(Number.parseFloat(discountPercent) || 0, MAX_DISCOUNT)
-  const discountAmount = hasDiscount && discountRequiresCode ? 0 : (priceNumber * discountPercentNumber) / 100
+  const discountAmount = hasDiscount ? (priceNumber * discountPercentNumber) / 100 : 0
   const priceAfterDiscount = priceNumber - discountAmount
   const commissionAmount = priceAfterDiscount * commission
   const youWillReceive = priceAfterDiscount - commissionAmount
@@ -410,16 +407,6 @@ export default function UploadPage() {
       return
     }
 
-    if (hasDiscount && discountRequiresCode && !discountCode.trim()) {
-      toast({
-        title: "Código de descuento requerido",
-        description: "Ingresá un código de descuento o desactivá la opción de requerir código",
-        variant: "destructive",
-      })
-      setIsLoading(false)
-      return
-    }
-
     if (hasDiscount && discountPercentNumber > MAX_DISCOUNT) {
       toast({
         title: "Descuento no permitido",
@@ -532,7 +519,7 @@ export default function UploadPage() {
         plugin,
         price: Number.parseInt(price),
         has_discount: hasDiscount,
-        discountRequiresCode,
+        discountPercent: Number.parseInt(discountPercent),
       })
 
       const response = await fetch("/api/packs/upload", {
@@ -554,9 +541,6 @@ export default function UploadPage() {
           tags: tags,
           has_discount: hasDiscount,
           discount_percent: hasDiscount ? Number.parseInt(discountPercent) : 0,
-          discountCode: hasDiscount && discountRequiresCode ? discountCode : null,
-          discountType: hasDiscount ? discountType : null,
-          discountRequiresCode: hasDiscount ? discountRequiresCode : false,
         }),
       })
 
@@ -657,7 +641,7 @@ export default function UploadPage() {
           <Card className="p-8 rounded-3xl border-2 border-primary/30 bg-primary/5 mb-12">
             <div className="grid md:grid-cols-2 gap-8 items-center">
               <div>
-                <h2 className="text-2xl font-black text-foreground mb-3">¿Querés MAXIMIZAR tus ganancias?</h2>
+                <h2 className="text-2xl font-black text-foreground mb-3">¿Querés tener el 100% de tus ganancias?</h2>
                 <p className="text-muted-foreground mb-6">
                   Mejorá tu plan y accedé a beneficios exclusivos como comisiones reducidas, sin límites de packs y
                   descuentos ilimitados.
@@ -1051,6 +1035,47 @@ export default function UploadPage() {
             <p className="text-sm text-muted-foreground">Precio máximo permitido: ${MAX_PRICE.toLocaleString()} ARS</p>
           </div>
 
+          {/* Replaced discount section */}
+          {priceNumber > 0 && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="hasDiscount" className="text-lg font-bold text-foreground flex items-center gap-2">
+                    <Percent className="h-5 w-5 text-primary" />
+                    Aplicar Descuento
+                  </Label>
+                  <p className="text-sm text-foreground">
+                    Los descuentos se aplican automáticamente para todos los compradores
+                  </p>
+                </div>
+                <Switch id="hasDiscount" checked={hasDiscount} onCheckedChange={setHasDiscount} disabled={isLoading} />
+              </div>
+
+              {hasDiscount && (
+                <div className="space-y-4">
+                  <Label htmlFor="discountPercent" className="text-base font-bold text-foreground">
+                    Porcentaje de Descuento (máx. {MAX_DISCOUNT}%)
+                  </Label>
+                  <Select value={discountPercent} onValueChange={setDiscountPercent} disabled={isLoading}>
+                    <SelectTrigger className="h-12 rounded-xl bg-card border-border">
+                      <SelectValue placeholder="Seleccionar descuento" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DISCOUNT_OPTIONS.filter((d) => d > 0).map((discount) => (
+                        <SelectItem key={discount} value={discount.toString()}>
+                          {discount}% OFF
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    Este descuento será visible y se aplicará automáticamente en todas las compras
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {priceNumber > 0 && (
             <Card className="p-8 rounded-3xl border-border bg-card">
               <h3 className="font-bold text-foreground mb-4 text-xl flex items-center gap-2">
@@ -1091,54 +1116,9 @@ export default function UploadPage() {
                       <p className="text-xs text-muted-foreground">Descuento máximo para tu plan: {MAX_DISCOUNT}%</p>
                     </div>
 
-                    <div className="space-y-3">
-                      <div className="flex items-center gap-3">
-                        <Checkbox
-                          id="discountRequiresCode"
-                          checked={discountRequiresCode}
-                          onCheckedChange={(checked) => setDiscountRequiresCode(checked as boolean)}
-                          disabled={isLoading}
-                        />
-                        <Label
-                          htmlFor="discountRequiresCode"
-                          className="text-sm font-medium text-foreground cursor-pointer"
-                        >
-                          Requerir código de descuento
-                        </Label>
-                      </div>
-                      <p className="text-xs text-muted-foreground pl-7">
-                        Si está activado, el descuento solo se aplicará con código. Si no, será público para todos.
-                      </p>
-                    </div>
+                    {/* Removed discount code related fields as per update */}
 
-                    {discountRequiresCode && (
-                      <div className="space-y-3">
-                        <Label htmlFor="discountCode" className="text-sm font-semibold text-foreground">
-                          Código de descuento *
-                        </Label>
-                        <Input
-                          id="discountCode"
-                          placeholder="Ej: VERANO2024"
-                          value={discountCode}
-                          onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
-                          className="h-12 rounded-xl bg-card border-border uppercase font-mono"
-                          disabled={isLoading}
-                        />
-                      </div>
-                    )}
-
-                    <div className="space-y-3">
-                      <Label className="text-sm font-semibold text-foreground">Tipo de descuento</Label>
-                      <Select value={discountType} onValueChange={setDiscountType} disabled={isLoading}>
-                        <SelectTrigger className="h-12 rounded-xl bg-card border-border">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Para todos</SelectItem>
-                          <SelectItem value="new_users">Solo nuevos usuarios</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    {/* Removed discount type related fields as per update */}
                   </div>
                 )}
               </div>
@@ -1155,10 +1135,10 @@ export default function UploadPage() {
                     ${new Intl.NumberFormat("es-AR").format(priceNumber)} ARS
                   </span>
                 </div>
-                {hasDiscount && !discountRequiresCode && discountPercentNumber > 0 && (
+                {hasDiscount && discountPercentNumber > 0 && (
                   <>
                     <div className="flex justify-between items-center">
-                      <span className="text-foreground">Descuento público ({discountPercentNumber}%):</span>
+                      <span className="text-foreground">Descuento ({discountPercentNumber}%):</span>
                       <span className="font-bold text-orange-500 text-lg">
                         - ${new Intl.NumberFormat("es-AR").format(discountAmount)} ARS
                       </span>
@@ -1170,14 +1150,6 @@ export default function UploadPage() {
                       </span>
                     </div>
                   </>
-                )}
-                {hasDiscount && discountRequiresCode && discountPercentNumber > 0 && (
-                  <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                    <p className="text-sm text-blue-600 dark:text-blue-400 font-semibold">
-                      Con código: {discountPercentNumber}% de descuento ($
-                      {new Intl.NumberFormat("es-AR").format(discountAmount)} ARS)
-                    </p>
-                  </div>
                 )}
                 <div className="border-t border-border pt-3">
                   <div className="flex justify-between items-center">

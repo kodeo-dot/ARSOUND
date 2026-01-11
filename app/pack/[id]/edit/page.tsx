@@ -4,7 +4,6 @@ import type React from "react"
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card } from "@/components/ui/card"
 import { Upload, ImageIcon, Loader2, Trash2, Save, Percent } from "lucide-react"
@@ -45,9 +44,6 @@ export default function EditPackPage() {
 
   const [price, setPrice] = useState("")
   const [discountPercent, setDiscountPercent] = useState("")
-  const [discountCode, setDiscountCode] = useState("")
-  const [discountRequiresCode, setDiscountRequiresCode] = useState(true)
-  const [discountType, setDiscountType] = useState("all")
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
   const [genre, setGenre] = useState("")
@@ -140,11 +136,14 @@ export default function EditPackPage() {
         coverUrl = publicUrl
       }
 
+      const discountValue = Number.parseInt(discountPercent) || 0
+
       const { error } = await supabase
         .from("packs")
         .update({
           price: Number.parseInt(price),
-          discount_percent: Number.parseInt(discountPercent) || 0,
+          has_discount: discountValue > 0,
+          discount_percent: discountValue,
           cover_image_url: coverUrl,
           genre,
           subgenre,
@@ -404,7 +403,6 @@ export default function EditPackPage() {
               </p>
             </div>
 
-            {/* Discount */}
             {priceNumber > 0 && (
               <div className="space-y-4">
                 <Label htmlFor="discount" className="text-lg font-bold flex items-center gap-2 text-foreground">
@@ -424,68 +422,9 @@ export default function EditPackPage() {
                   </SelectContent>
                 </Select>
                 <p className="text-sm text-muted-foreground">
-                  Descuento máximo para tu plan ({userPlan}): {MAX_DISCOUNT}%. Dejá en 0 para no aplicar descuento.
+                  Descuento máximo para tu plan ({userPlan}): {MAX_DISCOUNT}%. Dejá en 0 para no aplicar descuento. Los
+                  descuentos se aplican automáticamente para todos los compradores.
                 </p>
-
-                {Number.parseFloat(discountPercent) > 0 && (
-                  <Card className="p-6 rounded-xl border-2 border-border bg-card mt-6">
-                    <div className="space-y-5">
-                      <h3 className="font-bold text-foreground text-base">Configuración de Descuento</h3>
-
-                      <div className="space-y-3">
-                        <div className="flex items-start gap-3">
-                          <input
-                            type="checkbox"
-                            id="requireCode"
-                            checked={discountRequiresCode}
-                            onChange={(e) => {
-                              setDiscountRequiresCode(e.target.checked)
-                              if (!e.target.checked) setDiscountCode("")
-                            }}
-                            disabled={saving}
-                            className="mt-1 h-5 w-5 rounded border-border"
-                          />
-                          <Label htmlFor="requireCode" className="text-sm font-medium text-foreground cursor-pointer">
-                            Requerir código de descuento
-                          </Label>
-                        </div>
-                        <p className="text-xs text-muted-foreground pl-8">
-                          Si está activado, el descuento solo se aplicará con código. Si no, será público para todos.
-                        </p>
-                      </div>
-
-                      {discountRequiresCode && (
-                        <div className="space-y-3">
-                          <Label htmlFor="discountCode" className="text-sm font-semibold text-foreground">
-                            Código de descuento *
-                          </Label>
-                          <Input
-                            id="discountCode"
-                            placeholder="Ej: VERANO2024"
-                            value={discountCode}
-                            onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
-                            className="h-12 rounded-xl bg-background border-border uppercase font-mono"
-                            disabled={saving}
-                          />
-                        </div>
-                      )}
-
-                      <div className="space-y-3">
-                        <Label className="text-sm font-semibold text-foreground">Tipo de descuento</Label>
-                        <Select value={discountType} onValueChange={setDiscountType} disabled={saving}>
-                          <SelectTrigger className="h-12 rounded-xl bg-background border-border">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Para todos</SelectItem>
-                            <SelectItem value="first">Primera compra</SelectItem>
-                            <SelectItem value="followers">Mis seguidores</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </Card>
-                )}
               </div>
             )}
 
@@ -515,54 +454,64 @@ export default function EditPackPage() {
                       </div>
                     </>
                   )}
-                  <div className="flex justify-between items-center">
-                    <span className="text-foreground">Comisión ARSOUND ({(commission * 100).toFixed(0)}%):</span>
-                    <span className="font-bold text-destructive text-lg">
-                      - ${new Intl.NumberFormat("es-AR").format(commissionAmount)} ARS
-                    </span>
-                  </div>
-                  <div className="pt-3 border-t-2 border-border flex justify-between items-center">
-                    <span className="font-bold text-foreground text-lg">Vas a recibir:</span>
-                    <span className="font-black text-green-600 dark:text-green-400 text-3xl">
-                      ${new Intl.NumberFormat("es-AR").format(youWillReceive)}
-                    </span>
+                  <div className="border-t border-border pt-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-foreground">Comisión plataforma ({(commission * 100).toFixed(0)}%):</span>
+                      <span className="font-bold text-red-500 text-lg">
+                        - ${new Intl.NumberFormat("es-AR").format(commissionAmount)} ARS
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center mt-3 pt-3 border-t border-border">
+                      <span className="font-bold text-foreground text-lg">Vas a recibir:</span>
+                      <span className="font-black text-green-600 dark:text-green-400 text-2xl">
+                        ${new Intl.NumberFormat("es-AR").format(youWillReceive)} ARS
+                      </span>
+                    </div>
                   </div>
                 </div>
               </Card>
             )}
           </Card>
 
-          <div className="flex justify-between gap-4">
+          <div className="flex gap-4">
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="destructive" size="lg" className="gap-2" disabled={deleting}>
-                  <Trash2 className="h-5 w-5" />
-                  Eliminar Pack
+                <Button variant="destructive" className="gap-2 rounded-full" disabled={saving || deleting}>
+                  {deleting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Trash2 className="h-4 w-4" />
+                      Eliminar Pack
+                    </>
+                  )}
                 </Button>
               </AlertDialogTrigger>
               <AlertDialogContent>
                 <AlertDialogHeader>
-                  <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
+                  <AlertDialogTitle>Eliminar Pack</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Esta acción no se puede deshacer. El pack será eliminado permanentemente.
+                    Estás seguro de que querés eliminar este pack? Esta acción no se puede deshacer.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDelete}>Eliminar</AlertDialogAction>
+                  <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">
+                    Eliminar
+                  </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
 
-            <Button size="lg" className="gap-2" onClick={handleSave} disabled={saving}>
+            <Button className="flex-1 gap-2 rounded-full" onClick={handleSave} disabled={saving || deleting}>
               {saving ? (
                 <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   Guardando...
                 </>
               ) : (
                 <>
-                  <Save className="h-5 w-5" />
+                  <Save className="h-4 w-4" />
                   Guardar Cambios
                 </>
               )}

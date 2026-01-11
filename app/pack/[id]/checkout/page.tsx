@@ -4,9 +4,8 @@ import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Check, Loader2, Tag, AlertCircle } from "lucide-react"
+import { ArrowLeft, Check, Loader2 } from "lucide-react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
@@ -32,6 +31,15 @@ export default function CheckoutPage() {
   const [activeOffer, setActiveOffer] = useState<any>(null)
   const [creatorPlan, setCreatorPlan] = useState<PlanType>("free")
   const [platformCommission, setPlatformCommission] = useState<number>(0)
+  const [priceBreakdown, setPriceBreakdown] = useState<PriceBreakdown>({
+    basePrice: 0,
+    discountAmount: 0,
+    discountPercentage: 0,
+    platformCommission: 0,
+    platformCommissionAmount: 0,
+    totalToPay: 0,
+    creatorEarnings: 0,
+  })
 
   useEffect(() => {
     const fetchPack = async () => {
@@ -79,13 +87,6 @@ export default function CheckoutPage() {
             percentage: offerData.discount_percent,
             isValid: true,
           })
-        } else if (data.has_discount && data.discount_percent && !data.discount_requires_code) {
-          setAppliedDiscount({
-            code: "DESCUENTO AUTOMÁTICO",
-            type: "general",
-            percentage: data.discount_percent,
-            isValid: true,
-          })
         }
       } catch (error) {
         console.error("Error fetching pack:", error)
@@ -125,36 +126,46 @@ export default function CheckoutPage() {
     }
   }, [pack, loading, packId, router])
 
-  const calculatePriceBreakdown = (): PriceBreakdown => {
-    if (!pack) {
-      return {
-        basePrice: 0,
-        discountAmount: 0,
-        discountPercentage: 0,
+  const checkDiscounts = () => {
+    if (!pack) return
+
+    // Check if pack has automatic discount
+    if (pack.has_discount && pack.discount_percent > 0) {
+      console.log("[v0] Automatic discount detected:", pack.discount_percent)
+      setPriceBreakdown({
+        basePrice: pack.price,
+        discountAmount: Math.floor(pack.price * (pack.discount_percent / 100)),
+        discountPercentage: pack.discount_percent,
         platformCommission: platformCommission,
-        platformCommissionAmount: 0,
-        totalToPay: 0,
-        creatorEarnings: 0,
-      }
+        platformCommissionAmount: Math.floor(
+          (pack.price - Math.floor(pack.price * (pack.discount_percent / 100))) * platformCommission,
+        ),
+        totalToPay: pack.price - Math.floor(pack.price * (pack.discount_percent / 100)),
+        creatorEarnings: Math.floor(
+          (pack.price - Math.floor(pack.price * (pack.discount_percent / 100))) * (1 - platformCommission),
+        ),
+      })
+      return
     }
 
-    const basePrice = pack.price
-    const discountPercentage = appliedDiscount?.isValid ? appliedDiscount.percentage : 0
-    const discountAmount = basePrice * (discountPercentage / 100)
-    const totalToPay = basePrice - discountAmount
-    const platformCommissionAmount = totalToPay * platformCommission
-    const creatorEarnings = totalToPay - platformCommissionAmount
-
-    return {
-      basePrice,
-      discountAmount,
-      discountPercentage,
+    // No discount
+    console.log("[v0] No discount available")
+    setPriceBreakdown({
+      basePrice: pack.price,
+      discountAmount: 0,
+      discountPercentage: 0,
       platformCommission: platformCommission,
-      platformCommissionAmount,
-      totalToPay,
-      creatorEarnings,
-    }
+      platformCommissionAmount: Math.floor(pack.price * platformCommission),
+      totalToPay: pack.price,
+      creatorEarnings: Math.floor(pack.price * (1 - platformCommission)),
+    })
   }
+
+  useEffect(() => {
+    if (pack) {
+      checkDiscounts()
+    }
+  }, [pack, platformCommission])
 
   const validateCode = async (code: string) => {
     if (!code.trim()) {
@@ -334,8 +345,6 @@ export default function CheckoutPage() {
     }).format(price)
   }
 
-  const priceBreakdown = calculatePriceBreakdown()
-
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -423,112 +432,35 @@ export default function CheckoutPage() {
             {step === "summary" && (
               <>
                 <Card className="p-6 rounded-3xl border-border">
-                  <h2 className="text-2xl font-black text-foreground mb-6">Resumen del pedido</h2>
-
-                  <div className="flex gap-4 mb-6">
-                    <img
-                      src={pack.cover_image_url || "/placeholder.svg?height=120&width=120"}
-                      alt={pack.title}
-                      className="w-24 h-24 rounded-2xl object-cover"
-                    />
-                    <div className="flex-1">
-                      <h3 className="font-bold text-lg text-foreground mb-1">{pack.title}</h3>
-                      <p className="text-sm text-muted-foreground mb-2">Por {pack.profiles?.username || "Usuario"}</p>
-                      {pack.genre && (
-                        <Badge variant="outline" className="text-xs">
-                          {pack.genre}
-                        </Badge>
-                      )}
+                  <div className="flex items-start gap-4">
+                    <div className="flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden bg-muted">
+                      <img
+                        src={pack.cover_image_url || "/placeholder.svg"}
+                        alt={pack.title}
+                        className="w-full h-full object-cover"
+                      />
                     </div>
-                  </div>
-
-                  <div className="border-t border-border pt-6">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Tag className="h-4 w-4 text-primary" />
-                      <h3 className="font-bold text-foreground">Código de descuento</h3>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-bold text-foreground text-lg mb-1 truncate">{pack.title}</h3>
+                      <p className="text-sm text-muted-foreground mb-2">{pack.genre}</p>
+                      <div className="flex items-baseline gap-2">
+                        {priceBreakdown.discountPercentage > 0 ? (
+                          <>
+                            <span className="text-2xl font-black text-primary">
+                              ${formatPrice(priceBreakdown.totalToPay)}
+                            </span>
+                            <span className="text-lg text-muted-foreground line-through">
+                              ${formatPrice(priceBreakdown.basePrice)}
+                            </span>
+                            <Badge className="bg-orange-500 hover:bg-orange-600 text-white">
+                              {priceBreakdown.discountPercentage}% OFF
+                            </Badge>
+                          </>
+                        ) : (
+                          <span className="text-2xl font-black text-primary">${formatPrice(pack.price)}</span>
+                        )}
+                      </div>
                     </div>
-
-                    {appliedDiscount?.isValid && appliedDiscount.code === "OFERTA ACTIVA" && (
-                      <div className="mb-3 p-4 rounded-xl bg-orange-500/10 border border-orange-500/20">
-                        <div className="flex items-start gap-3">
-                          <Check className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
-                          <div className="flex-1">
-                            <p className="font-bold text-orange-500 text-sm">Oferta temporal activa</p>
-                            <p className="text-sm text-foreground mt-1">
-                              {appliedDiscount.percentage}% de descuento aplicado automáticamente
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {appliedDiscount?.isValid && appliedDiscount.code === "DESCUENTO AUTOMÁTICO" && (
-                      <div className="mb-3 p-4 rounded-xl bg-orange-500/10 border border-orange-500/20">
-                        <div className="flex items-start gap-3">
-                          <Check className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
-                          <div className="flex-1">
-                            <p className="font-bold text-orange-500 text-sm">¡Oferta especial!</p>
-                            <p className="text-sm text-foreground mt-1">
-                              {appliedDiscount.percentage}% de descuento aplicado automáticamente
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {!appliedDiscount?.isValid && (
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Ingresá tu código"
-                          value={discountCode}
-                          onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
-                          onKeyDown={(e) => e.key === "Enter" && handleApplyCode()}
-                          className="flex-1 rounded-xl"
-                          disabled={isValidatingCode}
-                        />
-                        <Button
-                          onClick={handleApplyCode}
-                          disabled={!discountCode.trim() || isValidatingCode}
-                          className="rounded-xl"
-                        >
-                          {isValidatingCode ? <Loader2 className="h-4 w-4 animate-spin" /> : "Aplicar"}
-                        </Button>
-                      </div>
-                    )}
-
-                    {appliedDiscount &&
-                      appliedDiscount.code !== "OFERTA ACTIVA" &&
-                      appliedDiscount.code !== "DESCUENTO AUTOMÁTICO" && (
-                        <div
-                          className={`mt-3 p-4 rounded-xl flex items-start gap-3 ${
-                            appliedDiscount.isValid
-                              ? "bg-green-500/10 border border-green-500/20"
-                              : "bg-destructive/10 border border-destructive/20"
-                          }`}
-                        >
-                          {appliedDiscount.isValid ? (
-                            <>
-                              <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                              <div className="flex-1">
-                                <p className="font-bold text-green-500 text-sm">Código aplicado</p>
-                                <p className="text-sm text-foreground mt-1">
-                                  Descuento del {appliedDiscount.percentage}% aplicado
-                                </p>
-                              </div>
-                              <Button variant="ghost" size="sm" onClick={handleRemoveDiscount} className="text-xs">
-                                Quitar
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
-                              <div className="flex-1">
-                                <p className="font-bold text-destructive text-sm">{appliedDiscount.errorMessage}</p>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      )}
                   </div>
                 </Card>
 

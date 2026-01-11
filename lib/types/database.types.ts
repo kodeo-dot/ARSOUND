@@ -8,6 +8,8 @@ export type PaymentMethod = "mercado_pago" | "stripe" | "manual"
 
 export type AppealStatus = "pending" | "approved" | "rejected"
 
+export type UserRole = "user" | "moderator" | "admin"
+
 export interface Profile {
   id: string
   username: string
@@ -15,6 +17,7 @@ export interface Profile {
   avatar_url: string | null
   bio: string | null
   plan: PlanType
+  role: UserRole
   packs_count: number
   followers_count: number
   total_sales: number
@@ -143,3 +146,20 @@ export type DAWType =
   | "Studio One"
   | "Bitwig"
   | "Universal"
+
+export interface AdminAction {
+  id: string
+  admin_id: string
+  action_type:
+    | "ban_user"
+    | "unban_user"
+    | "delete_pack"
+    | "approve_appeal"
+    | "reject_appeal"
+    | "delete_comment"
+    | "feature_pack"
+  target_type: "user" | "pack" | "comment" | "appeal"
+  target_id: string
+  details: Record<string, any> | null
+  created_at: string
+}

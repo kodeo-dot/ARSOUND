@@ -105,25 +105,6 @@ export async function POST(request: Request) {
 
     console.log("[v0] Pack created successfully:", pack.id)
 
-    if (body.has_discount && body.discountRequiresCode && body.discountCode && pack.id) {
-      console.log("[v0] Creating discount code")
-      const { error: discountError } = await adminSupabase.from("discount_codes").insert({
-        pack_id: pack.id,
-        code: body.discountCode.toUpperCase(),
-        discount_percent: body.discount_percent || 0,
-        for_all_users: body.discountType === "all",
-        for_first_purchase: body.discountType === "first",
-        for_followers: body.discountType === "followers",
-        max_uses: null,
-        expires_at: null,
-      })
-
-      if (discountError) {
-        console.error("[v0] Error creating discount code:", discountError)
-        logger.error("Error creating discount code", "UPLOAD", discountError)
-      }
-    }
-
     logger.info("Pack uploaded successfully", "UPLOAD", {
       packId: pack.id,
       userId: user.id,
