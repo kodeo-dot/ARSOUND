@@ -30,11 +30,12 @@ CREATE OR REPLACE FUNCTION notify_pack_owner_on_comment()
 RETURNS TRIGGER AS $$
 DECLARE
   v_pack_owner_id UUID;
-  v_pack_name TEXT;
+  v_pack_title TEXT;
   v_commenter_username TEXT;
 BEGIN
+  -- Using title instead of name for packs table
   -- Get pack owner
-  SELECT seller_id, name INTO v_pack_owner_id, v_pack_name
+  SELECT user_id, title INTO v_pack_owner_id, v_pack_title
   FROM packs WHERE id = NEW.pack_id;
   
   -- Get commenter username
@@ -51,7 +52,7 @@ BEGIN
       NEW.pack_id,
       jsonb_build_object(
         'comment_id', NEW.id,
-        'pack_name', v_pack_name,
+        'pack_name', v_pack_title,
         'commenter', v_commenter_username
       )
     );
@@ -76,7 +77,7 @@ BEGIN
           jsonb_build_object(
             'comment_id', NEW.id,
             'parent_id', NEW.parent_id,
-            'pack_name', v_pack_name,
+            'pack_name', v_pack_title,
             'commenter', v_commenter_username
           )
         );

@@ -92,14 +92,19 @@ export function NotificationsDropdown() {
         return `descargó tu pack "${notif.pack?.name}"`
       case "profile_view":
         return "vio tu perfil"
+      case "comment":
+        return `comentó en tu pack`
+      case "reply":
+        const isOwner = notif.metadata?.is_pack_owner
+        return `respondió tu comentario${isOwner ? " (Creador)" : ""}`
       case "review":
         const rating = notif.metadata?.rating
         return `dejó una review ${rating ? `(${rating}⭐)` : ""} en tu pack`
       case "question":
         return `hizo una pregunta sobre tu pack`
       case "answer":
-        const isOwner = notif.metadata?.is_pack_owner
-        return `respondió tu pregunta${isOwner ? " (Creador)" : ""}`
+        const isPackOwner = notif.metadata?.is_pack_owner
+        return `respondió tu pregunta${isPackOwner ? " (Creador)" : ""}`
       case "limit_reached":
         return `Alcanzaste el límite de descargas. Mejorá tu plan.`
       default:
@@ -115,6 +120,8 @@ export function NotificationsDropdown() {
       case "like":
       case "purchase":
       case "download":
+      case "comment":
+      case "reply":
       case "review":
       case "question":
       case "answer":
@@ -138,6 +145,10 @@ export function NotificationsDropdown() {
         return <Download className="h-3.5 w-3.5" />
       case "profile_view":
         return <Eye className="h-3.5 w-3.5" />
+      case "comment":
+        return <MessageCircle className="h-3.5 w-3.5" />
+      case "reply":
+        return <MessageSquare className="h-3.5 w-3.5" />
       case "review":
         return <Star className="h-3.5 w-3.5" />
       case "question":
@@ -163,6 +174,10 @@ export function NotificationsDropdown() {
         return "text-purple-600 dark:text-purple-400"
       case "profile_view":
         return "text-cyan-600 dark:text-cyan-400"
+      case "comment":
+        return "text-indigo-600 dark:text-indigo-400"
+      case "reply":
+        return "text-teal-600 dark:text-teal-400"
       case "review":
         return "text-yellow-600 dark:text-yellow-400"
       case "question":
