@@ -68,6 +68,7 @@ export function PackComments({ packId, packOwnerId, isAuthenticated, currentUser
     }
 
     setIsSubmitting(true)
+    console.log("[v0] Submitting comment for pack:", packId)
     try {
       const response = await fetch(`/api/packs/${packId}/comments`, {
         method: "POST",
@@ -75,7 +76,9 @@ export function PackComments({ packId, packOwnerId, isAuthenticated, currentUser
         body: JSON.stringify({ comment: newComment }),
       })
 
+      console.log("[v0] Response status:", response.status)
       const data = await response.json()
+      console.log("[v0] API response:", data)
 
       if (data.success) {
         toast({
@@ -84,6 +87,7 @@ export function PackComments({ packId, packOwnerId, isAuthenticated, currentUser
         setNewComment("")
         fetchComments()
       } else {
+        console.error("[v0] Error from API:", data.error)
         toast({
           title: "Error",
           description: data.error,
@@ -91,6 +95,7 @@ export function PackComments({ packId, packOwnerId, isAuthenticated, currentUser
         })
       }
     } catch (error) {
+      console.error("[v0] Catch error:", error)
       toast({
         title: "Error",
         description: "No se pudo publicar el comentario",
