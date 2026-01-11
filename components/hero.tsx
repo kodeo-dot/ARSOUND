@@ -17,12 +17,11 @@ export function Hero() {
           </h1>
 
           <p className="text-xl md:text-2xl lg:text-3xl text-foreground font-semibold text-balance max-w-3xl mx-auto leading-relaxed">
-            Sample Packs de calidad profesional
+            El marketplace de recursos musicales
           </p>
 
           <p className="text-base md:text-lg text-muted-foreground text-balance max-w-2xl mx-auto leading-relaxed">
-            Sonidos profesionales creados por productores verificados. Trap, reggaetón, cumbia y todos los géneros
-            urbanos en un solo lugar.
+            Descubrí sample packs, MIDI packs y herramientas creativas creadas por productores verificados. Todo para llevar tus tracks al siguiente nivel.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
