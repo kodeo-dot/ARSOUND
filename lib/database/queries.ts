@@ -58,17 +58,19 @@ export async function getUserPlan(userId: string): Promise<PlanType> {
 export async function updateUserPlan(userId: string, planType: PlanType, expiresAt?: Date | null): Promise<boolean> {
   const supabase = await createAdminClient()
 
-  // Deactivate existing plans
-  await supabase.from("user_plans").update({ is_active: false }).eq("user_id", userId)
-
-  // Insert new plan
-  const { error } = await supabase.from("user_plans").insert({
-    user_id: userId,
-    plan_type: planType,
-    is_active: true,
-    started_at: new Date().toISOString(),
-    expires_at: expiresAt?.toISOString() ?? null,
-  })
+  const { error } = await supabase.from("user_plans").upsert(
+    {
+      user_id: userId,
+      plan_type: planType,
+      is_active: true,
+      started_at: new Date().toISOString(),
+      expires_at: expiresAt?.toISOString() ?? null,
+    },
+    {
+      onConflict: "user_id",
+      ignoreDuplicates: false,
+    },
+  )
 
   if (error) {
     console.error("[DB] Error updating user plan:", error)
