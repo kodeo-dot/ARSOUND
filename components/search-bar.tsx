@@ -98,7 +98,7 @@ export function SearchBar() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => query.length >= 2 && setShowResults(true)}
-          className="pl-12 pr-12 h-14 rounded-full text-base bg-card border-border"
+          className="pl-12 pr-12 h-11 rounded-full text-base bg-card border-border"
         />
         {query && (
           <button

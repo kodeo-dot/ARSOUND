@@ -27,7 +27,7 @@ import {
   AlertCircle,
   Zap,
   Crown,
-  Percent,
+  FileText,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import type { PlanType } from "@/lib/plans"
@@ -36,9 +36,7 @@ import { PLAN_FEATURES } from "@/lib/plans"
 import { BlockWarningBanner } from "@/components/block-warning-banner"
 import { useBlockStatus } from "@/hooks/use-block-status"
 import Link from "next/link"
-import { Switch } from "@/components/ui/switch"
 import { GENRES, getSubgenres } from "@/lib/genres"
-import { LicenseCheckbox } from "@/components/license-checkbox"
 import { PRODUCT_TYPES, DAW_OPTIONS, type ProductTypeKey } from "@/lib/constants/product-types"
 
 const ALL_PRICE_OPTIONS = Array.from({ length: 14 }, (_, i) => i * 5000)
@@ -1052,101 +1050,54 @@ export default function UploadPage() {
           </div>
 
           {priceNumber > 0 && (
-            <Card className="p-8 rounded-3xl border-border bg-accent/10">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <Percent className="h-6 w-6 text-primary" />
-                  <div>
-                    <h3 className="text-xl font-black text-foreground">Descuentos</h3>
-                    <p className="text-sm text-muted-foreground">Creá códigos para tus compradores</p>
-                  </div>
+            <Card className="p-8 rounded-3xl border-border bg-card">
+              <h3 className="font-bold text-foreground mb-4 text-xl">Resumen de Ganancia</h3>
+              <div className="space-y-3 text-base">
+                <div className="flex justify-between items-center">
+                  <span className="text-foreground/80">Precio del pack:</span>
+                  <span className="font-bold text-foreground text-lg">
+                    ${new Intl.NumberFormat("es-AR").format(priceNumber)} ARS
+                  </span>
                 </div>
-                <Switch checked={hasDiscount} onCheckedChange={setHasDiscount} disabled={isLoading} />
-              </div>
-
-              {hasDiscount && (
-                <div className="space-y-6 pt-6 border-t border-border">
-                  <div className="space-y-2">
-                    <Label htmlFor="discountPercent" className="text-base font-bold text-foreground">
-                      Porcentaje de Descuento *
-                    </Label>
-                    <Select value={discountPercent} onValueChange={setDiscountPercent} disabled={isLoading}>
-                      <SelectTrigger className="h-12 rounded-xl bg-background border-border text-base">
-                        <SelectValue placeholder="Seleccionar descuento" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {DISCOUNT_OPTIONS.map((discountOption) => (
-                          <SelectItem key={discountOption} value={discountOption.toString()}>
-                            {discountOption}%
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">Tu plan permite hasta {MAX_DISCOUNT}% de descuento</p>
-                  </div>
-
-                  <div className="flex items-center gap-3 p-4 bg-background/50 rounded-xl border border-border">
-                    <Checkbox
-                      id="requireCode"
-                      checked={discountRequiresCode}
-                      onCheckedChange={(checked) => {
-                        setDiscountRequiresCode(checked as boolean)
-                        if (!checked) setDiscountCode("")
-                      }}
-                      disabled={isLoading}
-                    />
-                    <Label htmlFor="requireCode" className="text-sm font-medium cursor-pointer flex-1">
-                      Requiere código de descuento (recomendado)
-                    </Label>
-                  </div>
-
-                  {discountRequiresCode && (
-                    <>
-                      <div className="space-y-2">
-                        <Label htmlFor="discountCode" className="text-base font-bold text-foreground">
-                          Código de Descuento *
-                        </Label>
-                        <Input
-                          id="discountCode"
-                          placeholder="ARSOUND25"
-                          value={discountCode}
-                          onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
-                          className="h-12 rounded-xl bg-background text-base font-mono"
-                          disabled={isLoading}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          El código debe ingresarse manualmente en el checkout
-                        </p>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="discountType" className="text-base font-bold text-foreground">
-                          Aplicar a
-                        </Label>
-                        <Select value={discountType} onValueChange={setDiscountType} disabled={isLoading}>
-                          <SelectTrigger className="h-12 rounded-xl bg-background border-border text-base">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Todos los usuarios</SelectItem>
-                            <SelectItem value="first">Primera compra únicamente</SelectItem>
-                            <SelectItem value="followers">Mis seguidores únicamente</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </>
-                  )}
-
-                  {!discountRequiresCode && (
-                    <div className="p-4 rounded-xl bg-orange-500/10 border border-orange-500/20">
-                      <p className="text-sm text-orange-600 font-semibold">
-                        Atención: El descuento se mostrará públicamente y se aplicará automáticamente a todos los
-                        compradores.
-                      </p>
+                {hasDiscount && !discountRequiresCode && discountPercentNumber > 0 && (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="text-foreground/80">Descuento público ({discountPercentNumber}%):</span>
+                      <span className="font-bold text-orange-500 text-lg">
+                        - ${new Intl.NumberFormat("es-AR").format(discountAmount)} ARS
+                      </span>
                     </div>
-                  )}
+                    <div className="flex justify-between items-center">
+                      <span className="text-foreground/80">Precio para el comprador:</span>
+                      <span className="font-bold text-primary text-lg">
+                        ${new Intl.NumberFormat("es-AR").format(priceAfterDiscount)} ARS
+                      </span>
+                    </div>
+                  </>
+                )}
+                {hasDiscount && discountRequiresCode && discountPercentNumber > 0 && (
+                  <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                    <p className="text-sm text-blue-600 dark:text-blue-400 font-semibold">
+                      Con código: {discountPercentNumber}% de descuento ($
+                      {new Intl.NumberFormat("es-AR").format(discountAmount)} ARS)
+                    </p>
+                  </div>
+                )}
+                <div className="border-t border-border pt-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-foreground/80">Comisión plataforma ({(commission * 100).toFixed(0)}%):</span>
+                    <span className="font-bold text-red-500 text-lg">
+                      - ${new Intl.NumberFormat("es-AR").format(commissionAmount)} ARS
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center mt-3 pt-3 border-t border-border">
+                    <span className="font-bold text-foreground text-lg">Vas a recibir:</span>
+                    <span className="font-black text-green-600 dark:text-green-400 text-2xl">
+                      ${new Intl.NumberFormat("es-AR").format(youWillReceive)} ARS
+                    </span>
+                  </div>
                 </div>
-              )}
+              </div>
             </Card>
           )}
 
@@ -1187,66 +1138,14 @@ export default function UploadPage() {
             )}
           </div>
 
-          {/* Price Summary */}
-          {priceNumber > 0 && (
-            <Card className="p-8 rounded-3xl border-border bg-accent/50">
-              <h3 className="font-bold text-foreground mb-4 text-xl">Resumen de Ganancia</h3>
-              <div className="space-y-3 text-base">
-                <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Precio del pack:</span>
-                  <span className="font-bold text-foreground text-lg">
-                    ${new Intl.NumberFormat("es-AR").format(priceNumber)} ARS
-                  </span>
-                </div>
-                {hasDiscount && !discountRequiresCode && discountPercentNumber > 0 && (
-                  <>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Descuento público ({discountPercentNumber}%):</span>
-                      <span className="font-bold text-orange-500 text-lg">
-                        - ${new Intl.NumberFormat("es-AR").format(discountAmount)} ARS
-                      </span>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Precio para el comprador:</span>
-                      <span className="font-bold text-primary text-lg">
-                        ${new Intl.NumberFormat("es-AR").format(priceAfterDiscount)} ARS
-                      </span>
-                    </div>
-                  </>
-                )}
-                {hasDiscount && discountRequiresCode && discountPercentNumber > 0 && (
-                  <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                    <p className="text-sm text-blue-600 font-semibold">
-                      Con código: {discountPercentNumber}% de descuento ($
-                      {new Intl.NumberFormat("es-AR").format(discountAmount)} ARS)
-                    </p>
-                  </div>
-                )}
-                <div className="border-t border-border pt-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">
-                      Comisión plataforma ({(commission * 100).toFixed(0)}%):
-                    </span>
-                    <span className="font-bold text-red-500 text-lg">
-                      - ${new Intl.NumberFormat("es-AR").format(commissionAmount)} ARS
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center mt-3 pt-3 border-t border-border">
-                    <span className="font-bold text-foreground text-lg">Vas a recibir:</span>
-                    <span className="font-black text-green-600 text-2xl">
-                      ${new Intl.NumberFormat("es-AR").format(youWillReceive)} ARS
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          )}
-
           {/* License Agreements */}
-          <Card className="p-8 rounded-3xl border-2 border-border bg-accent/30">
-            <h3 className="font-bold text-foreground mb-6 text-xl">Acuerdos y Licencia</h3>
-            <div className="space-y-6">
-              <div className="flex items-start gap-4">
+          <Card className="p-8 rounded-3xl border-border bg-card">
+            <h3 className="font-bold text-foreground mb-6 text-xl flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              Acuerdos y Licencia
+            </h3>
+            <div className="space-y-4">
+              <div className="flex items-start gap-4 p-4 bg-accent/30 border border-border rounded-xl">
                 <Checkbox
                   id="ownership"
                   checked={ownershipConfirmed}
@@ -1254,12 +1153,12 @@ export default function UploadPage() {
                   disabled={isLoading}
                   className="mt-1"
                 />
-                <Label htmlFor="ownership" className="text-base text-foreground cursor-pointer leading-relaxed">
+                <Label htmlFor="ownership" className="text-sm text-foreground cursor-pointer leading-relaxed">
                   Confirmo que soy el creador original de este contenido y tengo todos los derechos para venderlo *
                 </Label>
               </div>
 
-              <div className="flex items-start gap-4">
+              <div className="flex items-start gap-4 p-4 bg-accent/30 border border-border rounded-xl">
                 <Checkbox
                   id="license"
                   checked={licenseAccepted}
@@ -1267,19 +1166,18 @@ export default function UploadPage() {
                   disabled={isLoading}
                   className="mt-1"
                 />
-                <Label htmlFor="license" className="text-base text-foreground cursor-pointer leading-relaxed">
-                  <LicenseCheckbox />
+                <Label htmlFor="license" className="text-sm cursor-pointer leading-relaxed flex-1">
+                  <span className="text-foreground">
+                    Acepto los{" "}
+                    <Link href="/license" target="_blank" className="text-primary hover:underline font-semibold">
+                      términos de la licencia de uso
+                    </Link>{" "}
+                    y autorizo que mis productos sean distribuidos bajo estos términos *
+                  </span>
                 </Label>
               </div>
             </div>
           </Card>
-
-          {uploadError && (
-            <div className="flex gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
-              <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-500 font-semibold">{uploadError}</p>
-            </div>
-          )}
 
           <Button
             type="submit"

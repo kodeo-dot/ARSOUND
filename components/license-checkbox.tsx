@@ -14,16 +14,16 @@ interface LicenseCheckboxProps {
 
 export function LicenseCheckbox({ checked, onCheckedChange, text, variant = "checkout" }: LicenseCheckboxProps) {
   return (
-    <div className="flex items-start gap-3 p-4 bg-card border rounded-lg">
+    <div className="flex items-start gap-3 p-4 bg-accent/30 border border-border rounded-xl">
       <Checkbox id={`license-${variant}`} checked={checked} onCheckedChange={onCheckedChange} className="mt-1" />
       <div className="flex-1">
-        <Label htmlFor={`license-${variant}`} className="text-sm leading-relaxed cursor-pointer">
+        <Label htmlFor={`license-${variant}`} className="text-sm text-foreground leading-relaxed cursor-pointer">
           {text}
         </Label>
         <Link
           href="/license"
           target="_blank"
-          className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2"
+          className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-2 font-medium"
         >
           Leer licencia completa
           <ExternalLink className="h-3 w-3" />
