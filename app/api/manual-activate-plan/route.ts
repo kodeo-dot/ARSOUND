@@ -50,21 +50,22 @@ export async function POST(request: Request) {
 
     const supabase = await createAdminClient()
 
-    // Deactivate existing plans
-    await supabase.from("user_plans").update({ is_active: false }).eq("user_id", userId)
-
     // Calculate expiration (30 days for paid plans)
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + 30)
 
-    // Insert new plan
-    const { error } = await supabase.from("user_plans").insert({
-      user_id: userId,
-      plan_type: planType,
-      is_active: true,
-      started_at: new Date().toISOString(),
-      expires_at: planType === "free" ? null : expiresAt.toISOString(),
-    })
+    const { error } = await supabase.from("user_plans").upsert(
+      {
+        user_id: userId,
+        plan_type: planType,
+        is_active: true,
+        started_at: new Date().toISOString(),
+        expires_at: planType === "free" ? null : expiresAt.toISOString(),
+      },
+      {
+        onConflict: "user_id",
+      },
+    )
 
     if (error) {
       logger.error("Failed to activate plan manually", "MANUAL_ACTIVATE", { userId, planType, error })
