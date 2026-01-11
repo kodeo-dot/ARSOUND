@@ -265,13 +265,18 @@ export default function PackDetailPage() {
         return
       }
 
-      // Only show active offers (not code-based discounts)
-      if (activeOffer) {
+      if (pack?.has_discount && pack?.discount_percent && !pack?.discount_requires_code) {
+        const discountAmount = Math.round((pack.price * pack.discount_percent) / 100)
+        setAppliedDiscount(discountAmount)
+        setDiscountReason(`${pack.discount_percent}% OFF - Oferta especial`)
+      } else if (activeOffer) {
+        // Active offers (time-limited promotions)
         const offerAmount = Number(activeOffer.discount_percent) || 0
-        setAppliedDiscount(offerAmount)
-        setDiscountReason(`Descuento activo del ${formatPrice(offerAmount)}%`)
+        const discountAmount = Math.round((pack.price * offerAmount) / 100)
+        setAppliedDiscount(discountAmount)
+        setDiscountReason(`${offerAmount}% OFF - Oferta temporal`)
       } else {
-        // Don't show has_discount publicly anymore - it requires a code
+        // No discount or requires code (code-based discounts are "secret")
         setAppliedDiscount(0)
         setDiscountReason("")
       }
@@ -492,7 +497,7 @@ export default function PackDetailPage() {
                 </div>
               </div>
 
-              {discountReason && activeOffer && (
+              {discountReason && appliedDiscount > 0 && (
                 <div className="mb-6 p-4 rounded-xl bg-orange-500/10 border border-orange-500/20">
                   <p className="text-sm font-semibold text-orange-600 text-center">{discountReason}</p>
                 </div>

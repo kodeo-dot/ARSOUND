@@ -69,7 +69,7 @@ export default function CheckoutPage() {
           setPlatformCommission(PLAN_FEATURES[data.profiles.plan as PlanType].commission)
         }
 
-        const { data: offerData } = await supabase.rpc("get_active_offer", { p_pack_id: packId }).single()
+        const { data: offerData } = await supabase.rpc("get_active_offer", { p_pack_id: packId }).maybeSingle()
 
         if (offerData) {
           setActiveOffer(offerData)
@@ -77,6 +77,13 @@ export default function CheckoutPage() {
             code: "OFERTA ACTIVA",
             type: "general",
             percentage: offerData.discount_percent,
+            isValid: true,
+          })
+        } else if (data.has_discount && data.discount_percent && !data.discount_requires_code) {
+          setAppliedDiscount({
+            code: "DESCUENTO AUTOMÁTICO",
+            type: "general",
+            percentage: data.discount_percent,
             isValid: true,
           })
         }
@@ -118,7 +125,6 @@ export default function CheckoutPage() {
     }
   }, [pack, loading, packId, router])
 
-  // Calculate price breakdown
   const calculatePriceBreakdown = (): PriceBreakdown => {
     if (!pack) {
       return {
@@ -192,7 +198,6 @@ export default function CheckoutPage() {
         return
       }
 
-      // Check if expired
       if (discountData.expires_at && new Date(discountData.expires_at) < new Date()) {
         setAppliedDiscount({
           code: code.toUpperCase(),
@@ -205,7 +210,6 @@ export default function CheckoutPage() {
         return
       }
 
-      // Check max uses
       if (discountData.max_uses && discountData.uses_count >= discountData.max_uses) {
         setAppliedDiscount({
           code: code.toUpperCase(),
@@ -444,21 +448,35 @@ export default function CheckoutPage() {
                       <h3 className="font-bold text-foreground">Código de descuento</h3>
                     </div>
 
-                    {activeOffer && (
-                      <div className="mb-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+                    {appliedDiscount?.isValid && appliedDiscount.code === "OFERTA ACTIVA" && (
+                      <div className="mb-3 p-4 rounded-xl bg-orange-500/10 border border-orange-500/20">
                         <div className="flex items-start gap-3">
-                          <Check className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                          <Check className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
                           <div className="flex-1">
-                            <p className="font-bold text-red-500 text-sm">Oferta activa</p>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              {activeOffer.discount_percent}% de descuento aplicado automáticamente
+                            <p className="font-bold text-orange-500 text-sm">Oferta temporal activa</p>
+                            <p className="text-sm text-foreground mt-1">
+                              {appliedDiscount.percentage}% de descuento aplicado automáticamente
                             </p>
                           </div>
                         </div>
                       </div>
                     )}
 
-                    {!activeOffer && !appliedDiscount?.isValid && (
+                    {appliedDiscount?.isValid && appliedDiscount.code === "DESCUENTO AUTOMÁTICO" && (
+                      <div className="mb-3 p-4 rounded-xl bg-orange-500/10 border border-orange-500/20">
+                        <div className="flex items-start gap-3">
+                          <Check className="h-5 w-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="font-bold text-orange-500 text-sm">¡Oferta especial!</p>
+                            <p className="text-sm text-foreground mt-1">
+                              {appliedDiscount.percentage}% de descuento aplicado automáticamente
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {!appliedDiscount?.isValid && (
                       <div className="flex gap-2">
                         <Input
                           placeholder="Ingresá tu código"
@@ -478,37 +496,39 @@ export default function CheckoutPage() {
                       </div>
                     )}
 
-                    {!activeOffer && appliedDiscount && (
-                      <div
-                        className={`mt-3 p-4 rounded-xl flex items-start gap-3 ${
-                          appliedDiscount.isValid
-                            ? "bg-green-500/10 border border-green-500/20"
-                            : "bg-destructive/10 border border-destructive/20"
-                        }`}
-                      >
-                        {appliedDiscount.isValid ? (
-                          <>
-                            <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
-                            <div className="flex-1">
-                              <p className="font-bold text-green-500 text-sm">Código aplicado</p>
-                              <p className="text-sm text-muted-foreground mt-1">
-                                Descuento del {appliedDiscount.percentage}% aplicado
-                              </p>
-                            </div>
-                            <Button variant="ghost" size="sm" onClick={handleRemoveDiscount} className="text-xs">
-                              Quitar
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
-                            <div className="flex-1">
-                              <p className="font-bold text-destructive text-sm">{appliedDiscount.errorMessage}</p>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
+                    {appliedDiscount &&
+                      appliedDiscount.code !== "OFERTA ACTIVA" &&
+                      appliedDiscount.code !== "DESCUENTO AUTOMÁTICO" && (
+                        <div
+                          className={`mt-3 p-4 rounded-xl flex items-start gap-3 ${
+                            appliedDiscount.isValid
+                              ? "bg-green-500/10 border border-green-500/20"
+                              : "bg-destructive/10 border border-destructive/20"
+                          }`}
+                        >
+                          {appliedDiscount.isValid ? (
+                            <>
+                              <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="font-bold text-green-500 text-sm">Código aplicado</p>
+                                <p className="text-sm text-foreground mt-1">
+                                  Descuento del {appliedDiscount.percentage}% aplicado
+                                </p>
+                              </div>
+                              <Button variant="ghost" size="sm" onClick={handleRemoveDiscount} className="text-xs">
+                                Quitar
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
+                              <div className="flex-1">
+                                <p className="font-bold text-destructive text-sm">{appliedDiscount.errorMessage}</p>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      )}
                   </div>
                 </Card>
 
