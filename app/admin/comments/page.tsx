@@ -34,7 +34,7 @@ export default function AdminCommentsPage() {
   const fetchComments = async () => {
     try {
       const { data, error } = await supabase
-        .from("comments")
+        .from("pack_comments")
         .select(
           `
           *,
@@ -51,6 +51,7 @@ export default function AdminCommentsPage() {
         .limit(100)
 
       if (error) throw error
+      console.log("[v0] Fetched comments:", data)
       setComments(data || [])
     } catch (error) {
       console.error("Error fetching comments:", error)
@@ -73,7 +74,7 @@ export default function AdminCommentsPage() {
 
       if (!user) throw new Error("No authenticated")
 
-      const { error } = await supabase.from("comments").delete().eq("id", commentId)
+      const { error } = await supabase.from("pack_comments").delete().eq("id", commentId)
 
       if (error) throw error
 
@@ -105,7 +106,7 @@ export default function AdminCommentsPage() {
 
   const filteredComments = comments.filter(
     (comment) =>
-      comment.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      comment.comment.toLowerCase().includes(searchQuery.toLowerCase()) ||
       comment.profiles?.username.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
@@ -156,7 +157,7 @@ export default function AdminCommentsPage() {
                         en {comment.packs?.title || "Pack eliminado"}
                       </span>
                     </div>
-                    <p className="text-sm text-foreground">{comment.content}</p>
+                    <p className="text-sm text-foreground">{comment.comment}</p>
                     <p className="text-xs text-muted-foreground mt-1">
                       {new Date(comment.created_at).toLocaleDateString()}
                     </p>
