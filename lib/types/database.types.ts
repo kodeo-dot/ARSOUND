@@ -36,6 +36,9 @@ export interface Pack {
   genre: string
   subgenre: string
   bpm: number | null
+  product_type: "sample_pack" | "midi_pack" | "preset"
+  daw_compatibility: string[]
+  plugin: string | null
   price: number
   cover_image_url: string | null
   demo_audio_url: string
@@ -129,3 +132,14 @@ export interface ReuploadAttempt {
   created_at: string
   updated_at: string
 }
+
+export type DAWType =
+  | "FL Studio"
+  | "Ableton Live"
+  | "Logic Pro"
+  | "Cubase"
+  | "Reaper"
+  | "Pro Tools"
+  | "Studio One"
+  | "Bitwig"
+  | "Universal"

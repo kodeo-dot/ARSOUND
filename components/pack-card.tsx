@@ -11,6 +11,7 @@ import Link from "next/link"
 import { getPlanBadge } from "@/lib/plans"
 import { formatGenreDisplay } from "@/lib/genres"
 import { createBrowserClient } from "@/lib/supabase/client"
+import { PRODUCT_TYPES } from "@/lib/constants/product-types"
 
 interface Pack {
   id: string
@@ -22,6 +23,8 @@ interface Pack {
   genre: string | null
   subgenre: string | null
   bpm: string | null
+  product_type?: string
+  daw_compatibility?: string[]
   tags: string[] | null
   demo_audio_url: string | null
   has_discount?: boolean
@@ -112,10 +115,15 @@ export function PackCard({ pack }: PackCardProps) {
   }
 
   const isFreepack = pack.price === 0
-  const shouldShowDiscount = !isFreepack && pack.has_discount && pack.discount_percent && pack.discount_percent > 0
-  const finalPrice = shouldShowDiscount ? Math.floor(pack.price * (1 - pack.discount_percent / 100)) : pack.price
+  const shouldShowDiscount = false
+  const finalPrice = pack.price
 
   const planBadge = pack.producer_plan ? getPlanBadge(pack.producer_plan as any) : null
+
+  const productTypeLabel =
+    pack.product_type && pack.product_type !== "sample_pack"
+      ? PRODUCT_TYPES[pack.product_type as keyof typeof PRODUCT_TYPES]?.label
+      : null
 
   return (
     <Card className="group overflow-hidden border border-border hover:border-primary/40 transition-all duration-300 hover:shadow-xl rounded-2xl bg-card">
@@ -153,10 +161,9 @@ export function PackCard({ pack }: PackCardProps) {
             </Badge>
           )}
 
-          {/* Discount Badge */}
-          {shouldShowDiscount && (
-            <Badge className="absolute bottom-4 left-4 bg-orange-500/90 backdrop-blur-sm text-white font-bold px-3 py-1 rounded-full">
-              {pack.discount_percent}% OFF
+          {productTypeLabel && (
+            <Badge className="absolute bottom-4 left-4 bg-accent/90 backdrop-blur-sm text-white font-bold px-3 py-1 rounded-full text-xs">
+              {productTypeLabel}
             </Badge>
           )}
         </div>
@@ -195,11 +202,6 @@ export function PackCard({ pack }: PackCardProps) {
         <div className="flex items-center justify-between pt-2">
           {isFreepack ? (
             <div className="text-3xl font-black text-green-600">GRATIS</div>
-          ) : shouldShowDiscount ? (
-            <div>
-              <div className="text-xl font-bold text-muted-foreground line-through">${formatPrice(pack.price)}</div>
-              <div className="text-3xl font-black text-primary">${formatPrice(finalPrice)}</div>
-            </div>
           ) : (
             <div className="text-3xl font-black text-foreground">${formatPrice(pack.price)}</div>
           )}

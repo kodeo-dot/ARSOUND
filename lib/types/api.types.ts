@@ -19,8 +19,11 @@ export interface UploadPackRequest {
   title: string
   description: string
   genre: string
-  subgenre: string
-  bpm?: number
+  subgenre?: string
+  bpm?: string | null
+  product_type?: "sample_pack" | "midi_pack" | "preset"
+  daw_compatibility?: string[]
+  plugin?: string | null
   price: number
   tags?: string[]
   cover_image_url?: string
@@ -30,6 +33,7 @@ export interface UploadPackRequest {
   discount_percent?: number
   discountCode?: string
   discountType?: "all" | "first" | "followers"
+  discountRequiresCode?: boolean
 }
 
 export interface CreatePreferenceRequest {

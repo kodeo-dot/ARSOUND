@@ -18,6 +18,7 @@ import { useRouter } from "next/navigation"
 import { UserAvatar } from "@/components/user-avatar"
 import { useAuth } from "@/components/auth-provider"
 import { NotificationsDropdown } from "@/components/notifications-dropdown"
+import { SearchBar } from "@/components/search-bar"
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -57,13 +58,17 @@ export function Header() {
   return (
     <header className="border-b border-border bg-background/95 backdrop-blur-sm sticky top-0 z-50">
       <div className="container mx-auto px-4">
-        <div className="flex h-16 items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
+        <div className="flex h-16 items-center justify-between gap-4">
+          <Link href="/" className="flex items-center gap-2 flex-shrink-0">
             <Image src="/icon.svg" alt="ARSOUND" width={32} height={32} className="rounded object-contain" />
             <span className="text-lg font-black tracking-tight text-foreground">ARSOUND</span>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-8">
+          <div className="hidden md:flex flex-1 max-w-2xl">
+            <SearchBar />
+          </div>
+
+          <nav className="hidden lg:flex items-center gap-8 flex-shrink-0">
             <Link
               href="/#packs"
               className="text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors"
@@ -78,7 +83,7 @@ export function Header() {
             </Link>
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-shrink-0">
             {loading ? (
               <div className="w-20 h-9 bg-muted/50 animate-pulse rounded-full" />
             ) : user ? (
@@ -177,6 +182,10 @@ export function Header() {
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
           </div>
+        </div>
+
+        <div className="md:hidden pb-3">
+          <SearchBar />
         </div>
 
         {mobileMenuOpen && (

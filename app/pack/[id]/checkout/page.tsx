@@ -6,10 +6,10 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Check, Loader2, Tag, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Check, Loader2, Tag, AlertCircle } from "lucide-react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter } from "next/navigation"
 import { createBrowserClient } from "@/lib/supabase/client"
 import type { DiscountCode, PriceBreakdown } from "@/types/discount"
 import { validateDiscountCode as validateDiscountInput } from "@/types/offer"
@@ -306,10 +306,8 @@ export default function CheckoutPage() {
       const result = await purchasePack(packId, appliedDiscount?.isValid ? discountCode : undefined)
 
       if (result?.success && result.init_point) {
-        // Redirect to Mercado Pago checkout
         window.location.href = result.init_point
       } else {
-        // Use toast if available, otherwise alert
         if (typeof window !== "undefined" && window.location) {
           console.error("[v0] Payment failed:", result?.message)
         }
@@ -368,7 +366,6 @@ export default function CheckoutPage() {
       <Header />
 
       <main className="flex-1 container mx-auto px-4 py-8 max-w-4xl">
-        {/* Back Button */}
         <Link href={`/pack/${packId}`}>
           <Button variant="ghost" className="mb-6 gap-2">
             <ArrowLeft className="h-4 w-4" />
@@ -376,7 +373,6 @@ export default function CheckoutPage() {
           </Button>
         </Link>
 
-        {/* Progress Steps */}
         <div className="mb-8">
           <div className="flex items-center justify-between max-w-2xl mx-auto">
             <div className="flex flex-col items-center flex-1">
@@ -419,9 +415,7 @@ export default function CheckoutPage() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Step 1: Summary */}
             {step === "summary" && (
               <>
                 <Card className="p-6 rounded-3xl border-border">
@@ -455,7 +449,7 @@ export default function CheckoutPage() {
                         <div className="flex items-start gap-3">
                           <Check className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
                           <div className="flex-1">
-                            <p className="font-bold text-red-500 text-sm">¡Oferta activa!</p>
+                            <p className="font-bold text-red-500 text-sm">Oferta activa</p>
                             <p className="text-sm text-muted-foreground mt-1">
                               {activeOffer.discount_percent}% de descuento aplicado automáticamente
                             </p>
@@ -496,7 +490,7 @@ export default function CheckoutPage() {
                           <>
                             <Check className="h-5 w-5 text-green-500 flex-shrink-0 mt-0.5" />
                             <div className="flex-1">
-                              <p className="font-bold text-green-500 text-sm">¡Código aplicado!</p>
+                              <p className="font-bold text-green-500 text-sm">Código aplicado</p>
                               <p className="text-sm text-muted-foreground mt-1">
                                 Descuento del {appliedDiscount.percentage}% aplicado
                               </p>
@@ -524,13 +518,11 @@ export default function CheckoutPage() {
               </>
             )}
 
-            {/* Step 2: Payment Method */}
             {step === "payment" && (
               <>
                 <Card className="p-6 rounded-3xl border-border">
                   <h2 className="text-2xl font-black text-foreground mb-6">Método de pago</h2>
 
-                  {/* Mercado Pago UI */}
                   <div className="space-y-4">
                     <div className="p-4 border-2 border-primary rounded-2xl bg-primary/5 cursor-pointer hover:bg-primary/10 transition-colors">
                       <div className="flex items-center justify-between">
@@ -552,90 +544,27 @@ export default function CheckoutPage() {
                     </div>
 
                     <div className="p-4 text-sm text-muted-foreground bg-muted/50 rounded-xl">
-                      <p className="font-semibold text-foreground mb-2">Pagá con Mercado Pago:</p>
-                      <ul className="space-y-1 list-disc list-inside">
-                        <li>Tarjetas de crédito y débito</li>
-                        <li>Dinero en cuenta de Mercado Pago</li>
-                        <li>Efectivo en puntos de pago</li>
-                      </ul>
+                      Serás redirigido a Mercado Pago para completar tu pago de forma segura.
                     </div>
                   </div>
                 </Card>
 
-                <div className="flex gap-3">
+                <div className="flex gap-4">
                   <Button
                     variant="outline"
-                    className="flex-1 rounded-full h-14 text-base font-bold bg-transparent"
+                    className="flex-1 rounded-full h-12 bg-transparent"
                     onClick={() => setStep("summary")}
                   >
                     Volver
                   </Button>
-                  <Button className="flex-1 rounded-full h-14 text-base font-bold" onClick={() => setStep("confirm")}>
-                    Continuar
-                  </Button>
-                </div>
-              </>
-            )}
-
-            {/* Step 3: Confirm Purchase */}
-            {step === "confirm" && (
-              <>
-                <Card className="p-6 rounded-3xl border-border">
-                  <h2 className="text-2xl font-black text-foreground mb-6">Confirmar compra</h2>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-4">
-                      <img
-                        src={pack.cover_image_url || "/placeholder.svg?height=80&width=80"}
-                        alt={pack.title}
-                        className="w-20 h-20 rounded-xl object-cover"
-                      />
-                      <div>
-                        <h3 className="font-bold text-foreground">{pack.title}</h3>
-                        <p className="text-sm text-muted-foreground">Por {pack.profiles?.username || "Usuario"}</p>
-                      </div>
-                    </div>
-
-                    <div className="border-t border-border pt-4 space-y-3">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Método de pago:</span>
-                        <span className="font-semibold text-foreground">Mercado Pago</span>
-                      </div>
-                      {appliedDiscount?.isValid && (
-                        <div className="flex justify-between text-sm">
-                          <span className="text-muted-foreground">Código aplicado:</span>
-                          <span className="font-semibold text-green-500">{appliedDiscount.code}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="bg-muted/50 p-4 rounded-xl text-sm text-muted-foreground">
-                      Al confirmar la compra, serás redirigido a Mercado Pago para completar el pago de forma segura.
-                    </div>
-                  </div>
-                </Card>
-
-                <div className="flex gap-3">
-                  <Button
-                    variant="outline"
-                    className="flex-1 rounded-full h-14 text-base font-bold bg-transparent"
-                    onClick={() => setStep("payment")}
-                    disabled={isProcessing}
-                  >
-                    Volver
-                  </Button>
-                  <Button
-                    className="flex-1 rounded-full h-14 text-base font-bold"
-                    onClick={handleConfirmPurchase}
-                    disabled={isProcessing}
-                  >
+                  <Button className="flex-1 rounded-full h-12" onClick={handleConfirmPurchase} disabled={isProcessing}>
                     {isProcessing ? (
                       <>
-                        <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
                         Procesando...
                       </>
                     ) : (
-                      "Confirmar compra"
+                      "Confirmar y Pagar"
                     )}
                   </Button>
                 </div>
@@ -643,67 +572,24 @@ export default function CheckoutPage() {
             )}
           </div>
 
-          {/* Price Summary Sidebar */}
           <div className="lg:col-span-1">
-            <Card className="p-6 rounded-3xl border-border sticky top-4">
-              <h3 className="text-lg font-black text-foreground mb-4">Resumen de precio</h3>
-
-              <div className="space-y-3 mb-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Precio base</span>
+            <Card className="p-6 rounded-3xl border-border sticky top-24">
+              <h3 className="font-bold text-foreground mb-4 text-lg">Resumen de compra</h3>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Precio base:</span>
                   <span className="font-semibold text-foreground">${formatPrice(priceBreakdown.basePrice)}</span>
                 </div>
-
-                {appliedDiscount?.isValid && (
-                  <div className="flex justify-between text-sm">
-                    <span className={activeOffer ? "text-red-500" : "text-green-500"}>
-                      Descuento ({appliedDiscount.percentage}%)
-                    </span>
-                    <span className={`font-semibold ${activeOffer ? "text-red-500" : "text-green-500"}`}>
-                      -${formatPrice(priceBreakdown.discountAmount)}
-                    </span>
+                {priceBreakdown.discountPercentage > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Descuento ({priceBreakdown.discountPercentage}%):</span>
+                    <span className="font-semibold text-green-600">-${formatPrice(priceBreakdown.discountAmount)}</span>
                   </div>
                 )}
-
-                <div className="border-t border-border pt-3">
-                  <div className="flex justify-between items-baseline mb-1">
-                    <span className="text-lg font-bold text-foreground">Total a pagar</span>
-                    <span className="text-2xl font-black text-primary">${formatPrice(priceBreakdown.totalToPay)}</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground text-right">
-                    {priceBreakdown.totalToPay === 0 ? "" : "ARS"}
-                  </div>
-                </div>
-              </div>
-
-              <div className="border-t border-border pt-4 mt-4">
-                <div className="bg-accent/50 p-4 rounded-xl space-y-2">
-                  <h4 className="text-sm font-bold text-foreground">Desglose para el creador</h4>
-                  <div className="space-y-1.5 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Precio base</span>
-                      <span className="text-foreground">${formatPrice(priceBreakdown.basePrice)}</span>
-                    </div>
-                    {appliedDiscount?.isValid && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Descuento aplicado</span>
-                        <span className="text-foreground">-${formatPrice(priceBreakdown.discountAmount)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Subtotal</span>
-                      <span className="text-foreground">${formatPrice(priceBreakdown.totalToPay)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">
-                        Comisión plataforma ({(platformCommission * 100).toFixed(0)}%)
-                      </span>
-                      <span className="text-foreground">-${formatPrice(priceBreakdown.platformCommissionAmount)}</span>
-                    </div>
-                    <div className="border-t border-border pt-1.5 flex justify-between font-bold">
-                      <span className="text-foreground">Ganancia del creador</span>
-                      <span className="text-primary">${formatPrice(priceBreakdown.creatorEarnings)}</span>
-                    </div>
+                <div className="border-t border-border pt-3 mt-3">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-foreground text-base">Total:</span>
+                    <span className="font-black text-primary text-2xl">${formatPrice(priceBreakdown.totalToPay)}</span>
                   </div>
                 </div>
               </div>

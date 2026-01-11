@@ -19,6 +19,7 @@ import {
   Check,
   Pause,
   FileText,
+  Monitor,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
@@ -27,6 +28,7 @@ import { useAudioPlayer } from "@/hooks/use-audio-player"
 import { useParams, useRouter } from "next/navigation"
 import { toast } from "@/components/ui/use-toast"
 import { formatGenreDisplay } from "@/lib/genres"
+import { PRODUCT_TYPES } from "@/lib/constants/product-types"
 
 export default function PackDetailPage() {
   const params = useParams()
@@ -257,31 +259,22 @@ export default function PackDetailPage() {
 
   useEffect(() => {
     const checkDiscounts = () => {
-      let finalPrice = pack.price
-      let appliedDiscount = 0
-      let discountReason = ""
-
-      // Ensure discount_percent is a valid number
-      const packDiscountPercent = Number(pack.discount_percent) || 0
-      if (pack.price === 0 || pack.free === true) {
+      if (pack?.price === 0 || pack?.free === true) {
         setAppliedDiscount(0)
         setDiscountReason("")
         return
       }
 
+      // Only show active offers (not code-based discounts)
       if (activeOffer) {
-        const offerAmount = Number(activeOffer.discount_percent) || 0 // en realidad es el monto del descuento
-        appliedDiscount = offerAmount
-        finalPrice = pack.price - appliedDiscount
-        discountReason = `Descuento activo del ${formatPrice(offerAmount)}%`
-      } else if (pack.has_discount && packDiscountPercent > 0 && packDiscountPercent <= 100) {
-        appliedDiscount = (pack.price * packDiscountPercent) / 100
-        finalPrice = pack.price - appliedDiscount
-        discountReason = `${packDiscountPercent}% de descuento`
+        const offerAmount = Number(activeOffer.discount_percent) || 0
+        setAppliedDiscount(offerAmount)
+        setDiscountReason(`Descuento activo del ${formatPrice(offerAmount)}%`)
+      } else {
+        // Don't show has_discount publicly anymore - it requires a code
+        setAppliedDiscount(0)
+        setDiscountReason("")
       }
-
-      setAppliedDiscount(appliedDiscount)
-      setDiscountReason(discountReason)
     }
 
     if (pack) {
@@ -318,6 +311,11 @@ export default function PackDetailPage() {
     )
   }
 
+  const productTypeLabel =
+    pack.product_type && pack.product_type !== "sample_pack"
+      ? PRODUCT_TYPES[pack.product_type as keyof typeof PRODUCT_TYPES]?.label
+      : null
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
@@ -336,6 +334,12 @@ export default function PackDetailPage() {
                 {pack.genre && (
                   <Badge className="absolute top-4 left-4 bg-primary text-primary-foreground font-bold px-4 py-2 text-sm rounded-full">
                     {formatGenreDisplay(pack.genre, pack.subgenre)}
+                  </Badge>
+                )}
+
+                {productTypeLabel && (
+                  <Badge className="absolute top-4 right-4 bg-accent text-white font-bold px-4 py-2 text-sm rounded-full">
+                    {productTypeLabel}
                   </Badge>
                 )}
               </div>
@@ -369,7 +373,9 @@ export default function PackDetailPage() {
               )}
               <Card className="p-5 text-center rounded-xl border-border">
                 <Disc className="h-5 w-5 mx-auto mb-2 text-muted-foreground" />
-                <div className="text-2xl font-black text-foreground">WAV</div>
+                <div className="text-2xl font-black text-foreground">
+                  {pack.product_type === "midi_pack" ? "MIDI" : "WAV"}
+                </div>
                 <div className="text-xs text-muted-foreground font-medium">Formato</div>
               </Card>
               <Card className="p-5 text-center rounded-xl border-border">
@@ -378,6 +384,32 @@ export default function PackDetailPage() {
                 <div className="text-xs text-muted-foreground font-medium">Descargas</div>
               </Card>
             </div>
+
+            {pack.daw_compatibility && pack.daw_compatibility.length > 0 && (
+              <Card className="p-6 rounded-2xl border-border bg-card">
+                <div className="flex items-center gap-2 mb-4">
+                  <Monitor className="h-5 w-5 text-primary" />
+                  <h3 className="font-bold text-foreground">Compatibilidad DAW</h3>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {pack.daw_compatibility.map((daw: string) => (
+                    <Badge key={daw} variant="outline" className="px-3 py-1">
+                      {daw}
+                    </Badge>
+                  ))}
+                </div>
+              </Card>
+            )}
+
+            {pack.product_type === "preset" && pack.plugin && (
+              <Card className="p-6 rounded-2xl border-border bg-card">
+                <div className="flex items-center gap-2 mb-2">
+                  <Disc className="h-5 w-5 text-primary" />
+                  <h3 className="font-bold text-foreground">Plugin / Instrumento</h3>
+                </div>
+                <p className="text-foreground text-lg font-semibold">{pack.plugin}</p>
+              </Card>
+            )}
           </div>
 
           <div className="space-y-8">
@@ -460,7 +492,7 @@ export default function PackDetailPage() {
                 </div>
               </div>
 
-              {discountReason && (pack.has_discount || activeOffer) && (
+              {discountReason && activeOffer && (
                 <div className="mb-6 p-4 rounded-xl bg-orange-500/10 border border-orange-500/20">
                   <p className="text-sm font-semibold text-orange-600 text-center">{discountReason}</p>
                 </div>
@@ -506,7 +538,6 @@ export default function PackDetailPage() {
               </div>
             )}
 
-            {/* License Information Section */}
             <Card className="p-6 rounded-2xl border-border bg-card">
               <div className="flex items-start gap-4">
                 <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">

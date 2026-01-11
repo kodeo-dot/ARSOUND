@@ -23,7 +23,11 @@ export async function POST(request: Request) {
     let body: UploadPackRequest
     try {
       body = await request.json()
-      console.log("[v0] Request body received:", { title: body.title, price: body.price })
+      console.log("[v0] Request body received:", {
+        title: body.title,
+        price: body.price,
+        product_type: body.product_type,
+      })
     } catch (parseError) {
       console.error("[v0] JSON parse error:", parseError)
       return errorResponse("Request inválido", 400)
@@ -68,6 +72,7 @@ export async function POST(request: Request) {
     // Create pack
     console.log("[v0] Creating pack in database")
     const adminSupabase = await createAdminClient()
+
     const { data: pack, error: packError } = await adminSupabase
       .from("packs")
       .insert({
@@ -75,7 +80,11 @@ export async function POST(request: Request) {
         title: body.title,
         description: body.description,
         genre: body.genre,
+        subgenre: body.subgenre || null,
         bpm: body.bpm || null,
+        product_type: body.product_type || "sample_pack",
+        daw_compatibility: body.daw_compatibility || [],
+        plugin: body.plugin || null,
         price: body.price,
         cover_image_url: body.cover_image_url || null,
         demo_audio_url: body.demo_audio_url,
@@ -83,7 +92,7 @@ export async function POST(request: Request) {
         tags: body.tags || [],
         has_discount: body.has_discount || false,
         discount_percent: body.has_discount ? body.discount_percent || 0 : 0,
-        is_deleted: false, // Use is_deleted instead of status
+        is_deleted: false,
       })
       .select()
       .single()
@@ -96,8 +105,7 @@ export async function POST(request: Request) {
 
     console.log("[v0] Pack created successfully:", pack.id)
 
-    // Create discount code if applicable
-    if (body.has_discount && body.discountCode && pack.id) {
+    if (body.has_discount && body.discountRequiresCode && body.discountCode && pack.id) {
       console.log("[v0] Creating discount code")
       const { error: discountError } = await adminSupabase.from("discount_codes").insert({
         pack_id: pack.id,

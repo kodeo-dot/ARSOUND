@@ -14,6 +14,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Upload,
   ImageIcon,
@@ -21,7 +22,6 @@ import {
   FileArchive,
   DollarSign,
   Tag,
-  Info,
   Loader2,
   X,
   AlertCircle,
@@ -39,9 +39,9 @@ import Link from "next/link"
 import { Switch } from "@/components/ui/switch"
 import { GENRES, getSubgenres } from "@/lib/genres"
 import { LicenseCheckbox } from "@/components/license-checkbox"
-import { UPLOAD_CHECKBOX_TEXT } from "@/lib/config/license.config"
+import { PRODUCT_TYPES, DAW_OPTIONS, type ProductTypeKey } from "@/lib/constants/product-types"
 
-const ALL_PRICE_OPTIONS = Array.from({ length: 14 }, (_, i) => i * 5000) // 0, 5000, 10000... 65000
+const ALL_PRICE_OPTIONS = Array.from({ length: 14 }, (_, i) => i * 5000)
 const ALL_DISCOUNT_OPTIONS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
 export default function UploadPage() {
@@ -53,6 +53,10 @@ export default function UploadPage() {
   const { user, loading: authLoading } = useAuth()
   const [userPlan, setUserPlan] = useState<PlanType>("free")
   const supabase = createClient()
+
+  const [productType, setProductType] = useState<ProductTypeKey>("sample_pack")
+  const [dawCompatibility, setDawCompatibility] = useState<string[]>([])
+  const [plugin, setPlugin] = useState("")
 
   // Form states
   const [title, setTitle] = useState("")
@@ -74,7 +78,6 @@ export default function UploadPage() {
   const [packFile, setPackFile] = useState<File | null>(null)
   const [zipFileName, setZipFileName] = useState("")
 
-  // Discount states
   const [hasDiscount, setHasDiscount] = useState(false)
   const [discountPercent, setDiscountPercent] = useState("")
   const [discountCode, setDiscountCode] = useState("")
@@ -91,7 +94,6 @@ export default function UploadPage() {
   const [canUpload, setCanUpload] = useState(true)
   const [uploadBlockReason, setUploadBlockReason] = useState<string | null>(null)
   const [mpConnected, setMpConnected] = useState(false)
-  // Added isPurchasing state for handlePurchase
   const [isPurchasing, setIsPurchasing] = useState(false)
 
   const blockStatus = useBlockStatus()
@@ -108,7 +110,7 @@ export default function UploadPage() {
   const priceNumber = Math.min(Number.parseFloat(price) || 0, MAX_PRICE)
 
   const discountPercentNumber = Math.min(Number.parseFloat(discountPercent) || 0, MAX_DISCOUNT)
-  const discountAmount = hasDiscount ? (priceNumber * discountPercentNumber) / 100 : 0
+  const discountAmount = hasDiscount && discountRequiresCode ? 0 : (priceNumber * discountPercentNumber) / 100
   const priceAfterDiscount = priceNumber - discountAmount
   const commissionAmount = priceAfterDiscount * commission
   const youWillReceive = priceAfterDiscount - commissionAmount
@@ -123,7 +125,6 @@ export default function UploadPage() {
 
     setIsAuthenticated(true)
 
-    // Fetch user plan
     const fetchUserPlan = async () => {
       try {
         console.log("[v0] Fetching plan for user:", user.id)
@@ -135,7 +136,6 @@ export default function UploadPage() {
           .single()
 
         if (fetchError?.code === "PGRST116") {
-          // Profile doesn't exist, create it
           const newProfile = {
             id: user.id,
             username: user.email?.split("@")[0] || `user_${user.id.slice(0, 8)}`,
@@ -194,7 +194,6 @@ export default function UploadPage() {
           return
         }
 
-        // Check monthly limits for paid plans
         if (planLimits.maxPacksPerMonth) {
           const now = new Date()
           const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -218,6 +217,10 @@ export default function UploadPage() {
 
     fetchUserPlan()
   }, [user, authLoading, router, supabase])
+
+  const toggleDawCompatibility = (daw: string) => {
+    setDawCompatibility((prev) => (prev.includes(daw) ? prev.filter((d) => d !== daw) : [...prev, daw]))
+  }
 
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -363,59 +366,9 @@ export default function UploadPage() {
     }
   }
 
-  const handlePurchase = async () => {
-    setIsPurchasing(true)
-
-    // This logic is for when a user *downloads* a pack, not uploads.
-    // For the purpose of this merge, we'll assume 'packId', 'pack', and 'pack.price'
-    // are available in this scope if this function were truly used on a download page.
-    // Since this is the upload page, this function might be misplaced or a remnant.
-    // We'll keep the logic as provided in the updates for now.
-
-    // Mocking pack and packId for demonstration as they are not defined in this component's scope.
-    const mockPack = { title: "Test Pack", price: 0, free: true }
-    const mockPackId = "12345"
-
-    if (mockPack.price === 0 || mockPack.free === true) {
-      try {
-        // In a real scenario, this would fetch a download URL or stream the file.
-        // For this example, we simulate a successful download.
-        const blob = new Blob(["This is a dummy zip file content."], { type: "application/zip" })
-        const url = window.URL.createObjectURL(blob)
-        const a = document.createElement("a")
-        a.href = url
-        a.download = `${mockPack.title.replace(/[^a-zA-Z0-9]/g, "_")}.zip`
-        document.body.appendChild(a)
-        a.click()
-        window.URL.revokeObjectURL(url)
-        document.body.removeChild(a)
-
-        toast({
-          title: "Descarga iniciada",
-          description: "El pack se está descargando",
-        })
-      } catch (error) {
-        console.error("Download error:", error)
-        toast({
-          title: "Error",
-          description: "Error al descargar el pack",
-          variant: "destructive",
-        })
-      } finally {
-        setIsPurchasing(false)
-      }
-    } else {
-      // This would redirect to a checkout page for paid packs.
-      // window.location.href = `/pack/${mockPackId}/checkout`
-      console.log("Redirecting to checkout for paid pack.")
-      setIsPurchasing(false)
-    }
-  }
-
-  // Added handleGenreChange to reset subgenre
   const handleGenreChange = (value: string) => {
     setGenre(value)
-    setSubgenre("") // Reset subgenre when genre changes
+    setSubgenre("")
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -451,6 +404,16 @@ export default function UploadPage() {
       toast({
         title: "Archivo demasiado grande",
         description: `El archivo (${fileSizeMB} MB) excede el límite de ${MAX_FILE_SIZE_MB} MB para tu plan.`,
+        variant: "destructive",
+      })
+      setIsLoading(false)
+      return
+    }
+
+    if (hasDiscount && discountRequiresCode && !discountCode.trim()) {
+      toast({
+        title: "Código de descuento requerido",
+        description: "Ingresá un código de descuento o desactivá la opción de requerir código",
         variant: "destructive",
       })
       setIsLoading(false)
@@ -498,7 +461,6 @@ export default function UploadPage() {
     try {
       if (!user) throw new Error("No user found")
 
-      // Upload files
       console.log("[v0] Starting file uploads...")
       setUploadProgress(20)
       let coverUrl = null
@@ -565,8 +527,12 @@ export default function UploadPage() {
         title,
         genre,
         subgenre,
+        product_type: productType,
+        daw_compatibility: dawCompatibility,
+        plugin,
         price: Number.parseInt(price),
         has_discount: hasDiscount,
+        discountRequiresCode,
       })
 
       const response = await fetch("/api/packs/upload", {
@@ -578,6 +544,9 @@ export default function UploadPage() {
           genre,
           subgenre,
           bpm: bpmRange || null,
+          product_type: productType,
+          daw_compatibility: dawCompatibility,
+          plugin: productType === "preset" ? plugin : null,
           price: Number.parseInt(price),
           cover_image_url: coverUrl,
           demo_audio_url: demoUrl,
@@ -664,7 +633,7 @@ export default function UploadPage() {
     )
   }
 
-  const MUSICAL_KEYS = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+  const visibleFields = PRODUCT_TYPES[productType].fields
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -680,8 +649,8 @@ export default function UploadPage() {
             <Upload className="h-4 w-4" />
             SUBIR PACK
           </div>
-          <h1 className="text-4xl md:text-5xl font-black text-foreground mb-3">Publicá tu Sample Pack</h1>
-          <p className="text-lg text-muted-foreground">Compartí tus sonidos con miles de productores argentinos</p>
+          <h1 className="text-4xl md:text-5xl font-black text-foreground mb-3">Publicá tu Producto</h1>
+          <p className="text-lg text-muted-foreground">Compartí tus sonidos con miles de productores</p>
         </div>
 
         {userPlan === "free" && (
@@ -783,6 +752,28 @@ export default function UploadPage() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
+          <div className="space-y-4">
+            <Label htmlFor="productType" className="text-lg font-bold text-foreground">
+              Tipo de Producto *
+            </Label>
+            <Select value={productType} onValueChange={(value: ProductTypeKey) => setProductType(value)}>
+              <SelectTrigger className="h-12 rounded-xl bg-card border-border text-base">
+                <SelectValue placeholder="Seleccionar tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(PRODUCT_TYPES).map(([key, value]) => (
+                  <SelectItem key={key} value={key}>
+                    <span className="flex items-center gap-2">
+                      <span>{value.icon}</span>
+                      <span>{value.label}</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">{PRODUCT_TYPES[productType].description}</p>
+          </div>
+
           {/* Portada */}
           <div className="space-y-4">
             <Label htmlFor="cover" className="text-lg font-bold flex items-center gap-2 text-foreground">
@@ -860,7 +851,7 @@ export default function UploadPage() {
             {genre && genre !== "Todos" && (
               <div className="space-y-4 md:col-span-2">
                 <Label htmlFor="subgenre" className="text-lg font-bold text-foreground">
-                  Subgénero *
+                  Subgénero
                 </Label>
                 <Select value={subgenre} onValueChange={setSubgenre} disabled={isLoading}>
                   <SelectTrigger className="h-12 rounded-xl bg-card border-border text-base">
@@ -877,20 +868,61 @@ export default function UploadPage() {
               </div>
             )}
 
-            <div className="space-y-4 md:col-span-2">
-              <Label htmlFor="bpmRange" className="text-lg font-bold text-foreground">
-                Rango de BPM
-              </Label>
-              <Select value={bpmRange} onValueChange={setBpmRange} disabled={isLoading}>
-                <SelectTrigger className="h-12 rounded-xl bg-card border-border text-base">
-                  <SelectValue placeholder="Seleccionar rango de BPM" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="50-100">50 - 100 BPM</SelectItem>
-                  <SelectItem value="100-150">100 - 150 BPM</SelectItem>
-                  <SelectItem value="200-250">200 - 250 BPM</SelectItem>
-                </SelectContent>
-              </Select>
+            {visibleFields.includes("bpm") && (
+              <div className="space-y-4 md:col-span-2">
+                <Label htmlFor="bpmRange" className="text-lg font-bold text-foreground">
+                  Rango de BPM {productType === "midi_pack" ? "(Opcional)" : ""}
+                </Label>
+                <Select value={bpmRange} onValueChange={setBpmRange} disabled={isLoading}>
+                  <SelectTrigger className="h-12 rounded-xl bg-card border-border text-base">
+                    <SelectValue placeholder="Seleccionar rango de BPM" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="50-100">50 - 100 BPM</SelectItem>
+                    <SelectItem value="100-150">100 - 150 BPM</SelectItem>
+                    <SelectItem value="200-250">200 - 250 BPM</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {visibleFields.includes("plugin") && (
+              <div className="space-y-4 md:col-span-2">
+                <Label htmlFor="plugin" className="text-lg font-bold text-foreground">
+                  Plugin o Instrumento (Opcional)
+                </Label>
+                <Input
+                  id="plugin"
+                  placeholder="Ej: Serum, Omnisphere, Vital"
+                  value={plugin}
+                  onChange={(e) => setPlugin(e.target.value)}
+                  className="text-base h-12 rounded-xl bg-card border-border"
+                  disabled={isLoading}
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <Label className="text-lg font-bold text-foreground">Compatibilidad con DAW</Label>
+            <p className="text-sm text-muted-foreground">Seleccioná los DAWs compatibles con este pack</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {DAW_OPTIONS.map((daw) => (
+                <div key={daw} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={daw}
+                    checked={dawCompatibility.includes(daw)}
+                    onCheckedChange={() => toggleDawCompatibility(daw)}
+                    disabled={isLoading}
+                  />
+                  <Label
+                    htmlFor={daw}
+                    className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                  >
+                    {daw}
+                  </Label>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -992,67 +1024,10 @@ export default function UploadPage() {
               {fileSizeError && (
                 <div className="flex gap-2 p-3 rounded-xl bg-red-500/10 border border-red-500/20">
                   <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-red-500 font-medium">{fileSizeError}</p>
+                  <p className="text-sm text-red-500">{fileSizeError}</p>
                 </div>
               )}
             </div>
-          </div>
-
-          <div className="space-y-4">
-            <Label htmlFor="tags" className="text-lg font-bold flex items-center gap-2 text-foreground">
-              <Tag className="h-5 w-5 text-primary" />
-              Tags (hasta 5, máximo 12 caracteres)
-            </Label>
-            <p className="text-sm text-muted-foreground">
-              Agregá palabras clave para que los usuarios encuentren tu pack más fácilmente
-            </p>
-            <div className="flex gap-2">
-              <div className="flex-1 relative">
-                <Input
-                  id="tags"
-                  placeholder="Ej: 808, melodías, oscuro..."
-                  value={tagInput}
-                  onChange={handleTagInputChange}
-                  onKeyDown={handleTagKeyDown}
-                  className="text-base h-12 rounded-xl bg-card border-border pr-16"
-                  disabled={isLoading || tags.length >= 5}
-                  maxLength={12}
-                />
-                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-                  {tagInput.length}/12
-                </span>
-              </div>
-              <Button
-                type="button"
-                onClick={addTag}
-                disabled={isLoading || tags.length >= 5 || !tagInput.trim()}
-                className="h-12 px-6 rounded-xl"
-              >
-                Agregar
-              </Button>
-            </div>
-            {tags.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {tags.map((tag, index) => (
-                  <Badge
-                    key={index}
-                    variant="secondary"
-                    className="px-4 py-2 rounded-full text-sm flex items-center gap-2"
-                  >
-                    {tag}
-                    <button
-                      type="button"
-                      onClick={() => removeTag(tag)}
-                      className="hover:text-destructive transition-colors"
-                      disabled={isLoading}
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            )}
-            <p className="text-xs text-muted-foreground">{tags.length}/5 tags agregados</p>
           </div>
 
           {/* Precio */}
@@ -1061,7 +1036,7 @@ export default function UploadPage() {
               <DollarSign className="h-5 w-5 text-primary" />
               Precio (ARS) *
             </Label>
-            <Select value={price} onValueChange={setPrice} disabled={isLoading} required>
+            <Select value={price} onValueChange={setPrice} disabled={isLoading}>
               <SelectTrigger className="text-base h-14 rounded-xl bg-card border-border text-lg font-semibold">
                 <SelectValue placeholder="Seleccioná un precio" />
               </SelectTrigger>
@@ -1073,237 +1048,256 @@ export default function UploadPage() {
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-sm text-muted-foreground flex items-center gap-2">
-              <Info className="h-4 w-4" />
-              Precio máximo permitido: ${MAX_PRICE.toLocaleString()} ARS
-            </p>
+            <p className="text-sm text-muted-foreground">Precio máximo permitido: ${MAX_PRICE.toLocaleString()} ARS</p>
+          </div>
 
-            <div className="bg-card rounded-xl p-6 space-y-6 border-2 border-border mt-6">
-              <div className="flex items-center justify-between">
+          {priceNumber > 0 && (
+            <Card className="p-8 rounded-3xl border-border bg-accent/10">
+              <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
-                  <Tag className="h-5 w-5 text-primary" />
+                  <Percent className="h-6 w-6 text-primary" />
                   <div>
-                    <Label htmlFor="hasDiscount" className="text-base font-bold text-foreground cursor-pointer">
-                      Código de Descuento
-                    </Label>
-                    <p className="text-sm text-muted-foreground">Ofrecé un descuento especial</p>
+                    <h3 className="text-xl font-black text-foreground">Descuentos</h3>
+                    <p className="text-sm text-muted-foreground">Creá códigos para tus compradores</p>
                   </div>
                 </div>
-                <Switch id="hasDiscount" checked={hasDiscount} onCheckedChange={setHasDiscount} disabled={isLoading} />
+                <Switch checked={hasDiscount} onCheckedChange={setHasDiscount} disabled={isLoading} />
               </div>
 
               {hasDiscount && (
-                <div className="space-y-4 pt-2 border-t border-border">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="discountCode"
-                        className="text-sm font-semibold text-foreground flex items-center gap-2"
-                      >
-                        Código
-                      </Label>
-                      <Input
-                        id="discountCode"
-                        placeholder="ARSOUND25"
-                        value={discountCode}
-                        onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
-                        className="h-11 rounded-lg bg-background"
-                        disabled={isLoading || !discountRequiresCode}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        {discountRequiresCode
-                          ? "Dejá vacío para sin código"
-                          : "Este descuento se aplica sin código a todos"}
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label
-                        htmlFor="discountPercent"
-                        className="text-sm font-semibold text-foreground flex items-center gap-2"
-                      >
-                        <Percent className="h-4 w-4" />
-                        Porcentaje (máx. {MAX_DISCOUNT}%)
-                      </Label>
-                      <Select value={discountPercent} onValueChange={setDiscountPercent} disabled={isLoading}>
-                        <SelectTrigger className="h-11 rounded-lg bg-background">
-                          <SelectValue placeholder="Seleccioná descuento" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {DISCOUNT_OPTIONS.filter((opt) => opt <= MAX_DISCOUNT).map((discountOption) => (
-                            <SelectItem key={discountOption} value={discountOption.toString()}>
-                              {discountOption}%
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="discountType" className="text-sm font-semibold text-foreground">
-                        Aplicar a
-                      </Label>
-                      <Select value={discountType} onValueChange={setDiscountType} disabled={isLoading}>
-                        <SelectTrigger className="h-11 rounded-lg bg-background">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todos los usuarios</SelectItem>
-                          <SelectItem value="first">Primera compra</SelectItem>
-                          <SelectItem value="followers">Mis seguidores</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2 md:col-span-2">
-                      <Label htmlFor="requireCode" className="text-sm font-semibold text-foreground">
-                        Requisito de Código
-                      </Label>
-                      <div className="flex items-center gap-3 p-3 bg-background rounded-lg border border-border">
-                        <input
-                          type="checkbox"
-                          id="requireCode"
-                          checked={discountRequiresCode}
-                          onChange={(e) => {
-                            setDiscountRequiresCode(e.target.checked)
-                            if (!e.target.checked) setDiscountCode("")
-                          }}
-                          disabled={isLoading}
-                          className="h-5 w-5 rounded border-border text-primary"
-                        />
-                        <label htmlFor="requireCode" className="text-sm text-muted-foreground cursor-pointer flex-1">
-                          {discountRequiresCode ? "Se aplica solo con código" : "Se aplica automáticamente a todos"}
-                        </label>
-                      </div>
-                    </div>
+                <div className="space-y-6 pt-6 border-t border-border">
+                  <div className="space-y-2">
+                    <Label htmlFor="discountPercent" className="text-base font-bold text-foreground">
+                      Porcentaje de Descuento *
+                    </Label>
+                    <Select value={discountPercent} onValueChange={setDiscountPercent} disabled={isLoading}>
+                      <SelectTrigger className="h-12 rounded-xl bg-background border-border text-base">
+                        <SelectValue placeholder="Seleccionar descuento" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DISCOUNT_OPTIONS.map((discountOption) => (
+                          <SelectItem key={discountOption} value={discountOption.toString()}>
+                            {discountOption}%
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Tu plan permite hasta {MAX_DISCOUNT}% de descuento</p>
                   </div>
 
-                  {discountPercentNumber > 0 && (
-                    <div className="bg-primary/10 rounded-lg p-4 border border-primary/20">
-                      <p className="text-sm font-semibold text-primary mb-1">Precio con descuento:</p>
-                      <p className="text-2xl font-black text-primary">${priceAfterDiscount.toFixed(0)} ARS</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Ahorro de ${discountAmount.toFixed(0)} ARS ({discountPercentNumber}% OFF)
-                      </p>
-                      <p className="text-xs text-primary mt-2">
-                        {discountRequiresCode
-                          ? discountCode
-                            ? `Código: ${discountCode}`
-                            : "Código: AUTOMÁTICO"
-                          : "Sin código - Se aplica a todos"}
+                  <div className="flex items-center gap-3 p-4 bg-background/50 rounded-xl border border-border">
+                    <Checkbox
+                      id="requireCode"
+                      checked={discountRequiresCode}
+                      onCheckedChange={(checked) => {
+                        setDiscountRequiresCode(checked as boolean)
+                        if (!checked) setDiscountCode("")
+                      }}
+                      disabled={isLoading}
+                    />
+                    <Label htmlFor="requireCode" className="text-sm font-medium cursor-pointer flex-1">
+                      Requiere código de descuento (recomendado)
+                    </Label>
+                  </div>
+
+                  {discountRequiresCode && (
+                    <>
+                      <div className="space-y-2">
+                        <Label htmlFor="discountCode" className="text-base font-bold text-foreground">
+                          Código de Descuento *
+                        </Label>
+                        <Input
+                          id="discountCode"
+                          placeholder="ARSOUND25"
+                          value={discountCode}
+                          onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                          className="h-12 rounded-xl bg-background text-base font-mono"
+                          disabled={isLoading}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          El código debe ingresarse manualmente en el checkout
+                        </p>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="discountType" className="text-base font-bold text-foreground">
+                          Aplicar a
+                        </Label>
+                        <Select value={discountType} onValueChange={setDiscountType} disabled={isLoading}>
+                          <SelectTrigger className="h-12 rounded-xl bg-background border-border text-base">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todos los usuarios</SelectItem>
+                            <SelectItem value="first">Primera compra únicamente</SelectItem>
+                            <SelectItem value="followers">Mis seguidores únicamente</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </>
+                  )}
+
+                  {!discountRequiresCode && (
+                    <div className="p-4 rounded-xl bg-orange-500/10 border border-orange-500/20">
+                      <p className="text-sm text-orange-600 font-semibold">
+                        Atención: El descuento se mostrará públicamente y se aplicará automáticamente a todos los
+                        compradores.
                       </p>
                     </div>
                   )}
                 </div>
               )}
-            </div>
+            </Card>
+          )}
 
-            {priceNumber > 0 && (
-              <div className="bg-card rounded-xl p-6 space-y-3 border-2 border-border">
-                <div className="flex items-center gap-2 mb-2">
-                  <Info className="h-5 w-5 text-primary" />
-                  <h3 className="font-bold text-foreground">Resumen de Ganancia</h3>
-                </div>
-                <div className="space-y-3 text-base">
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Precio del pack:</span>
-                    <span className="font-bold text-foreground text-lg">
-                      ${new Intl.NumberFormat("es-AR").format(priceNumber)} ARS
-                    </span>
-                  </div>
-                  {hasDiscount && discountPercentNumber > 0 && (
-                    <>
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Descuento aplicado ({discountPercentNumber}%):</span>
-                        <span className="font-bold text-orange-500 text-lg">
-                          - ${new Intl.NumberFormat("es-AR").format(discountAmount)} ARS
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Precio final para el comprador:</span>
-                        <span className="font-bold text-primary text-lg">
-                          ${new Intl.NumberFormat("es-AR").format(priceAfterDiscount)} ARS
-                        </span>
-                      </div>
-                    </>
-                  )}
-                  <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">
-                      Comisión ARSOUND ({(commission * 100).toFixed(0)}%
-                      {hasDiscount && discountPercentNumber > 0 ? " del precio final" : ""}):
-                    </span>
-                    <span className="font-bold text-destructive text-lg">
-                      - ${new Intl.NumberFormat("es-AR").format(commissionAmount)} ARS
-                    </span>
-                  </div>
-                  <div className="pt-3 border-t-2 border-border flex justify-between items-center">
-                    <span className="font-bold text-foreground text-lg">Vas a recibir:</span>
-                    <span className="font-black text-primary text-3xl">
-                      ${new Intl.NumberFormat("es-AR").format(youWillReceive)}
-                    </span>
-                  </div>
-                </div>
+          {/* Tags */}
+          <div className="space-y-4">
+            <Label htmlFor="tags" className="text-lg font-bold flex items-center gap-2 text-foreground">
+              <Tag className="h-5 w-5 text-primary" />
+              Tags (máx. 5)
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                id="tags"
+                placeholder="Ingresá un tag (máx. 12 caracteres)"
+                value={tagInput}
+                onChange={handleTagInputChange}
+                onKeyDown={handleTagKeyDown}
+                className="flex-1 h-12 rounded-xl bg-card border-border text-base"
+                disabled={isLoading || tags.length >= 5}
+              />
+              <Button
+                type="button"
+                onClick={addTag}
+                disabled={!tagInput.trim() || tags.length >= 5 || isLoading}
+                className="rounded-xl h-12 px-6"
+              >
+                Agregar
+              </Button>
+            </div>
+            {tags.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {tags.map((tag, index) => (
+                  <Badge key={index} variant="outline" className="px-3 py-2 text-sm flex items-center gap-2">
+                    {tag}
+                    <X className="h-3 w-3 cursor-pointer hover:text-destructive" onClick={() => removeTag(tag)} />
+                  </Badge>
+                ))}
               </div>
             )}
           </div>
 
-          {/* Ownership Confirmation */}
-          <div className="flex items-start gap-3 p-4 rounded-xl bg-card border-2 border-border">
-            <input
-              type="checkbox"
-              id="ownership"
-              checked={ownershipConfirmed}
-              onChange={(e) => setOwnershipConfirmed(e.target.checked)}
-              required
-              className="mt-1 h-5 w-5 rounded border-border text-primary focus:ring-primary"
-            />
-            <label htmlFor="ownership" className="text-sm text-foreground cursor-pointer">
-              <span className="font-bold">Confirmo que todos los sonidos son propios.</span>
-              <p className="text-xs text-muted-foreground mt-1">
-                Al subir este pack, declaro que tengo todos los derechos sobre el contenido y que no infringe derechos
-                de autor de terceros.
-              </p>
-            </label>
-          </div>
+          {/* Price Summary */}
+          {priceNumber > 0 && (
+            <Card className="p-8 rounded-3xl border-border bg-accent/50">
+              <h3 className="font-bold text-foreground mb-4 text-xl">Resumen de Ganancia</h3>
+              <div className="space-y-3 text-base">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground">Precio del pack:</span>
+                  <span className="font-bold text-foreground text-lg">
+                    ${new Intl.NumberFormat("es-AR").format(priceNumber)} ARS
+                  </span>
+                </div>
+                {hasDiscount && !discountRequiresCode && discountPercentNumber > 0 && (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Descuento público ({discountPercentNumber}%):</span>
+                      <span className="font-bold text-orange-500 text-lg">
+                        - ${new Intl.NumberFormat("es-AR").format(discountAmount)} ARS
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground">Precio para el comprador:</span>
+                      <span className="font-bold text-primary text-lg">
+                        ${new Intl.NumberFormat("es-AR").format(priceAfterDiscount)} ARS
+                      </span>
+                    </div>
+                  </>
+                )}
+                {hasDiscount && discountRequiresCode && discountPercentNumber > 0 && (
+                  <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20">
+                    <p className="text-sm text-blue-600 font-semibold">
+                      Con código: {discountPercentNumber}% de descuento ($
+                      {new Intl.NumberFormat("es-AR").format(discountAmount)} ARS)
+                    </p>
+                  </div>
+                )}
+                <div className="border-t border-border pt-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">
+                      Comisión plataforma ({(commission * 100).toFixed(0)}%):
+                    </span>
+                    <span className="font-bold text-red-500 text-lg">
+                      - ${new Intl.NumberFormat("es-AR").format(commissionAmount)} ARS
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center mt-3 pt-3 border-t border-border">
+                    <span className="font-bold text-foreground text-lg">Vas a recibir:</span>
+                    <span className="font-black text-green-600 text-2xl">
+                      ${new Intl.NumberFormat("es-AR").format(youWillReceive)} ARS
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
 
-          <LicenseCheckbox
-            checked={licenseAccepted}
-            onCheckedChange={setLicenseAccepted}
-            text={UPLOAD_CHECKBOX_TEXT}
-            variant="upload"
-          />
+          {/* License Agreements */}
+          <Card className="p-8 rounded-3xl border-2 border-border bg-accent/30">
+            <h3 className="font-bold text-foreground mb-6 text-xl">Acuerdos y Licencia</h3>
+            <div className="space-y-6">
+              <div className="flex items-start gap-4">
+                <Checkbox
+                  id="ownership"
+                  checked={ownershipConfirmed}
+                  onCheckedChange={(checked) => setOwnershipConfirmed(checked as boolean)}
+                  disabled={isLoading}
+                  className="mt-1"
+                />
+                <Label htmlFor="ownership" className="text-base text-foreground cursor-pointer leading-relaxed">
+                  Confirmo que soy el creador original de este contenido y tengo todos los derechos para venderlo *
+                </Label>
+              </div>
 
-          {/* Botones */}
-          <div className="flex gap-4 pt-6">
-            <Button
-              type="submit"
-              size="lg"
-              className="flex-1 h-14 text-base font-bold rounded-xl bg-primary hover:bg-primary/90"
-              disabled={isLoading || !canUpload || (priceNumber > 0 && !mpConnected)}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                  Subiendo...
-                </>
-              ) : (
-                <>
-                  <Upload className="h-5 w-5 mr-2" />
-                  Publicar Pack
-                </>
-              )}
-            </Button>
-            <Button
-              type="button"
-              size="lg"
-              variant="outline"
-              className="h-14 text-base font-semibold rounded-xl bg-transparent"
-              onClick={() => router.push("/")}
-              disabled={isLoading}
-            >
-              Cancelar
-            </Button>
-          </div>
+              <div className="flex items-start gap-4">
+                <Checkbox
+                  id="license"
+                  checked={licenseAccepted}
+                  onCheckedChange={(checked) => setLicenseAccepted(checked as boolean)}
+                  disabled={isLoading}
+                  className="mt-1"
+                />
+                <Label htmlFor="license" className="text-base text-foreground cursor-pointer leading-relaxed">
+                  <LicenseCheckbox />
+                </Label>
+              </div>
+            </div>
+          </Card>
+
+          {uploadError && (
+            <div className="flex gap-3 p-4 rounded-xl bg-red-500/10 border border-red-500/20">
+              <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-red-500 font-semibold">{uploadError}</p>
+            </div>
+          )}
+
+          <Button
+            type="submit"
+            disabled={isLoading || !canUpload}
+            className="w-full h-16 text-lg font-bold rounded-full gap-3"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="h-6 w-6 animate-spin" />
+                Subiendo...
+              </>
+            ) : (
+              <>
+                <Upload className="h-6 w-6" />
+                Publicar Pack
+              </>
+            )}
+          </Button>
         </form>
       </main>
 
