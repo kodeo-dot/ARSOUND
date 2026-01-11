@@ -405,94 +405,96 @@ export default function EditPackPage() {
             </div>
 
             {/* Discount */}
-            <div className="space-y-4">
-              <Label htmlFor="discount" className="text-lg font-bold flex items-center gap-2 text-foreground">
-                <Percent className="h-5 w-5 text-primary" />
-                Descuento (%)
-              </Label>
-              <Select value={discountPercent} onValueChange={setDiscountPercent} disabled={saving}>
-                <SelectTrigger className="text-base h-14 rounded-xl bg-card border-border text-lg font-semibold">
-                  <SelectValue placeholder="Seleccioná descuento" />
-                </SelectTrigger>
-                <SelectContent>
-                  {DISCOUNT_OPTIONS.filter((opt) => opt <= MAX_DISCOUNT).map((discountOption) => (
-                    <SelectItem key={discountOption} value={discountOption.toString()}>
-                      {discountOption}%
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-sm text-muted-foreground">
-                Descuento máximo para tu plan ({userPlan}): {MAX_DISCOUNT}%. Dejá en 0 para no aplicar descuento.
-              </p>
-
-              {Number.parseFloat(discountPercent) > 0 && (
-                <Card className="p-6 rounded-xl border border-border bg-accent/30 mt-6">
-                  <div className="space-y-4">
-                    <h3 className="font-bold text-foreground text-sm">Configurar Descuento</h3>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="discountCode" className="text-sm font-semibold text-foreground">
-                        Código de Descuento
-                      </Label>
-                      <Input
-                        id="discountCode"
-                        placeholder="ARSOUND25"
-                        value={discountCode}
-                        onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
-                        className="h-11 rounded-lg bg-background"
-                        disabled={saving || !discountRequiresCode}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        {discountRequiresCode ? "Dejá vacío para auto-generar" : "Este descuento se aplica sin código"}
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="discountType" className="text-sm font-semibold text-foreground">
-                        Aplicar a
-                      </Label>
-                      <select
-                        id="discountType"
-                        value={discountType}
-                        onChange={(e) => setDiscountType(e.target.value)}
-                        disabled={saving}
-                        className="w-full h-11 rounded-lg bg-background border border-border px-3 text-sm"
-                      >
-                        <option value="all">Todos los usuarios</option>
-                        <option value="first">Primera compra</option>
-                        <option value="followers">Mis seguidores</option>
-                      </select>
-                    </div>
-
-                    <div className="flex items-center gap-3 p-3 bg-background rounded-lg border border-border">
-                      <input
-                        type="checkbox"
-                        id="requireCode"
-                        checked={discountRequiresCode}
-                        onChange={(e) => {
-                          setDiscountRequiresCode(e.target.checked)
-                          if (!e.target.checked) setDiscountCode("")
-                        }}
-                        disabled={saving}
-                        className="h-5 w-5 rounded border-border text-primary"
-                      />
-                      <label htmlFor="requireCode" className="text-sm text-muted-foreground cursor-pointer flex-1">
-                        {discountRequiresCode ? "Se aplica solo con código" : "Se aplica automáticamente a todos"}
-                      </label>
-                    </div>
-                  </div>
-                </Card>
-              )}
-            </div>
-
-            {/* Price Summary */}
             {priceNumber > 0 && (
-              <Card className="p-6 rounded-3xl border-border bg-accent/50">
+              <div className="space-y-4">
+                <Label htmlFor="discount" className="text-lg font-bold flex items-center gap-2 text-foreground">
+                  <Percent className="h-5 w-5 text-primary" />
+                  Descuento (%)
+                </Label>
+                <Select value={discountPercent} onValueChange={setDiscountPercent} disabled={saving}>
+                  <SelectTrigger className="text-base h-14 rounded-xl bg-card border-border text-lg font-semibold">
+                    <SelectValue placeholder="Seleccioná descuento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DISCOUNT_OPTIONS.filter((opt) => opt <= MAX_DISCOUNT).map((discountOption) => (
+                      <SelectItem key={discountOption} value={discountOption.toString()}>
+                        {discountOption}%
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  Descuento máximo para tu plan ({userPlan}): {MAX_DISCOUNT}%. Dejá en 0 para no aplicar descuento.
+                </p>
+
+                {Number.parseFloat(discountPercent) > 0 && (
+                  <Card className="p-6 rounded-xl border-2 border-border bg-card mt-6">
+                    <div className="space-y-5">
+                      <h3 className="font-bold text-foreground text-base">Configuración de Descuento</h3>
+
+                      <div className="space-y-3">
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="checkbox"
+                            id="requireCode"
+                            checked={discountRequiresCode}
+                            onChange={(e) => {
+                              setDiscountRequiresCode(e.target.checked)
+                              if (!e.target.checked) setDiscountCode("")
+                            }}
+                            disabled={saving}
+                            className="mt-1 h-5 w-5 rounded border-border"
+                          />
+                          <Label htmlFor="requireCode" className="text-sm font-medium text-foreground cursor-pointer">
+                            Requerir código de descuento
+                          </Label>
+                        </div>
+                        <p className="text-xs text-muted-foreground pl-8">
+                          Si está activado, el descuento solo se aplicará con código. Si no, será público para todos.
+                        </p>
+                      </div>
+
+                      {discountRequiresCode && (
+                        <div className="space-y-3">
+                          <Label htmlFor="discountCode" className="text-sm font-semibold text-foreground">
+                            Código de descuento *
+                          </Label>
+                          <Input
+                            id="discountCode"
+                            placeholder="Ej: VERANO2024"
+                            value={discountCode}
+                            onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                            className="h-12 rounded-xl bg-background border-border uppercase font-mono"
+                            disabled={saving}
+                          />
+                        </div>
+                      )}
+
+                      <div className="space-y-3">
+                        <Label className="text-sm font-semibold text-foreground">Tipo de descuento</Label>
+                        <Select value={discountType} onValueChange={setDiscountType} disabled={saving}>
+                          <SelectTrigger className="h-12 rounded-xl bg-background border-border">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Para todos</SelectItem>
+                            <SelectItem value="first">Primera compra</SelectItem>
+                            <SelectItem value="followers">Mis seguidores</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </Card>
+                )}
+              </div>
+            )}
+
+            {priceNumber > 0 && (
+              <Card className="p-6 rounded-3xl border-border bg-card">
                 <h3 className="font-bold text-foreground mb-4 text-lg">Resumen de Ganancia</h3>
                 <div className="space-y-3 text-base">
                   <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Precio del pack:</span>
+                    <span className="text-foreground">Precio del pack:</span>
                     <span className="font-bold text-foreground text-lg">
                       ${new Intl.NumberFormat("es-AR").format(priceNumber)} ARS
                     </span>
@@ -500,13 +502,13 @@ export default function EditPackPage() {
                   {discountPercentNumber > 0 && (
                     <>
                       <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Descuento aplicado ({discountPercentNumber}%):</span>
+                        <span className="text-foreground">Descuento aplicado ({discountPercentNumber}%):</span>
                         <span className="font-bold text-orange-500 text-lg">
                           - ${new Intl.NumberFormat("es-AR").format(discountAmount)} ARS
                         </span>
                       </div>
                       <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Precio final para el comprador:</span>
+                        <span className="text-foreground">Precio final para el comprador:</span>
                         <span className="font-bold text-primary text-lg">
                           ${new Intl.NumberFormat("es-AR").format(priceAfterDiscount)} ARS
                         </span>
@@ -514,14 +516,14 @@ export default function EditPackPage() {
                     </>
                   )}
                   <div className="flex justify-between items-center">
-                    <span className="text-muted-foreground">Comisión ARSOUND ({(commission * 100).toFixed(0)}%):</span>
+                    <span className="text-foreground">Comisión ARSOUND ({(commission * 100).toFixed(0)}%):</span>
                     <span className="font-bold text-destructive text-lg">
                       - ${new Intl.NumberFormat("es-AR").format(commissionAmount)} ARS
                     </span>
                   </div>
                   <div className="pt-3 border-t-2 border-border flex justify-between items-center">
                     <span className="font-bold text-foreground text-lg">Vas a recibir:</span>
-                    <span className="font-black text-primary text-3xl">
+                    <span className="font-black text-green-600 dark:text-green-400 text-3xl">
                       ${new Intl.NumberFormat("es-AR").format(youWillReceive)}
                     </span>
                   </div>

@@ -134,7 +134,7 @@ export function SearchBar() {
                         key={pack.id}
                         href={`/pack/${pack.id}`}
                         onClick={() => setShowResults(false)}
-                        className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/10 transition-colors"
+                        className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors"
                       >
                         <img
                           src={pack.cover_image_url || "/placeholder.svg?height=48&width=48"}
@@ -179,7 +179,7 @@ export function SearchBar() {
                         key={user.id}
                         href={`/profile/${user.username}`}
                         onClick={() => setShowResults(false)}
-                        className="flex items-center gap-3 p-3 rounded-xl hover:bg-primary/10 transition-colors"
+                        className="flex items-center gap-3 p-3 rounded-xl hover:bg-muted/50 transition-colors"
                       >
                         {user.avatar_url ? (
                           <img

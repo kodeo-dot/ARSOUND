@@ -29,6 +29,7 @@ interface Pack {
   demo_audio_url: string | null
   has_discount?: boolean
   discount_percent?: number
+  discount_requires_code?: boolean
   producer_plan?: string | null
   likes_count?: number
   profiles?: {
@@ -115,8 +116,10 @@ export function PackCard({ pack }: PackCardProps) {
   }
 
   const isFreepack = pack.price === 0
-  const shouldShowDiscount = false
-  const finalPrice = pack.price
+  const shouldShowDiscount =
+    pack.has_discount && pack.discount_percent && pack.discount_percent > 0 && !pack.discount_requires_code
+  const discountAmount = shouldShowDiscount ? (pack.price * (pack.discount_percent || 0)) / 100 : 0
+  const finalPrice = shouldShowDiscount ? pack.price - discountAmount : pack.price
 
   const planBadge = pack.producer_plan ? getPlanBadge(pack.producer_plan as any) : null
 
@@ -154,9 +157,17 @@ export function PackCard({ pack }: PackCardProps) {
             )}
           </Button>
 
+          {shouldShowDiscount && (
+            <Badge className="absolute top-4 left-4 bg-orange-500 text-white font-black px-4 py-2 rounded-full text-sm shadow-lg">
+              {pack.discount_percent}% OFF
+            </Badge>
+          )}
+
           {/* Genre Badge */}
           {pack.genre && (
-            <Badge className="absolute top-4 left-4 bg-primary/90 backdrop-blur-sm text-primary-foreground font-bold px-3 py-1 rounded-full text-xs">
+            <Badge
+              className={`absolute ${shouldShowDiscount ? "top-16" : "top-4"} left-4 bg-primary/90 backdrop-blur-sm text-primary-foreground font-bold px-3 py-1 rounded-full text-xs`}
+            >
               {formatGenreDisplay(pack.genre, pack.subgenre)}
             </Badge>
           )}
@@ -198,10 +209,14 @@ export function PackCard({ pack }: PackCardProps) {
           )}
         </div>
 
-        {/* Price section */}
         <div className="flex items-center justify-between pt-2">
           {isFreepack ? (
             <div className="text-3xl font-black text-green-600">GRATIS</div>
+          ) : shouldShowDiscount ? (
+            <div>
+              <div className="text-lg font-bold text-muted-foreground line-through">${formatPrice(pack.price)}</div>
+              <div className="text-3xl font-black text-foreground">${formatPrice(finalPrice)}</div>
+            </div>
           ) : (
             <div className="text-3xl font-black text-foreground">${formatPrice(pack.price)}</div>
           )}
