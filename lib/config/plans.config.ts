@@ -35,7 +35,7 @@ export const PLAN_CONFIG: Record<PlanType, PlanFeatures> = {
   de_0_a_hit: {
     maxPacksPerMonth: 10,
     maxTotalPacks: null,
-    maxPrice: 100,
+    maxPrice: 65000,
     maxFileSize: 250,
     commission: 0.1,
     canUseDiscountCodes: true,
@@ -65,8 +65,8 @@ export const PLAN_CONFIG: Record<PlanType, PlanFeatures> = {
 }
 
 export const PLAN_PRICES: Record<string, number> = {
-  de_0_a_hit: 5000,
-  de_0_a_hit_monthly: 5000,
+  de_0_a_hit: 100,
+  de_0_a_hit_monthly: 100,
   studio_plus: 15000,
   studio_plus_monthly: 15000,
 }
