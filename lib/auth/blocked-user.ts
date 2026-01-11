@@ -29,6 +29,10 @@ export async function checkIfBlocked(userId: string): Promise<BlockedUserCheck> 
 }
 
 export function isAllowedPathForBlockedUser(pathname: string): boolean {
+  // Only allow these paths for blocked users:
+  // - /blocked: The blocked user page
+  // - /api/appeal: API endpoint to submit appeals
+  // - /api/auth: Authentication endpoints (specifically for logout)
   const allowedPaths = ["/blocked", "/api/appeal", "/api/auth"]
 
   return allowedPaths.some((path) => pathname.startsWith(path))

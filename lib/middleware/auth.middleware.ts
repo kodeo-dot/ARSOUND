@@ -43,10 +43,15 @@ export async function updateSession(request: NextRequest) {
     const { data: profile } = await supabase.from("profiles").select("is_blocked").eq("id", user.id).single()
 
     if (profile?.is_blocked) {
-      const isBlockedPage = request.nextUrl.pathname === "/blocked"
-      const isAppealAPI = request.nextUrl.pathname === "/api/appeal"
+      const pathname = request.nextUrl.pathname
 
-      if (!isBlockedPage && !isAppealAPI) {
+      // Define strictly allowed paths for blocked users
+      const allowedPaths = ["/blocked", "/api/appeal", "/api/auth"]
+
+      const isAllowedPath = allowedPaths.some((path) => pathname.startsWith(path))
+
+      // Block all other paths - redirect to /blocked
+      if (!isAllowedPath) {
         const url = request.nextUrl.clone()
         url.pathname = "/blocked"
         return NextResponse.redirect(url)
