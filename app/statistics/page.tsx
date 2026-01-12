@@ -50,6 +50,7 @@ export default function DashboardPage() {
   async function loadDashboardData() {
     try {
       setLoading(true)
+      console.log("[v0] Loading dashboard data...")
 
       const {
         data: { user },
@@ -60,72 +61,117 @@ export default function DashboardPage() {
         return
       }
 
-      // Fetch profile
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .select("id, username, total_sales, plan")
         .eq("id", user.id)
         .single()
 
-      if (profileError || !profileData) {
-        console.error("Error loading profile:", profileError)
+      if (profileError) {
+        console.error("[v0] Error loading profile:", profileError)
+        setLoading(false)
+        return
+      }
+
+      if (!profileData) {
+        console.error("[v0] No profile data found")
+        setLoading(false)
         return
       }
 
       setProfile(profileData as Profile)
+      console.log("[v0] Profile loaded:", profileData)
 
-      // Fetch user's packs
       const { data: userPacks, error: packsError } = await supabase
         .from("packs")
         .select("id, title, cover_url, price, likes_count")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
 
-      if (packsError || !userPacks) {
-        console.error("Error loading packs:", packsError)
+      if (packsError) {
+        console.error("[v0] Error loading packs:", packsError)
+        setLoading(false)
         return
       }
 
-      // For each pack, get individual metrics
+      if (!userPacks || userPacks.length === 0) {
+        console.log("[v0] No packs found for user")
+        setPacks([])
+        setLoading(false)
+        return
+      }
+
+      console.log("[v0] Packs loaded:", userPacks.length)
+
       const packsWithMetrics: PackWithMetrics[] = await Promise.all(
         userPacks.map(async (pack) => {
-          // Get unique plays for this pack
-          const { data: plays } = await supabase.from("pack_plays").select("user_id").eq("pack_id", pack.id)
+          try {
+            // Get unique plays for this pack
+            const { data: plays, error: playsError } = await supabase
+              .from("pack_plays")
+              .select("user_id")
+              .eq("pack_id", pack.id)
 
-          const uniquePlayUsers = new Set(plays?.filter((p) => p.user_id).map((p) => p.user_id) || [])
-          const unique_plays = uniquePlayUsers.size
+            if (playsError) {
+              console.error(`[v0] Error loading plays for pack ${pack.id}:`, playsError)
+            }
 
-          // Get total revenue for this pack
-          const { data: purchases } = await supabase
-            .from("purchases")
-            .select("price")
-            .eq("pack_id", pack.id)
-            .eq("status", "completed")
+            const uniquePlayUsers = new Set(plays?.filter((p) => p.user_id).map((p) => p.user_id) || [])
+            const unique_plays = uniquePlayUsers.size
 
-          const total_revenue = purchases?.reduce((sum, p) => sum + (p.price || 0), 0) || 0
+            // Get total revenue for this pack
+            const { data: purchases, error: purchasesError } = await supabase
+              .from("purchases")
+              .select("price")
+              .eq("pack_id", pack.id)
+              .eq("status", "completed")
 
-          // Get comments count for this pack
-          const { count: comments_count } = await supabase
-            .from("pack_comments")
-            .select("*", { count: "exact", head: true })
-            .eq("pack_id", pack.id)
+            if (purchasesError) {
+              console.error(`[v0] Error loading purchases for pack ${pack.id}:`, purchasesError)
+            }
 
-          return {
-            id: pack.id,
-            title: pack.title,
-            cover_url: pack.cover_url,
-            price: pack.price,
-            unique_plays,
-            total_revenue,
-            comments_count: comments_count || 0,
-            likes_count: pack.likes_count || 0,
+            const total_revenue = purchases?.reduce((sum, p) => sum + (p.price || 0), 0) || 0
+
+            // Get comments count for this pack
+            const { count: comments_count, error: commentsError } = await supabase
+              .from("pack_comments")
+              .select("*", { count: "exact", head: true })
+              .eq("pack_id", pack.id)
+
+            if (commentsError) {
+              console.error(`[v0] Error loading comments for pack ${pack.id}:`, commentsError)
+            }
+
+            return {
+              id: pack.id,
+              title: pack.title,
+              cover_url: pack.cover_url,
+              price: pack.price,
+              unique_plays,
+              total_revenue,
+              comments_count: comments_count || 0,
+              likes_count: pack.likes_count || 0,
+            }
+          } catch (error) {
+            console.error(`[v0] Error processing pack ${pack.id}:`, error)
+            // Return pack with zero metrics if there's an error
+            return {
+              id: pack.id,
+              title: pack.title,
+              cover_url: pack.cover_url,
+              price: pack.price,
+              unique_plays: 0,
+              total_revenue: 0,
+              comments_count: 0,
+              likes_count: pack.likes_count || 0,
+            }
           }
         }),
       )
 
+      console.log("[v0] Packs with metrics:", packsWithMetrics)
       setPacks(packsWithMetrics)
 
-      // Calculate total stats
       const totalPacks = packsWithMetrics.length
       const totalRevenue = packsWithMetrics.reduce((sum, pack) => sum + pack.total_revenue, 0)
       const totalPlays = packsWithMetrics.reduce((sum, pack) => sum + pack.unique_plays, 0)
@@ -137,8 +183,10 @@ export default function DashboardPage() {
         totalPlays,
         totalLikes,
       })
+
+      console.log("[v0] Total stats:", { totalPacks, totalRevenue, totalPlays, totalLikes })
     } catch (error) {
-      console.error("Error loading dashboard:", error)
+      console.error("[v0] Error loading dashboard:", error)
     } finally {
       setLoading(false)
     }
