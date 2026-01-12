@@ -33,6 +33,7 @@ export default function AdminAppealsPage() {
 
   const fetchAppeals = async () => {
     try {
+      console.log("[v0] Fetching appeals...")
       const { data, error } = await supabase
         .from("appeals")
         .select(
@@ -47,10 +48,12 @@ export default function AdminAppealsPage() {
         )
         .order("created_at", { ascending: false })
 
+      console.log("[v0] Appeals fetch result:", { data, error })
+
       if (error) throw error
       setAppeals(data || [])
     } catch (error) {
-      console.error("Error fetching appeals:", error)
+      console.error("[v0] Error fetching appeals:", error)
       toast({
         title: "Error",
         description: "No se pudieron cargar las apelaciones",
@@ -78,7 +81,7 @@ export default function AdminAppealsPage() {
           status: "approved",
           reviewed_by: user.id,
           reviewed_at: new Date().toISOString(),
-          admin_notes: adminNotes,
+          admin_response: adminNotes,
         })
         .eq("id", selectedAppeal.id)
 
@@ -107,7 +110,7 @@ export default function AdminAppealsPage() {
                 status: "approved",
                 reviewed_by: user.id,
                 reviewed_at: new Date().toISOString(),
-                admin_notes: adminNotes,
+                admin_response: adminNotes,
               }
             : a,
         ),
@@ -149,7 +152,7 @@ export default function AdminAppealsPage() {
           status: "rejected",
           reviewed_by: user.id,
           reviewed_at: new Date().toISOString(),
-          admin_notes: adminNotes,
+          admin_response: adminNotes,
         })
         .eq("id", selectedAppeal.id)
 
@@ -169,7 +172,7 @@ export default function AdminAppealsPage() {
                 status: "rejected",
                 reviewed_by: user.id,
                 reviewed_at: new Date().toISOString(),
-                admin_notes: adminNotes,
+                admin_response: adminNotes,
               }
             : a,
         ),
@@ -260,10 +263,10 @@ export default function AdminAppealsPage() {
                     <p className="text-sm text-foreground">{appeal.message}</p>
                   </div>
 
-                  {appeal.admin_notes && (
+                  {appeal.admin_response && (
                     <div>
-                      <Label className="text-sm font-semibold text-foreground">Notas del admin:</Label>
-                      <p className="text-sm text-muted-foreground">{appeal.admin_notes}</p>
+                      <Label className="text-sm font-semibold text-foreground">Respuesta del admin:</Label>
+                      <p className="text-sm text-muted-foreground">{appeal.admin_response}</p>
                     </div>
                   )}
                 </div>

@@ -73,7 +73,8 @@ export default function AdminUsersPage() {
 
       if (!user) throw new Error("No authenticated")
 
-      const { error } = await supabase
+      console.log("[v0] Blocking user in profiles:", selectedUser.id)
+      const { error: profileError } = await supabase
         .from("profiles")
         .update({
           is_blocked: true,
@@ -82,7 +83,12 @@ export default function AdminUsersPage() {
         })
         .eq("id", selectedUser.id)
 
-      if (error) throw error
+      if (profileError) {
+        console.error("[v0] Error updating profile:", profileError)
+        throw profileError
+      }
+
+      console.log("[v0] User blocked successfully in profiles")
 
       await supabase.from("admin_actions").insert({
         admin_id: user.id,
@@ -108,7 +114,7 @@ export default function AdminUsersPage() {
       setSelectedUser(null)
       setBanReason("")
     } catch (error) {
-      console.error("Error banning user:", error)
+      console.error("[v0] Error banning user:", error)
       toast({
         title: "Error",
         description: "No se pudo bloquear el usuario",
@@ -128,7 +134,8 @@ export default function AdminUsersPage() {
 
       if (!user) throw new Error("No authenticated")
 
-      const { error } = await supabase
+      console.log("[v0] Unblocking user in profiles:", userId)
+      const { error: profileError } = await supabase
         .from("profiles")
         .update({
           is_blocked: false,
@@ -137,7 +144,12 @@ export default function AdminUsersPage() {
         })
         .eq("id", userId)
 
-      if (error) throw error
+      if (profileError) {
+        console.error("[v0] Error updating profile:", profileError)
+        throw profileError
+      }
+
+      console.log("[v0] User unblocked successfully in profiles")
 
       await supabase.from("admin_actions").insert({
         admin_id: user.id,
@@ -154,7 +166,7 @@ export default function AdminUsersPage() {
         description: `@${username} fue desbloqueado correctamente`,
       })
     } catch (error) {
-      console.error("Error unbanning user:", error)
+      console.error("[v0] Error unbanning user:", error)
       toast({
         title: "Error",
         description: "No se pudo desbloquear el usuario",
