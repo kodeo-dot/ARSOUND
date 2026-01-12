@@ -50,7 +50,6 @@ export default function DashboardPage() {
   async function loadDashboardData() {
     try {
       setLoading(true)
-      console.log("[v0] Loading dashboard data...")
 
       if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
         console.error("[v0] Supabase environment variables not configured")
@@ -87,7 +86,6 @@ export default function DashboardPage() {
       }
 
       setProfile(profileData as Profile)
-      console.log("[v0] Profile loaded:", profileData)
 
       const { data: userPacks, error: packsError } = await supabase
         .from("packs")
@@ -102,13 +100,10 @@ export default function DashboardPage() {
       }
 
       if (!userPacks || userPacks.length === 0) {
-        console.log("[v0] No packs found for user")
         setPacks([])
         setLoading(false)
         return
       }
-
-      console.log("[v0] Packs loaded:", userPacks.length)
 
       const packsWithMetrics: PackWithMetrics[] = await Promise.all(
         userPacks.map(async (pack) => {
@@ -126,10 +121,9 @@ export default function DashboardPage() {
             const uniquePlayUsers = new Set(plays?.filter((p) => p.user_id).map((p) => p.user_id) || [])
             const unique_plays = uniquePlayUsers.size
 
-            // Get total revenue for this pack
-            const { data: purchases, error: purchasesError } = await supabase
+            const { count: purchasesCount, error: purchasesError } = await supabase
               .from("purchases")
-              .select("price")
+              .select("*", { count: "exact", head: true })
               .eq("pack_id", pack.id)
               .eq("status", "completed")
 
@@ -137,7 +131,7 @@ export default function DashboardPage() {
               console.error(`[v0] Error loading purchases for pack ${pack.id}:`, purchasesError)
             }
 
-            const total_revenue = purchases?.reduce((sum, p) => sum + (p.price || 0), 0) || 0
+            const total_revenue = (purchasesCount || 0) * pack.price
 
             // Get comments count for this pack
             const { count: comments_count, error: commentsError } = await supabase
@@ -161,7 +155,6 @@ export default function DashboardPage() {
             }
           } catch (error) {
             console.error(`[v0] Error processing pack ${pack.id}:`, error)
-            // Return pack with zero metrics if there's an error
             return {
               id: pack.id,
               title: pack.title,
@@ -176,7 +169,6 @@ export default function DashboardPage() {
         }),
       )
 
-      console.log("[v0] Packs with metrics:", packsWithMetrics)
       setPacks(packsWithMetrics)
 
       const totalPacks = packsWithMetrics.length
@@ -190,8 +182,6 @@ export default function DashboardPage() {
         totalPlays,
         totalLikes,
       })
-
-      console.log("[v0] Total stats:", { totalPacks, totalRevenue, totalPlays, totalLikes })
     } catch (error) {
       console.error("[v0] Error loading dashboard:", error)
     } finally {
@@ -205,7 +195,7 @@ export default function DashboardPage() {
         <Header />
         <div className="container mx-auto px-4 py-20">
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <Loader2 className="h-12 w-12 animate-spin text-foreground" />
           </div>
         </div>
         <Footer />
@@ -217,60 +207,57 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container mx-auto px-4 py-8 md:py-12">
-        {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl md:text-4xl font-black text-foreground mb-2">Dashboard</h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-foreground mb-2">Dashboard</h1>
           <p className="text-muted-foreground">Resumen de tus packs y rendimiento</p>
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <Card className="p-5 rounded-2xl border bg-gradient-to-br from-primary/10 to-primary/5">
-            <div className="flex items-center gap-3 mb-2">
-              <Package className="h-5 w-5 text-primary" />
-              <div className="text-sm text-muted-foreground font-medium">Packs</div>
+          <Card className="p-6 border">
+            <div className="flex items-center gap-3 mb-3">
+              <Package className="h-5 w-5 text-foreground" />
+              <div className="text-sm text-muted-foreground">Packs</div>
             </div>
-            <div className="text-2xl font-black text-foreground">{totalStats.totalPacks}</div>
+            <div className="text-3xl font-bold text-foreground">{totalStats.totalPacks}</div>
           </Card>
 
-          <Card className="p-5 rounded-2xl border bg-gradient-to-br from-blue-500/10 to-blue-500/5">
-            <div className="flex items-center gap-3 mb-2">
-              <Play className="h-5 w-5 text-blue-500" />
-              <div className="text-sm text-muted-foreground font-medium">Reproducciones</div>
+          <Card className="p-6 border">
+            <div className="flex items-center gap-3 mb-3">
+              <Play className="h-5 w-5 text-foreground" />
+              <div className="text-sm text-muted-foreground">Reproducciones</div>
             </div>
-            <div className="text-2xl font-black text-foreground">{totalStats.totalPlays}</div>
+            <div className="text-3xl font-bold text-foreground">{totalStats.totalPlays}</div>
           </Card>
 
-          <Card className="p-5 rounded-2xl border bg-gradient-to-br from-green-500/10 to-green-500/5">
-            <div className="flex items-center gap-3 mb-2">
-              <DollarSign className="h-5 w-5 text-green-500" />
-              <div className="text-sm text-muted-foreground font-medium">Ventas</div>
+          <Card className="p-6 border">
+            <div className="flex items-center gap-3 mb-3">
+              <DollarSign className="h-5 w-5 text-foreground" />
+              <div className="text-sm text-muted-foreground">Ventas</div>
             </div>
-            <div className="text-2xl font-black text-foreground">
-              ${totalStats.totalRevenue.toLocaleString("es-AR")}
-            </div>
+            <div className="text-3xl font-bold text-foreground">${totalStats.totalRevenue.toLocaleString("es-AR")}</div>
           </Card>
 
-          <Card className="p-5 rounded-2xl border bg-gradient-to-br from-red-500/10 to-red-500/5">
-            <div className="flex items-center gap-3 mb-2">
-              <Heart className="h-5 w-5 text-red-500" />
-              <div className="text-sm text-muted-foreground font-medium">Likes</div>
+          <Card className="p-6 border">
+            <div className="flex items-center gap-3 mb-3">
+              <Heart className="h-5 w-5 text-foreground" />
+              <div className="text-sm text-muted-foreground">Likes</div>
             </div>
-            <div className="text-2xl font-black text-foreground">{totalStats.totalLikes}</div>
+            <div className="text-3xl font-bold text-foreground">{totalStats.totalLikes}</div>
           </Card>
         </div>
 
-        <Card className="rounded-2xl border overflow-hidden">
-          <div className="p-6 border-b bg-muted/30">
-            <h2 className="text-xl font-black text-foreground">Mis Packs</h2>
+        <Card className="border">
+          <div className="p-6 border-b">
+            <h2 className="text-xl font-bold text-foreground">Mis Packs</h2>
           </div>
 
           {packs.length === 0 ? (
             <div className="p-12 text-center">
-              <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-xl font-bold text-foreground mb-2">No tienes packs subidos</h3>
-              <p className="text-muted-foreground mb-6">Sube tu primer pack para empezar a ver métricas</p>
+              <Package className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">No tienes packs subidos</h3>
+              <p className="text-sm text-muted-foreground mb-6">Sube tu primer pack para empezar a ver métricas</p>
               <Link href="/upload">
-                <Button className="gap-2 rounded-xl h-11 px-6 font-semibold">
+                <Button className="gap-2">
                   <Upload className="h-4 w-4" />
                   Subir Pack
                 </Button>
@@ -279,10 +266,9 @@ export default function DashboardPage() {
           ) : (
             <div className="divide-y">
               {packs.map((pack) => (
-                <div key={pack.id} className="p-4 hover:bg-muted/30 transition-colors">
+                <div key={pack.id} className="p-6 hover:bg-muted/50 transition-colors">
                   <div className="flex items-start gap-4">
-                    {/* Pack Cover */}
-                    <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                    <div className="relative w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0 border">
                       {pack.cover_image_url ? (
                         <Image
                           src={pack.cover_image_url || "/placeholder.svg"}
@@ -292,40 +278,34 @@ export default function DashboardPage() {
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
-                          <Package className="h-8 w-8 text-muted-foreground" />
+                          <Package className="h-6 w-6 text-muted-foreground" />
                         </div>
                       )}
                     </div>
 
-                    {/* Pack Info and Metrics */}
                     <div className="flex-1 min-w-0">
                       <Link href={`/pack/${pack.id}`} className="block group">
-                        <h3 className="text-lg font-bold text-foreground group-hover:text-primary transition-colors truncate">
+                        <h3 className="text-lg font-semibold text-foreground group-hover:underline transition-all truncate mb-1">
                           {pack.title}
                         </h3>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          ${pack.price === 0 ? "GRATIS" : pack.price.toLocaleString("es-AR")}
+                        <p className="text-sm text-muted-foreground mb-4">
+                          {pack.price === 0 ? "Gratis" : `$${pack.price.toLocaleString("es-AR")}`}
                         </p>
                       </Link>
 
-                      {/* Metrics Grid */}
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="flex items-center gap-2">
-                          <div className="p-2 rounded-lg bg-blue-500/10">
-                            <Play className="h-4 w-4 text-blue-500" />
-                          </div>
+                          <Play className="h-4 w-4 text-muted-foreground" />
                           <div>
-                            <div className="text-sm font-bold text-foreground">{pack.unique_plays}</div>
-                            <div className="text-xs text-muted-foreground">reproducciones</div>
+                            <div className="text-sm font-semibold text-foreground">{pack.unique_plays}</div>
+                            <div className="text-xs text-muted-foreground">plays</div>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <div className="p-2 rounded-lg bg-green-500/10">
-                            <DollarSign className="h-4 w-4 text-green-500" />
-                          </div>
+                          <DollarSign className="h-4 w-4 text-muted-foreground" />
                           <div>
-                            <div className="text-sm font-bold text-foreground">
+                            <div className="text-sm font-semibold text-foreground">
                               ${pack.total_revenue.toLocaleString("es-AR")}
                             </div>
                             <div className="text-xs text-muted-foreground">ventas</div>
@@ -333,21 +313,17 @@ export default function DashboardPage() {
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <div className="p-2 rounded-lg bg-purple-500/10">
-                            <MessageCircle className="h-4 w-4 text-purple-500" />
-                          </div>
+                          <MessageCircle className="h-4 w-4 text-muted-foreground" />
                           <div>
-                            <div className="text-sm font-bold text-foreground">{pack.comments_count}</div>
+                            <div className="text-sm font-semibold text-foreground">{pack.comments_count}</div>
                             <div className="text-xs text-muted-foreground">comentarios</div>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <div className="p-2 rounded-lg bg-red-500/10">
-                            <Heart className="h-4 w-4 text-red-500" />
-                          </div>
+                          <Heart className="h-4 w-4 text-muted-foreground" />
                           <div>
-                            <div className="text-sm font-bold text-foreground">{pack.likes_count}</div>
+                            <div className="text-sm font-semibold text-foreground">{pack.likes_count}</div>
                             <div className="text-xs text-muted-foreground">likes</div>
                           </div>
                         </div>
