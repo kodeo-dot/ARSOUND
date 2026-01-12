@@ -123,7 +123,7 @@ export default function DashboardPage() {
 
             const { data: purchases, error: purchasesError } = await supabase
               .from("purchases")
-              .select("seller_earnings, amount_paid, amount")
+              .select("seller_earnings, amount_paid")
               .eq("pack_id", pack.id)
               .eq("status", "completed")
 
@@ -134,8 +134,7 @@ export default function DashboardPage() {
             // Sum actual earnings from completed purchases
             const total_revenue =
               purchases?.reduce((sum, purchase) => {
-                // Use seller_earnings if available, fallback to amount_paid, then amount
-                const earnings = purchase.seller_earnings || purchase.amount_paid || purchase.amount || 0
+                const earnings = purchase.seller_earnings || purchase.amount_paid || 0
                 return sum + earnings
               }, 0) || 0
 
