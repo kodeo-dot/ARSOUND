@@ -91,6 +91,16 @@ export async function createPackPreference(
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://arsound.com.ar"
 
+  console.log("[v0] Creating pack preference with payment split:", {
+    packId,
+    sellerId: pack.user_id,
+    sellerMpUserId: sellerProfile.mp_user_id,
+    finalPrice,
+    commissionAmount,
+    sellerEarnings,
+    sellerPlan,
+  })
+
   const preferenceData: PreferenceData = {
     items: [
       {

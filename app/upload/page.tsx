@@ -1035,46 +1035,7 @@ export default function UploadPage() {
             <p className="text-sm text-muted-foreground">Precio máximo permitido: ${MAX_PRICE.toLocaleString()} ARS</p>
           </div>
 
-          {/* Replaced discount section */}
-          {priceNumber > 0 && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <Label htmlFor="hasDiscount" className="text-lg font-bold text-foreground flex items-center gap-2">
-                    <Percent className="h-5 w-5 text-primary" />
-                    Aplicar Descuento
-                  </Label>
-                  <p className="text-sm text-foreground">
-                    Los descuentos se aplican automáticamente para todos los compradores
-                  </p>
-                </div>
-                <Switch id="hasDiscount" checked={hasDiscount} onCheckedChange={setHasDiscount} disabled={isLoading} />
-              </div>
-
-              {hasDiscount && (
-                <div className="space-y-4">
-                  <Label htmlFor="discountPercent" className="text-base font-bold text-foreground">
-                    Porcentaje de Descuento (máx. {MAX_DISCOUNT}%)
-                  </Label>
-                  <Select value={discountPercent} onValueChange={setDiscountPercent} disabled={isLoading}>
-                    <SelectTrigger className="h-12 rounded-xl bg-card border-border">
-                      <SelectValue placeholder="Seleccionar descuento" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DISCOUNT_OPTIONS.filter((d) => d > 0).map((discount) => (
-                        <SelectItem key={discount} value={discount.toString()}>
-                          {discount}% OFF
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <p className="text-sm text-muted-foreground">
-                    Este descuento será visible y se aplicará automáticamente en todas las compras
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
+          {/* Removed duplicate discount section */}
 
           {priceNumber > 0 && (
             <Card className="p-8 rounded-3xl border-border bg-card">
@@ -1096,29 +1057,23 @@ export default function UploadPage() {
                 </div>
 
                 {hasDiscount && (
-                  <div className="space-y-4 pl-1">
-                    <div className="space-y-3">
-                      <Label htmlFor="discountPercent" className="text-sm font-semibold text-foreground">
-                        Porcentaje de descuento *
-                      </Label>
-                      <Select value={discountPercent} onValueChange={setDiscountPercent} disabled={isLoading}>
-                        <SelectTrigger className="h-12 rounded-xl bg-card border-border">
-                          <SelectValue placeholder="Seleccionar descuento" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {DISCOUNT_OPTIONS.map((discount) => (
-                            <SelectItem key={discount} value={discount.toString()}>
-                              {discount}% OFF
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground">Descuento máximo para tu plan: {MAX_DISCOUNT}%</p>
-                    </div>
-
-                    {/* Removed discount code related fields as per update */}
-
-                    {/* Removed discount type related fields as per update */}
+                  <div className="space-y-3">
+                    <Label htmlFor="discountPercent" className="text-sm font-semibold text-foreground">
+                      Porcentaje de descuento *
+                    </Label>
+                    <Select value={discountPercent} onValueChange={setDiscountPercent} disabled={isLoading}>
+                      <SelectTrigger className="h-12 rounded-xl bg-card border-border">
+                        <SelectValue placeholder="Seleccionar descuento" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {DISCOUNT_OPTIONS.filter((d) => d > 0).map((discount) => (
+                          <SelectItem key={discount} value={discount.toString()}>
+                            {discount}% OFF
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Descuento máximo para tu plan: {MAX_DISCOUNT}%</p>
                   </div>
                 )}
               </div>
