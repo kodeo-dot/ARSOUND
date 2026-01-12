@@ -126,6 +126,8 @@ export default function PackDetailPage() {
           .from("purchases")
           .select("id")
           .eq("buyer_id", authUser.id)
+          .eq("pack_id", packId)
+          .eq("status", "completed")
           .limit(1)
           .maybeSingle()
 
@@ -507,6 +509,14 @@ export default function PackDetailPage() {
                 <Button className="w-full gap-2 rounded-full h-12 text-base font-bold" onClick={handleEdit}>
                   <Edit className="h-5 w-5" />
                   Editar Pack
+                </Button>
+              ) : hasPurchasedBefore ? (
+                <Button
+                  className="w-full gap-2 rounded-full h-12 text-base font-bold bg-green-600 hover:bg-green-700"
+                  disabled
+                >
+                  <Check className="h-5 w-5" />
+                  Ya compraste este pack
                 </Button>
               ) : (
                 <Button

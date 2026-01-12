@@ -280,7 +280,7 @@ export default function PurchasesPage() {
             </DialogHeader>
             {selectedPurchase && (
               <div className="space-y-4">
-                <div className="p-4 rounded-2xl bg-accent">
+                <div className="p-4 rounded-2xl bg-muted/30 border border-border">
                   <div className="text-sm text-muted-foreground mb-1">Código de Compra</div>
                   <div className="flex items-center gap-2">
                     <code className="text-lg font-bold text-foreground font-mono">
@@ -332,10 +332,10 @@ export default function PurchasesPage() {
                 )}
 
                 {selectedPurchase.platform_earnings !== null && (
-                  <div className="space-y-2 p-3 rounded-xl bg-accent/50 border border-border">
+                  <div className="space-y-2 p-3 rounded-xl bg-muted/30 border border-border">
                     <div className="flex justify-between">
                       <span className="text-xs text-muted-foreground">Comisión de Plataforma</span>
-                      <span className="text-xs font-medium">
+                      <span className="text-xs font-medium text-foreground">
                         -${formatPrice(selectedPurchase.platform_earnings)} ARS
                       </span>
                     </div>
