@@ -11,9 +11,8 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { createBrowserClient } from "@/lib/supabase/client"
-import type { DiscountCode, PriceBreakdown } from "@/types/discount"
 import { PLAN_FEATURES, type PlanType } from "@/lib/plans"
-import { formatPrice } from "@/lib/utils" // Import formatPrice function
+import { formatPrice } from "@/lib/utils"
 
 const ALLOWED_PRICES = [
   1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000,
@@ -29,24 +28,22 @@ export default function CheckoutPage() {
   const [pack, setPack] = useState<any>(null)
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
-  const [discountCode, setDiscountCode] = useState("")
-  const [appliedDiscount, setAppliedDiscount] = useState<DiscountCode | null>(null)
-  const [isValidatingCode, setIsValidatingCode] = useState(false)
-  const [step, setStep] = useState<"summary" | "payment" | "confirm">("summary")
+  const [step, setStep] = useState<"summary" | "payment">("summary")
   const [isProcessing, setIsProcessing] = useState(false)
-  const [activeOffer, setActiveOffer] = useState<any>(null)
   const [creatorPlan, setCreatorPlan] = useState<PlanType>("free")
   const [platformCommission, setPlatformCommission] = useState<number>(0)
   const [customPrice, setCustomPrice] = useState<number | null>(null)
   const [availablePrices, setAvailablePrices] = useState<number[]>([])
-  const [priceBreakdown, setPriceBreakdown] = useState<PriceBreakdown>({
+  const [priceBreakdown, setPriceBreakdown] = useState<{
+    basePrice: number
+    discountAmount: number
+    discountPercentage: number
+    totalToPay: number
+  }>({
     basePrice: 0,
     discountAmount: 0,
     discountPercentage: 0,
-    platformCommission: 0,
-    platformCommissionAmount: 0,
     totalToPay: 0,
-    creatorEarnings: 0,
   })
 
   useEffect(() => {
@@ -85,27 +82,10 @@ export default function CheckoutPage() {
           setPlatformCommission(PLAN_FEATURES[data.profiles.plan as PlanType].commission)
 
           const maxPrice = PLAN_FEATURES[data.profiles.plan as PlanType].maxPrice
-          const filtered = maxPrice ? ALLOWED_PRICES.filter((p) => p <= maxPrice) : ALLOWED_PRICES
+          const filtered = maxPrice
+            ? ALLOWED_PRICES.filter((p) => p <= maxPrice && p >= data.price)
+            : ALLOWED_PRICES.filter((p) => p >= data.price)
           setAvailablePrices(filtered)
-        }
-
-        const { data: offerData } = await supabase.rpc("get_active_offer", { p_pack_id: packId }).maybeSingle()
-
-        if (offerData) {
-          setActiveOffer(offerData)
-          setAppliedDiscount({
-            code: "OFERTA ACTIVA",
-            type: "general",
-            percentage: offerData.discount_percent,
-            isValid: true,
-          })
-        } else if (data.has_discount && data.discount_percent > 0) {
-          setAppliedDiscount({
-            code: "DESCUENTO",
-            type: "general",
-            percentage: data.discount_percent,
-            isValid: true,
-          })
         }
       } catch (error) {
         console.error("Error fetching pack:", error)
@@ -117,46 +97,29 @@ export default function CheckoutPage() {
     fetchPack()
   }, [packId, router, supabase])
 
-  const checkDiscounts = () => {
-    if (!pack) return
-
-    const basePrice = customPrice || pack.price
-
-    // Check if pack has automatic discount
-    if (pack.has_discount && pack.discount_percent > 0) {
-      console.log("[v0] Automatic discount detected:", pack.discount_percent)
-      const discountAmount = Math.floor(basePrice * (pack.discount_percent / 100))
-      const totalToPay = basePrice - discountAmount
-      setPriceBreakdown({
-        basePrice: basePrice,
-        discountAmount: discountAmount,
-        discountPercentage: pack.discount_percent,
-        platformCommission: platformCommission,
-        platformCommissionAmount: Math.floor(totalToPay * platformCommission),
-        totalToPay: totalToPay,
-        creatorEarnings: Math.floor(totalToPay * (1 - platformCommission)),
-      })
-      return
-    }
-
-    // No discount
-    console.log("[v0] No discount available")
-    setPriceBreakdown({
-      basePrice: basePrice,
-      discountAmount: 0,
-      discountPercentage: 0,
-      platformCommission: platformCommission,
-      platformCommissionAmount: Math.floor(basePrice * platformCommission),
-      totalToPay: basePrice,
-      creatorEarnings: Math.floor(basePrice * (1 - platformCommission)),
-    })
-  }
-
   useEffect(() => {
     if (pack) {
-      checkDiscounts()
+      const basePrice = customPrice || pack.price
+
+      if (pack.has_discount && pack.discount_percent > 0 && !customPrice) {
+        const discountAmount = Math.floor(basePrice * (pack.discount_percent / 100))
+        const totalToPay = basePrice - discountAmount
+        setPriceBreakdown({
+          basePrice: basePrice,
+          discountAmount: discountAmount,
+          discountPercentage: pack.discount_percent,
+          totalToPay: totalToPay,
+        })
+      } else {
+        setPriceBreakdown({
+          basePrice: basePrice,
+          discountAmount: 0,
+          discountPercentage: 0,
+          totalToPay: basePrice,
+        })
+      }
     }
-  }, [pack, platformCommission, customPrice])
+  }, [pack, customPrice])
 
   const handleConfirmPurchase = async () => {
     setIsProcessing(true)
@@ -165,22 +128,32 @@ export default function CheckoutPage() {
       const { purchasePack } = await import("@/app/plans/actions")
       const result = await purchasePack(
         packId,
-        appliedDiscount?.isValid ? discountCode : undefined,
+        undefined, // no discount code
         customPrice || undefined,
       )
 
       if (result?.success && result.init_point) {
         window.location.href = result.init_point
       } else {
-        if (typeof window !== "undefined" && window.location) {
-          console.error("[v0] Payment failed:", result?.message)
-        }
+        console.error("[v0] Payment failed:", result?.message)
       }
     } catch (error) {
       console.error("[v0] Error in handleConfirmPurchase:", error)
     } finally {
       setIsProcessing(false)
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <div className="flex-1 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+        <Footer />
+      </div>
+    )
   }
 
   return (
@@ -226,7 +199,7 @@ export default function CheckoutPage() {
                           </>
                         ) : (
                           <span className="text-2xl font-black text-primary">
-                            ${formatPrice(customPrice || pack.price)}
+                            ${formatPrice(priceBreakdown.totalToPay)}
                           </span>
                         )}
                       </div>
@@ -283,7 +256,7 @@ export default function CheckoutPage() {
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 bg-[#009EE3] rounded-xl flex items-center justify-center">
                             <svg className="w-8 h-8" viewBox="0 0 24 24" fill="white">
-                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
+                              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z" />
                             </svg>
                           </div>
                           <div>
