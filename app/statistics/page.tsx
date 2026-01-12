@@ -22,7 +22,7 @@ interface Profile {
 interface PackWithMetrics {
   id: string
   title: string
-  cover_url: string | null
+  cover_image_url: string | null
   price: number
   unique_plays: number
   total_revenue: number
@@ -91,7 +91,7 @@ export default function DashboardPage() {
 
       const { data: userPacks, error: packsError } = await supabase
         .from("packs")
-        .select("id, title, cover_url, price, likes_count")
+        .select("id, title, cover_image_url, price, likes_count")
         .eq("user_id", user.id)
         .order("created_at", { ascending: false })
 
@@ -152,7 +152,7 @@ export default function DashboardPage() {
             return {
               id: pack.id,
               title: pack.title,
-              cover_url: pack.cover_url,
+              cover_image_url: pack.cover_image_url,
               price: pack.price,
               unique_plays,
               total_revenue,
@@ -165,7 +165,7 @@ export default function DashboardPage() {
             return {
               id: pack.id,
               title: pack.title,
-              cover_url: pack.cover_url,
+              cover_image_url: pack.cover_image_url,
               price: pack.price,
               unique_plays: 0,
               total_revenue: 0,
@@ -283,9 +283,9 @@ export default function DashboardPage() {
                   <div className="flex items-start gap-4">
                     {/* Pack Cover */}
                     <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                      {pack.cover_url ? (
+                      {pack.cover_image_url ? (
                         <Image
-                          src={pack.cover_url || "/placeholder.svg"}
+                          src={pack.cover_image_url || "/placeholder.svg"}
                           alt={pack.title}
                           fill
                           className="object-cover"
