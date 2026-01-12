@@ -5,14 +5,20 @@ import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Check, Loader2 } from "lucide-react"
+import { Label } from "@/components/ui/label"
+import { ArrowLeft, Loader2 } from "lucide-react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { createBrowserClient } from "@/lib/supabase/client"
 import type { DiscountCode, PriceBreakdown } from "@/types/discount"
-import { validateDiscountCode as validateDiscountInput } from "@/types/offer"
 import { PLAN_FEATURES, type PlanType } from "@/lib/plans"
+import { formatPrice } from "@/lib/utils" // Import formatPrice function
+
+const ALLOWED_PRICES = [
+  1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000,
+  11000, 12000, 13000, 14000, 15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000, 55000, 60000, 65000,
+]
 
 export default function CheckoutPage() {
   const params = useParams()
@@ -31,6 +37,8 @@ export default function CheckoutPage() {
   const [activeOffer, setActiveOffer] = useState<any>(null)
   const [creatorPlan, setCreatorPlan] = useState<PlanType>("free")
   const [platformCommission, setPlatformCommission] = useState<number>(0)
+  const [customPrice, setCustomPrice] = useState<number | null>(null)
+  const [availablePrices, setAvailablePrices] = useState<number[]>([])
   const [priceBreakdown, setPriceBreakdown] = useState<PriceBreakdown>({
     basePrice: 0,
     discountAmount: 0,
@@ -75,6 +83,10 @@ export default function CheckoutPage() {
         if (data.profiles?.plan) {
           setCreatorPlan(data.profiles.plan as PlanType)
           setPlatformCommission(PLAN_FEATURES[data.profiles.plan as PlanType].commission)
+
+          const maxPrice = PLAN_FEATURES[data.profiles.plan as PlanType].maxPrice
+          const filtered = maxPrice ? ALLOWED_PRICES.filter((p) => p <= maxPrice) : ALLOWED_PRICES
+          setAvailablePrices(filtered)
         }
 
         const { data: offerData } = await supabase.rpc("get_active_offer", { p_pack_id: packId }).maybeSingle()
@@ -85,6 +97,13 @@ export default function CheckoutPage() {
             code: "OFERTA ACTIVA",
             type: "general",
             percentage: offerData.discount_percent,
+            isValid: true,
+          })
+        } else if (data.has_discount && data.discount_percent > 0) {
+          setAppliedDiscount({
+            code: "DESCUENTO",
+            type: "general",
+            percentage: data.discount_percent,
             isValid: true,
           })
         }
@@ -98,52 +117,24 @@ export default function CheckoutPage() {
     fetchPack()
   }, [packId, router, supabase])
 
-  useEffect(() => {
-    const checkIfFree = async () => {
-      if (pack && pack.price === 0) {
-        try {
-          const response = await fetch(`/api/packs/${packId}/download`)
-          if (response.ok) {
-            const blob = await response.blob()
-            const url = window.URL.createObjectURL(blob)
-            const a = document.createElement("a")
-            a.href = url
-            a.download = `${pack.title.replace(/[^a-zA-Z0-9]/g, "_")}.zip`
-            document.body.appendChild(a)
-            a.click()
-            window.URL.revokeObjectURL(url)
-            document.body.removeChild(a)
-            router.push(`/pack/${packId}`)
-          }
-        } catch (error) {
-          console.error("Error downloading free pack:", error)
-          router.push(`/pack/${packId}`)
-        }
-      }
-    }
-    if (pack && loading === false) {
-      checkIfFree()
-    }
-  }, [pack, loading, packId, router])
-
   const checkDiscounts = () => {
     if (!pack) return
+
+    const basePrice = customPrice || pack.price
 
     // Check if pack has automatic discount
     if (pack.has_discount && pack.discount_percent > 0) {
       console.log("[v0] Automatic discount detected:", pack.discount_percent)
+      const discountAmount = Math.floor(basePrice * (pack.discount_percent / 100))
+      const totalToPay = basePrice - discountAmount
       setPriceBreakdown({
-        basePrice: pack.price,
-        discountAmount: Math.floor(pack.price * (pack.discount_percent / 100)),
+        basePrice: basePrice,
+        discountAmount: discountAmount,
         discountPercentage: pack.discount_percent,
         platformCommission: platformCommission,
-        platformCommissionAmount: Math.floor(
-          (pack.price - Math.floor(pack.price * (pack.discount_percent / 100))) * platformCommission,
-        ),
-        totalToPay: pack.price - Math.floor(pack.price * (pack.discount_percent / 100)),
-        creatorEarnings: Math.floor(
-          (pack.price - Math.floor(pack.price * (pack.discount_percent / 100))) * (1 - platformCommission),
-        ),
+        platformCommissionAmount: Math.floor(totalToPay * platformCommission),
+        totalToPay: totalToPay,
+        creatorEarnings: Math.floor(totalToPay * (1 - platformCommission)),
       })
       return
     }
@@ -151,13 +142,13 @@ export default function CheckoutPage() {
     // No discount
     console.log("[v0] No discount available")
     setPriceBreakdown({
-      basePrice: pack.price,
+      basePrice: basePrice,
       discountAmount: 0,
       discountPercentage: 0,
       platformCommission: platformCommission,
-      platformCommissionAmount: Math.floor(pack.price * platformCommission),
-      totalToPay: pack.price,
-      creatorEarnings: Math.floor(pack.price * (1 - platformCommission)),
+      platformCommissionAmount: Math.floor(basePrice * platformCommission),
+      totalToPay: basePrice,
+      creatorEarnings: Math.floor(basePrice * (1 - platformCommission)),
     })
   }
 
@@ -165,160 +156,18 @@ export default function CheckoutPage() {
     if (pack) {
       checkDiscounts()
     }
-  }, [pack, platformCommission])
-
-  const validateCode = async (code: string) => {
-    if (!code.trim()) {
-      setAppliedDiscount(null)
-      return
-    }
-
-    setIsValidatingCode(true)
-
-    try {
-      const { data: discountData, error } = await supabase
-        .from("discount_codes")
-        .select("*")
-        .eq("pack_id", packId)
-        .eq("code", code.toUpperCase())
-        .single()
-
-      if (error || !discountData) {
-        setAppliedDiscount({
-          code: code.toUpperCase(),
-          type: "general",
-          percentage: 0,
-          isValid: false,
-          errorMessage: "Código de descuento inválido",
-        })
-        setIsValidatingCode(false)
-        return
-      }
-
-      const validation = validateDiscountInput(code, discountData.discount_percent.toString())
-
-      if (!validation.isValid) {
-        setAppliedDiscount({
-          code: code.toUpperCase(),
-          type: "general",
-          percentage: 0,
-          isValid: false,
-          errorMessage: validation.message,
-        })
-        setIsValidatingCode(false)
-        return
-      }
-
-      if (discountData.expires_at && new Date(discountData.expires_at) < new Date()) {
-        setAppliedDiscount({
-          code: code.toUpperCase(),
-          type: "general",
-          percentage: 0,
-          isValid: false,
-          errorMessage: "Este código ha expirado",
-        })
-        setIsValidatingCode(false)
-        return
-      }
-
-      if (discountData.max_uses && discountData.uses_count >= discountData.max_uses) {
-        setAppliedDiscount({
-          code: code.toUpperCase(),
-          type: "general",
-          percentage: 0,
-          isValid: false,
-          errorMessage: "Este código ya alcanzó el límite de usos",
-        })
-        setIsValidatingCode(false)
-        return
-      }
-
-      if (discountData.for_followers) {
-        const { data: followData } = await supabase
-          .from("followers")
-          .select("id")
-          .eq("follower_id", user.id)
-          .eq("following_id", pack.profiles.id)
-          .single()
-
-        if (!followData) {
-          setAppliedDiscount({
-            code: code.toUpperCase(),
-            type: "follower",
-            percentage: 0,
-            isValid: false,
-            errorMessage: "Este código es solo para seguidores del creador",
-          })
-          setIsValidatingCode(false)
-          return
-        }
-      }
-
-      if (discountData.for_first_purchase) {
-        const { data: purchaseData } = await supabase
-          .from("purchases")
-          .select("id")
-          .eq("buyer_id", user.id)
-          .limit(1)
-          .single()
-
-        if (purchaseData) {
-          setAppliedDiscount({
-            code: code.toUpperCase(),
-            type: "first_purchase",
-            percentage: 0,
-            isValid: false,
-            errorMessage: "Este código es solo para tu primera compra",
-          })
-          setIsValidatingCode(false)
-          return
-        }
-      }
-
-      const discountType = discountData.for_followers
-        ? "follower"
-        : discountData.for_first_purchase
-          ? "first_purchase"
-          : "general"
-
-      setAppliedDiscount({
-        code: code.toUpperCase(),
-        type: discountType,
-        percentage: discountData.discount_percent,
-        isValid: true,
-      })
-    } catch (error) {
-      console.error("Error validating code:", error)
-      setAppliedDiscount({
-        code: code.toUpperCase(),
-        type: "general",
-        percentage: 0,
-        isValid: false,
-        errorMessage: "Error al validar el código",
-      })
-    } finally {
-      setIsValidatingCode(false)
-    }
-  }
-
-  const handleApplyCode = () => {
-    validateCode(discountCode)
-  }
-
-  const handleRemoveDiscount = () => {
-    if (activeOffer) {
-      return
-    }
-    setAppliedDiscount(null)
-    setDiscountCode("")
-  }
+  }, [pack, platformCommission, customPrice])
 
   const handleConfirmPurchase = async () => {
     setIsProcessing(true)
 
     try {
       const { purchasePack } = await import("@/app/plans/actions")
-      const result = await purchasePack(packId, appliedDiscount?.isValid ? discountCode : undefined)
+      const result = await purchasePack(
+        packId,
+        appliedDiscount?.isValid ? discountCode : undefined,
+        customPrice || undefined,
+      )
 
       if (result?.success && result.init_point) {
         window.location.href = result.init_point
@@ -334,46 +183,6 @@ export default function CheckoutPage() {
     }
   }
 
-  const formatPrice = (price: number) => {
-    if (price === 0) {
-      return "GRATIS"
-    }
-    return new Intl.NumberFormat("es-AR", {
-      style: "decimal",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(price)
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1 container mx-auto px-4 py-12 flex items-center justify-center">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        </main>
-        <Footer />
-      </div>
-    )
-  }
-
-  if (!pack) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1 container mx-auto px-4 py-12">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-foreground mb-4">Pack no encontrado</h1>
-            <Link href="/">
-              <Button>Volver al inicio</Button>
-            </Link>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
@@ -385,47 +194,6 @@ export default function CheckoutPage() {
             Volver al pack
           </Button>
         </Link>
-
-        <div className="mb-8">
-          <div className="flex items-center justify-between max-w-2xl mx-auto">
-            <div className="flex flex-col items-center flex-1">
-              <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                  step === "summary" ? "bg-primary text-primary-foreground" : "bg-accent text-accent-foreground"
-                }`}
-              >
-                {step !== "summary" ? <Check className="h-5 w-5" /> : "1"}
-              </div>
-              <div className="text-xs font-medium mt-2 text-center">Resumen</div>
-            </div>
-            <div className={`flex-1 h-0.5 ${step !== "summary" ? "bg-primary" : "bg-border"}`} />
-            <div className="flex flex-col items-center flex-1">
-              <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                  step === "payment"
-                    ? "bg-primary text-primary-foreground"
-                    : step === "confirm"
-                      ? "bg-accent text-accent-foreground"
-                      : "bg-muted text-muted-foreground"
-                }`}
-              >
-                {step === "confirm" ? <Check className="h-5 w-5" /> : "2"}
-              </div>
-              <div className="text-xs font-medium mt-2 text-center">Pago</div>
-            </div>
-            <div className={`flex-1 h-0.5 ${step === "confirm" ? "bg-primary" : "bg-border"}`} />
-            <div className="flex flex-col items-center flex-1">
-              <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
-                  step === "confirm" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                }`}
-              >
-                3
-              </div>
-              <div className="text-xs font-medium mt-2 text-center">Confirmar</div>
-            </div>
-          </div>
-        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
@@ -457,12 +225,46 @@ export default function CheckoutPage() {
                             </Badge>
                           </>
                         ) : (
-                          <span className="text-2xl font-black text-primary">${formatPrice(pack.price)}</span>
+                          <span className="text-2xl font-black text-primary">
+                            ${formatPrice(customPrice || pack.price)}
+                          </span>
                         )}
                       </div>
                     </div>
                   </div>
                 </Card>
+
+                {availablePrices.length > 0 && (
+                  <Card className="p-6 rounded-3xl border-border">
+                    <h3 className="font-bold text-foreground mb-4 text-lg">Precio personalizado (opcional)</h3>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Seleccioná un precio personalizado para esta compra. Respeta el máximo de tu plan actual.
+                    </p>
+                    <div className="space-y-3">
+                      <Label htmlFor="custom-price" className="text-sm font-semibold">
+                        Elegí un precio
+                      </Label>
+                      <select
+                        id="custom-price"
+                        className="w-full h-12 px-4 rounded-xl border border-input bg-background text-foreground"
+                        value={customPrice || pack.price}
+                        onChange={(e) => {
+                          const value = Number.parseInt(e.target.value)
+                          setCustomPrice(value === pack.price ? null : value)
+                        }}
+                      >
+                        <option value={pack.price}>Precio base (${formatPrice(pack.price)})</option>
+                        {availablePrices
+                          .filter((p) => p !== pack.price)
+                          .map((price) => (
+                            <option key={price} value={price}>
+                              ${formatPrice(price)} ARS
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  </Card>
+                )}
 
                 <Button className="w-full rounded-full h-14 text-base font-bold" onClick={() => setStep("payment")}>
                   Continuar al pago

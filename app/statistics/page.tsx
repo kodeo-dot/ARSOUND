@@ -20,6 +20,8 @@ import {
   Zap,
   ShoppingBag,
   Upload,
+  Eye,
+  Calendar,
 } from "lucide-react"
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import Link from "next/link"
@@ -45,6 +47,12 @@ export default function StatisticsPage() {
   const [timeSeriesData, setTimeSeriesData] = useState<any[]>([])
   const [totalRevenue, setTotalRevenue] = useState(0)
   const [totalPurchases, setTotalPurchases] = useState(0)
+  const [profileViews, setProfileViews] = useState<{
+    last7Days: number
+    last28Days: number
+    total: number
+  }>({ last7Days: 0, last28Days: 0, total: 0 })
+  const [viewsTimeRange, setViewsTimeRange] = useState<"7" | "28">("7")
 
   useEffect(() => {
     loadData()
@@ -127,6 +135,41 @@ export default function StatisticsPage() {
         }))
 
         setTimeSeriesData(timeSeriesArray)
+      }
+
+      const userPlan = profileData?.plan || "free"
+      const canAccessFullStats = ["de 0 a hit", "de 0 a hit+", "studio plus"].includes(userPlan)
+
+      if (canAccessFullStats) {
+        const now = new Date()
+        const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+        const last28Days = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000)
+
+        // Get total views
+        const { count: totalCount } = await supabase
+          .from("profile_views")
+          .select("*", { count: "exact", head: true })
+          .eq("profile_id", user.id)
+
+        // Get views in last 7 days
+        const { count: last7Count } = await supabase
+          .from("profile_views")
+          .select("*", { count: "exact", head: true })
+          .eq("profile_id", user.id)
+          .gte("viewed_at", last7Days.toISOString())
+
+        // Get views in last 28 days
+        const { count: last28Count } = await supabase
+          .from("profile_views")
+          .select("*", { count: "exact", head: true })
+          .eq("profile_id", user.id)
+          .gte("viewed_at", last28Days.toISOString())
+
+        setProfileViews({
+          last7Days: last7Count || 0,
+          last28Days: last28Count || 0,
+          total: totalCount || 0,
+        })
       }
     } catch (error) {
       console.error("Error loading statistics:", error)
@@ -266,6 +309,57 @@ export default function StatisticsPage() {
               <div className="text-sm text-muted-foreground font-medium mt-1">Compras Totales</div>
             </Card>
           </div>
+        )}
+
+        {canShow4Cards && (
+          <Card className="p-6 rounded-2xl border mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <Eye className="h-6 w-6 text-purple-500" />
+                <h3 className="text-xl font-black text-foreground">Visitas al Perfil</h3>
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant={viewsTimeRange === "7" ? "default" : "outline"}
+                  onClick={() => setViewsTimeRange("7")}
+                  className="h-9 rounded-lg"
+                >
+                  <Calendar className="h-4 w-4 mr-1" />7 días
+                </Button>
+                <Button
+                  size="sm"
+                  variant={viewsTimeRange === "28" ? "default" : "outline"}
+                  onClick={() => setViewsTimeRange("28")}
+                  className="h-9 rounded-lg"
+                >
+                  <Calendar className="h-4 w-4 mr-1" />
+                  28 días
+                </Button>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 bg-purple-500/10 rounded-xl">
+                <div className="text-2xl font-black text-foreground mb-1">
+                  {viewsTimeRange === "7" ? profileViews.last7Days : profileViews.last28Days}
+                </div>
+                <div className="text-sm text-muted-foreground">Últimos {viewsTimeRange} días</div>
+              </div>
+              <div className="p-4 bg-purple-500/10 rounded-xl">
+                <div className="text-2xl font-black text-foreground mb-1">{profileViews.total}</div>
+                <div className="text-sm text-muted-foreground">Total de visitas únicas</div>
+              </div>
+              <div className="p-4 bg-purple-500/10 rounded-xl">
+                <div className="text-2xl font-black text-foreground mb-1">
+                  {profileViews.total > 0
+                    ? Math.round(((profile?.followers_count || 0) / profileViews.total) * 100)
+                    : 0}
+                  %
+                </div>
+                <div className="text-sm text-muted-foreground">Tasa de conversión a seguidor</div>
+              </div>
+            </div>
+          </Card>
         )}
 
         {/* Charts (Premium plans only) */}

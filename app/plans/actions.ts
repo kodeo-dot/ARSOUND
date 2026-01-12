@@ -10,9 +10,9 @@ import { headers } from "next/headers"
  */
 async function getOrigin(): Promise<string> {
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
-  
+
   console.log("[v0] NEXT_PUBLIC_APP_URL value:", appUrl)
-  
+
   if (appUrl && appUrl.trim().length > 0 && appUrl.startsWith("http")) {
     console.log("[v0] Using NEXT_PUBLIC_APP_URL:", appUrl)
     return appUrl
@@ -22,13 +22,13 @@ async function getOrigin(): Promise<string> {
     const headersList = await headers()
     const host = headersList.get("host")
     const proto = headersList.get("x-forwarded-proto") || "http"
-    
+
     let finalProto = proto
     if (host?.includes("localhost") || host?.includes("127.0.0.1")) {
       finalProto = "http"
       console.log("[v0] Detected localhost, forcing HTTP protocol")
     }
-    
+
     if (host) {
       const origin = `${finalProto}://${host}`
       console.log("[v0] Constructed origin from headers:", origin)
@@ -49,12 +49,8 @@ async function getOrigin(): Promise<string> {
  */
 async function createMercadoPagoPreference(planType: string) {
   const testMode = process.env.MERCADO_PAGO_TEST_MODE === "true"
-  const accessToken = testMode 
-    ? process.env.MERCADO_PAGO_TEST_ACCESS_TOKEN 
-    : process.env.MERCADO_PAGO_ACCESS_TOKEN
-  const publicKey = testMode
-    ? process.env.MERCADO_PAGO_TEST_PUBLIC_KEY
-    : process.env.MERCADO_PAGO_PUBLIC_KEY
+  const accessToken = testMode ? process.env.MERCADO_PAGO_TEST_ACCESS_TOKEN : process.env.MERCADO_PAGO_ACCESS_TOKEN
+  const publicKey = testMode ? process.env.MERCADO_PAGO_TEST_PUBLIC_KEY : process.env.MERCADO_PAGO_PUBLIC_KEY
 
   if (!accessToken || !publicKey) {
     console.error("[v0] Mercado Pago credentials not configured. TestMode:", testMode)
@@ -162,7 +158,7 @@ export async function selectPlan(planId: string) {
  * Server action to purchase a pack
  * Creates a Mercado Pago preference for pack purchase
  */
-export async function purchasePack(packId: string, discountCode?: string) {
+export async function purchasePack(packId: string, discountCode?: string, customPrice?: number) {
   const supabase = await createServerClient()
 
   const {
@@ -174,12 +170,8 @@ export async function purchasePack(packId: string, discountCode?: string) {
   }
 
   const testMode = process.env.MERCADO_PAGO_TEST_MODE === "true"
-  const accessToken = testMode
-    ? process.env.MERCADO_PAGO_TEST_ACCESS_TOKEN
-    : process.env.MERCADO_PAGO_ACCESS_TOKEN
-  const publicKey = testMode
-    ? process.env.MERCADO_PAGO_TEST_PUBLIC_KEY
-    : process.env.MERCADO_PAGO_PUBLIC_KEY
+  const accessToken = testMode ? process.env.MERCADO_PAGO_TEST_ACCESS_TOKEN : process.env.MERCADO_PAGO_ACCESS_TOKEN
+  const publicKey = testMode ? process.env.MERCADO_PAGO_TEST_PUBLIC_KEY : process.env.MERCADO_PAGO_PUBLIC_KEY
 
   if (!accessToken || !publicKey) {
     console.error("[v0] Mercado Pago credentials not configured. TestMode:", testMode)
@@ -210,9 +202,17 @@ export async function purchasePack(packId: string, discountCode?: string) {
     const sellerPlan = (sellerProfile.plan as PlanType) || "free"
     const commission = PLAN_FEATURES[sellerPlan].commission
 
-    let finalPrice = pack.price
+    const basePrice = customPrice || pack.price
+    let finalPrice = basePrice
     let appliedDiscountPercent = 0
 
+    if (!customPrice && pack.has_discount && pack.discount_percent > 0) {
+      appliedDiscountPercent = pack.discount_percent
+      finalPrice = Math.floor(basePrice * (1 - appliedDiscountPercent / 100))
+      console.log("[v0] Applying pack discount:", appliedDiscountPercent, "%, final price:", finalPrice)
+    }
+
+    // Apply discount code if provided (takes precedence over pack discount)
     if (discountCode) {
       const { data: discountData, error: discountError } = await supabase
         .from("discount_codes")
@@ -231,7 +231,8 @@ export async function purchasePack(packId: string, discountCode?: string) {
         }
 
         appliedDiscountPercent = discountData.discount_percent
-        finalPrice = Math.floor(pack.price * (1 - appliedDiscountPercent / 100))
+        finalPrice = Math.floor(basePrice * (1 - appliedDiscountPercent / 100))
+        console.log("[v0] Applying discount code:", appliedDiscountPercent, "%, final price:", finalPrice)
       }
     }
 
@@ -277,8 +278,10 @@ export async function purchasePack(packId: string, discountCode?: string) {
         commission_amount: commissionAmount,
         seller_earnings: sellerEarnings,
         final_price: finalPrice,
+        base_price: basePrice,
         discount_percent: appliedDiscountPercent,
         discount_code: discountCode || null,
+        custom_price: customPrice || null,
         test_mode: testMode,
       },
     }
