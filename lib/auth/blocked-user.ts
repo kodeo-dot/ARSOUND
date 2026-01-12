@@ -1,7 +1,7 @@
-import { getProfile } from "../database/queries"
 import { logger } from "../utils/logger"
 import type { Profile } from "../types/database.types"
 import { createServerClient } from "@/lib/supabase/server"
+import { getProfile } from "../database/queries"
 
 export interface BlockedUserCheck {
   isBlocked: boolean
@@ -17,18 +17,10 @@ export async function checkIfBlocked(userId: string): Promise<BlockedUserCheck> 
     return { isBlocked: false }
   }
 
-  if (profile.is_blocked) {
-    logger.info("Blocked user detected from profiles", "AUTH", { userId, reason: profile.blocked_reason })
-    return {
-      isBlocked: true,
-      reason: profile.blocked_reason || "Account blocked",
-      profile,
-    }
-  }
-
-  // Check if user has an active block in admin_actions
   try {
     const supabase = await createServerClient()
+    console.log("[v0] Checking if user is blocked:", userId)
+
     const { data: blockAction, error } = await supabase
       .from("admin_actions")
       .select("*")
@@ -37,12 +29,13 @@ export async function checkIfBlocked(userId: string): Promise<BlockedUserCheck> 
       .eq("action_type", "block_user")
       .order("created_at", { ascending: false })
       .limit(1)
-      .single()
+      .maybeSingle()
 
-    if (error && error.code !== "PGRST116") {
-      // PGRST116 is "no rows returned", which is fine
+    if (error) {
       console.error("[v0] Error checking admin_actions:", error)
     }
+
+    console.log("[v0] Block action found:", blockAction)
 
     if (blockAction) {
       // Check if there's a corresponding unblock action after this block
@@ -55,7 +48,9 @@ export async function checkIfBlocked(userId: string): Promise<BlockedUserCheck> 
         .gt("created_at", blockAction.created_at)
         .order("created_at", { ascending: false })
         .limit(1)
-        .single()
+        .maybeSingle()
+
+      console.log("[v0] Unblock action found:", unblockAction)
 
       // If there's no unblock after the latest block, user is still blocked
       if (!unblockAction) {
@@ -74,6 +69,7 @@ export async function checkIfBlocked(userId: string): Promise<BlockedUserCheck> 
     console.error("[v0] Error checking admin blocks:", error)
   }
 
+  console.log("[v0] User is not blocked:", userId)
   return { isBlocked: false, profile }
 }
 

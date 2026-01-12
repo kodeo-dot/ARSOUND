@@ -73,8 +73,23 @@ export default function AdminUsersPage() {
 
       if (!user) throw new Error("No authenticated")
 
-      console.log("[v0] Blocking user in profiles:", selectedUser.id)
-      const { error: profileError } = await supabase
+      console.log("[v0] Blocking user via admin_actions:", selectedUser.id)
+      const { error: actionError } = await supabase.from("admin_actions").insert({
+        admin_id: user.id,
+        action_type: "block_user",
+        target_type: "user",
+        target_id: selectedUser.id,
+        details: { reason: banReason },
+      })
+
+      if (actionError) {
+        console.error("[v0] Error inserting admin_action:", actionError)
+        throw actionError
+      }
+
+      console.log("[v0] User blocked successfully via admin_actions")
+
+      await supabase
         .from("profiles")
         .update({
           is_blocked: true,
@@ -82,21 +97,6 @@ export default function AdminUsersPage() {
           blocked_at: new Date().toISOString(),
         })
         .eq("id", selectedUser.id)
-
-      if (profileError) {
-        console.error("[v0] Error updating profile:", profileError)
-        throw profileError
-      }
-
-      console.log("[v0] User blocked successfully in profiles")
-
-      await supabase.from("admin_actions").insert({
-        admin_id: user.id,
-        action_type: "ban_user",
-        target_type: "user",
-        target_id: selectedUser.id,
-        details: { reason: banReason },
-      })
 
       setUsers(
         users.map((u) =>
@@ -134,8 +134,23 @@ export default function AdminUsersPage() {
 
       if (!user) throw new Error("No authenticated")
 
-      console.log("[v0] Unblocking user in profiles:", userId)
-      const { error: profileError } = await supabase
+      console.log("[v0] Unblocking user via admin_actions:", userId)
+      const { error: actionError } = await supabase.from("admin_actions").insert({
+        admin_id: user.id,
+        action_type: "unblock_user",
+        target_type: "user",
+        target_id: userId,
+        details: { reason: "Unblocked from admin panel" },
+      })
+
+      if (actionError) {
+        console.error("[v0] Error inserting admin_action:", actionError)
+        throw actionError
+      }
+
+      console.log("[v0] User unblocked successfully via admin_actions")
+
+      await supabase
         .from("profiles")
         .update({
           is_blocked: false,
@@ -143,21 +158,6 @@ export default function AdminUsersPage() {
           blocked_at: null,
         })
         .eq("id", userId)
-
-      if (profileError) {
-        console.error("[v0] Error updating profile:", profileError)
-        throw profileError
-      }
-
-      console.log("[v0] User unblocked successfully in profiles")
-
-      await supabase.from("admin_actions").insert({
-        admin_id: user.id,
-        action_type: "unban_user",
-        target_type: "user",
-        target_id: userId,
-        details: { reason: "Unblocked from admin panel" },
-      })
 
       setUsers(users.map((u) => (u.id === userId ? { ...u, is_blocked: false, blocked_reason: null } : u)))
 

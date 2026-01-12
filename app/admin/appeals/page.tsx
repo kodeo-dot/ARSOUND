@@ -39,7 +39,7 @@ export default function AdminAppealsPage() {
         .select(
           `
           *,
-          profiles (
+          profiles!appeals_user_id_fkey (
             username,
             avatar_url,
             blocked_reason
@@ -48,9 +48,12 @@ export default function AdminAppealsPage() {
         )
         .order("created_at", { ascending: false })
 
-      console.log("[v0] Appeals fetch result:", { data, error })
+      console.log("[v0] Appeals fetch result:", { data, error, count: data?.length })
 
-      if (error) throw error
+      if (error) {
+        console.error("[v0] Supabase error details:", error)
+        throw error
+      }
       setAppeals(data || [])
     } catch (error) {
       console.error("[v0] Error fetching appeals:", error)
@@ -84,6 +87,14 @@ export default function AdminAppealsPage() {
           admin_response: adminNotes,
         })
         .eq("id", selectedAppeal.id)
+
+      await supabase.from("admin_actions").insert({
+        admin_id: user.id,
+        action_type: "unblock_user",
+        target_type: "user",
+        target_id: selectedAppeal.user_id,
+        details: { reason: "Appeal approved", notes: adminNotes },
+      })
 
       await supabase
         .from("profiles")

@@ -26,7 +26,7 @@ export default function AdminDashboard() {
         await Promise.all([
           supabase.from("packs").select("*", { count: "exact", head: true }),
           supabase.from("profiles").select("*", { count: "exact", head: true }),
-          supabase.from("comments").select("*", { count: "exact", head: true }),
+          supabase.from("pack_comments").select("*", { count: "exact", head: true }),
           supabase.from("appeals").select("*", { count: "exact", head: true }).eq("status", "pending"),
         ])
 
