@@ -67,6 +67,7 @@ export default function UploadPage() {
   const [fileSize, setFileSize] = useState("")
   const [fileCount, setFileCount] = useState(0)
   const [price, setPrice] = useState("")
+  const [useCustomPrice, setUseCustomPrice] = useState(false)
   const [ownershipConfirmed, setOwnershipConfirmed] = useState(false)
   const [licenseAccepted, setLicenseAccepted] = useState(false)
 
@@ -267,7 +268,7 @@ export default function UploadPage() {
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
-    const numValue = Number.parseFloat(value) || 0
+    const numValue = Number.parseInt(value) || 0
     if (numValue <= MAX_PRICE) {
       setPrice(value)
     } else {
@@ -1020,18 +1021,56 @@ export default function UploadPage() {
               <DollarSign className="h-5 w-5 text-primary" />
               Precio (ARS) *
             </Label>
-            <Select value={price} onValueChange={setPrice} disabled={isLoading}>
-              <SelectTrigger className="text-base h-14 rounded-xl bg-card border-border text-lg font-semibold">
-                <SelectValue placeholder="Seleccioná un precio" />
-              </SelectTrigger>
-              <SelectContent>
-                {PRICE_OPTIONS.map((priceOption) => (
-                  <SelectItem key={priceOption} value={priceOption.toString()}>
-                    {priceOption === 0 ? "GRATIS" : `$${priceOption.toLocaleString()} ARS`}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-3 mb-4">
+              <Switch
+                id="custom-price-mode"
+                checked={useCustomPrice}
+                onCheckedChange={setUseCustomPrice}
+                disabled={isLoading}
+              />
+              <Label htmlFor="custom-price-mode" className="font-semibold text-foreground cursor-pointer">
+                Usar un precio personalizado
+              </Label>
+            </div>
+
+            {useCustomPrice ? (
+              <div className="space-y-3">
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">
+                    $
+                  </span>
+                  <Input
+                    id="price"
+                    type="number"
+                    value={price}
+                    onChange={handlePriceChange}
+                    placeholder="Ingresá un precio personalizado"
+                    className="pl-8 h-12 rounded-xl text-base"
+                    required
+                    min="0"
+                    max={MAX_PRICE}
+                    step="1"
+                    disabled={isLoading}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Escribe cualquier precio entero hasta ${MAX_PRICE.toLocaleString()}
+                </p>
+              </div>
+            ) : (
+              <Select value={price} onValueChange={setPrice} required disabled={isLoading}>
+                <SelectTrigger className="text-base h-12 rounded-xl bg-card border-border">
+                  <SelectValue placeholder="Seleccionar precio" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PRICE_OPTIONS.map((priceOption) => (
+                    <SelectItem key={priceOption} value={priceOption.toString()}>
+                      {priceOption === 0 ? "GRATIS" : `$${priceOption.toLocaleString()} ARS`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <p className="text-sm text-muted-foreground">Precio máximo permitido: ${MAX_PRICE.toLocaleString()} ARS</p>
           </div>
 

@@ -1,14 +1,10 @@
 "use client"
 
-import type React from "react"
-
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
@@ -30,17 +26,13 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [creatorPlan, setCreatorPlan] = useState<PlanType>("free")
   const [platformCommission, setPlatformCommission] = useState<number>(0)
-  const [customPrice, setCustomPrice] = useState<string>("")
-  const [maxPrice, setMaxPrice] = useState<number | null>(null)
   const [priceBreakdown, setPriceBreakdown] = useState<{
     basePrice: number
     discountAmount: number
-    discountPercentage: number
     totalToPay: number
   }>({
     basePrice: 0,
     discountAmount: 0,
-    discountPercentage: 0,
     totalToPay: 0,
   })
 
@@ -78,8 +70,6 @@ export default function CheckoutPage() {
         if (data.profiles?.plan) {
           setCreatorPlan(data.profiles.plan as PlanType)
           setPlatformCommission(PLAN_FEATURES[data.profiles.plan as PlanType].commission)
-          const planMaxPrice = PLAN_FEATURES[data.profiles.plan as PlanType].maxPrice
-          setMaxPrice(planMaxPrice)
         }
       } catch (error) {
         console.error("Error fetching pack:", error)
@@ -93,39 +83,34 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (pack) {
-      const parsedCustomPrice = customPrice ? Number.parseInt(customPrice) : null
-      const basePrice = parsedCustomPrice || pack.price
+      const basePrice = pack.price
 
-      if (pack.has_discount && pack.discount_percent > 0 && !parsedCustomPrice) {
+      if (pack.has_discount && pack.discount_percent > 0) {
         const discountAmount = Math.floor(basePrice * (pack.discount_percent / 100))
         const totalToPay = basePrice - discountAmount
         setPriceBreakdown({
           basePrice: basePrice,
           discountAmount: discountAmount,
-          discountPercentage: pack.discount_percent,
           totalToPay: totalToPay,
         })
       } else {
         setPriceBreakdown({
           basePrice: basePrice,
           discountAmount: 0,
-          discountPercentage: 0,
           totalToPay: basePrice,
         })
       }
     }
-  }, [pack, customPrice])
+  }, [pack])
 
   const handleConfirmPurchase = async () => {
     setIsProcessing(true)
 
     try {
       const { purchasePack } = await import("@/app/plans/actions")
-      const parsedPrice = customPrice ? Number.parseInt(customPrice) : undefined
       const result = await purchasePack(
         packId,
         undefined, // no discount code
-        parsedPrice,
       )
 
       if (result?.success && result.init_point) {
@@ -138,26 +123,6 @@ export default function CheckoutPage() {
     } finally {
       setIsProcessing(false)
     }
-  }
-
-  const handleCustomPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-
-    // Allow empty string
-    if (value === "") {
-      setCustomPrice("")
-      return
-    }
-
-    // Only allow positive integers
-    const parsed = Number.parseInt(value)
-    if (isNaN(parsed) || parsed < 0) return
-
-    // Validate against min and max
-    if (pack && parsed < pack.price) return
-    if (maxPrice && parsed > maxPrice) return
-
-    setCustomPrice(value)
   }
 
   if (loading) {
@@ -201,7 +166,7 @@ export default function CheckoutPage() {
                       <h3 className="font-bold text-foreground text-lg mb-1 truncate">{pack.title}</h3>
                       <p className="text-sm text-muted-foreground mb-2">{pack.genre}</p>
                       <div className="flex items-baseline gap-2">
-                        {priceBreakdown.discountPercentage > 0 ? (
+                        {priceBreakdown.discountAmount > 0 ? (
                           <>
                             <span className="text-2xl font-black text-primary">
                               ${formatPrice(priceBreakdown.totalToPay)}
@@ -210,7 +175,7 @@ export default function CheckoutPage() {
                               ${formatPrice(priceBreakdown.basePrice)}
                             </span>
                             <Badge className="bg-orange-500 hover:bg-orange-600 text-white">
-                              {priceBreakdown.discountPercentage}% OFF
+                              {pack.discount_percent}% OFF
                             </Badge>
                           </>
                         ) : (
@@ -220,38 +185,6 @@ export default function CheckoutPage() {
                         )}
                       </div>
                     </div>
-                  </div>
-                </Card>
-
-                <Card className="p-6 rounded-3xl border-border">
-                  <h3 className="font-bold text-foreground mb-4 text-lg">Precio personalizado (opcional)</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Escribí un precio personalizado para esta compra. Debe estar entre ${formatPrice(pack.price)} y{" "}
-                    {maxPrice ? `$${formatPrice(maxPrice)}` : "sin límite"}.
-                  </p>
-                  <div className="space-y-3">
-                    <Label htmlFor="custom-price" className="text-sm font-semibold">
-                      Precio en ARS
-                    </Label>
-                    <div className="relative">
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">
-                        $
-                      </span>
-                      <Input
-                        id="custom-price"
-                        type="number"
-                        placeholder={`Mínimo ${formatPrice(pack.price)}`}
-                        value={customPrice}
-                        onChange={handleCustomPriceChange}
-                        min={pack.price}
-                        max={maxPrice || undefined}
-                        step="1"
-                        className="pl-8 h-12 rounded-xl text-base"
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Dejá vacío para usar el precio base (${formatPrice(pack.price)})
-                    </p>
                   </div>
                 </Card>
 
@@ -323,9 +256,9 @@ export default function CheckoutPage() {
                   <span className="text-muted-foreground">Precio base:</span>
                   <span className="font-semibold text-foreground">${formatPrice(priceBreakdown.basePrice)}</span>
                 </div>
-                {priceBreakdown.discountPercentage > 0 && (
+                {priceBreakdown.discountAmount > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Descuento ({priceBreakdown.discountPercentage}%):</span>
+                    <span className="text-muted-foreground">Descuento ({pack.discount_percent}%):</span>
                     <span className="font-semibold text-green-600">-${formatPrice(priceBreakdown.discountAmount)}</span>
                   </div>
                 )}
