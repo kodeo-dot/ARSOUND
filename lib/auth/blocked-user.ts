@@ -1,6 +1,6 @@
 import { logger } from "../utils/logger"
 import type { Profile } from "../types/database.types"
-import { createServerClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 import { getProfile } from "../database/queries"
 
 export interface BlockedUserCheck {
@@ -18,7 +18,7 @@ export async function checkIfBlocked(userId: string): Promise<BlockedUserCheck> 
   }
 
   try {
-    const supabase = await createServerClient()
+    const supabase = await createClient()
     console.log("[v0] Checking if user is blocked:", userId)
 
     const { data: blockAction, error } = await supabase
