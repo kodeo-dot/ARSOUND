@@ -19,9 +19,22 @@ export async function getStudioAnalytics(userId: string): Promise<AnalyticsRespo
       .select("id, total_plays, downloads_count")
       .eq("user_id", userId)
 
-    // Calculate totals
-    const totalPlays = packs?.reduce((sum, pack) => sum + (pack.total_plays || 0), 0) || 0
-    const totalDownloads = packs?.reduce((sum, pack) => sum + (pack.downloads_count || 0), 0) || 0
+    const { data: uniquePlays } = await supabase
+      .from("pack_plays")
+      .select("user_id", { count: "exact", head: false })
+      .in("pack_id", packs?.map((p) => p.id) || [])
+
+    // Count unique users (excluding nulls for anonymous plays)
+    const uniqueUsers = new Set(uniquePlays?.filter((p) => p.user_id).map((p) => p.user_id) || [])
+    const totalPlays = uniqueUsers.size
+
+    const { data: uniqueDownloads } = await supabase
+      .from("pack_downloads")
+      .select("user_id", { count: "exact", head: false })
+      .in("pack_id", packs?.map((p) => p.id) || [])
+
+    const uniqueDownloadUsers = new Set(uniqueDownloads?.filter((d) => d.user_id).map((d) => d.user_id) || [])
+    const totalDownloads = uniqueDownloadUsers.size
 
     // Get revenue from purchases
     const { data: purchases } = await supabase

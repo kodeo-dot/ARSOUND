@@ -86,16 +86,6 @@ export function AudioPlayer() {
         ip_address: null,
       })
 
-      await supabase
-        .rpc("increment_counter", {
-          table_name: "packs",
-          row_id: currentPack.id,
-          column_name: "total_plays_count",
-        })
-        .catch((err) => {
-          console.error("[v0] Error incrementing total_plays_count:", err)
-        })
-
       console.log("[v0] Play registered for pack:", currentPack.id)
       setPlayRegistered(true)
     } catch (error) {

@@ -1,11 +1,14 @@
 "use client"
 
+import type React from "react"
+
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
@@ -13,11 +16,6 @@ import { useParams, useRouter } from "next/navigation"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { PLAN_FEATURES, type PlanType } from "@/lib/plans"
 import { formatPrice } from "@/lib/utils"
-
-const ALLOWED_PRICES = [
-  1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000, 5500, 6000, 6500, 7000, 7500, 8000, 8500, 9000, 9500, 10000,
-  11000, 12000, 13000, 14000, 15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000, 55000, 60000, 65000,
-]
 
 export default function CheckoutPage() {
   const params = useParams()
@@ -32,8 +30,8 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [creatorPlan, setCreatorPlan] = useState<PlanType>("free")
   const [platformCommission, setPlatformCommission] = useState<number>(0)
-  const [customPrice, setCustomPrice] = useState<number | null>(null)
-  const [availablePrices, setAvailablePrices] = useState<number[]>([])
+  const [customPrice, setCustomPrice] = useState<string>("")
+  const [maxPrice, setMaxPrice] = useState<number | null>(null)
   const [priceBreakdown, setPriceBreakdown] = useState<{
     basePrice: number
     discountAmount: number
@@ -77,20 +75,11 @@ export default function CheckoutPage() {
         if (error) throw error
         setPack(data)
 
-        console.log("[v0] Pack data:", data)
-        console.log("[v0] Creator plan:", data.profiles?.plan)
-
         if (data.profiles?.plan) {
           setCreatorPlan(data.profiles.plan as PlanType)
           setPlatformCommission(PLAN_FEATURES[data.profiles.plan as PlanType].commission)
-
-          const maxPrice = PLAN_FEATURES[data.profiles.plan as PlanType].maxPrice
-          console.log("[v0] Max price for plan:", maxPrice)
-          const filtered = maxPrice
-            ? ALLOWED_PRICES.filter((p) => p <= maxPrice && p >= data.price)
-            : ALLOWED_PRICES.filter((p) => p >= data.price)
-          console.log("[v0] Available prices:", filtered)
-          setAvailablePrices(filtered)
+          const planMaxPrice = PLAN_FEATURES[data.profiles.plan as PlanType].maxPrice
+          setMaxPrice(planMaxPrice)
         }
       } catch (error) {
         console.error("Error fetching pack:", error)
@@ -104,9 +93,10 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     if (pack) {
-      const basePrice = customPrice || pack.price
+      const parsedCustomPrice = customPrice ? Number.parseInt(customPrice) : null
+      const basePrice = parsedCustomPrice || pack.price
 
-      if (pack.has_discount && pack.discount_percent > 0 && !customPrice) {
+      if (pack.has_discount && pack.discount_percent > 0 && !parsedCustomPrice) {
         const discountAmount = Math.floor(basePrice * (pack.discount_percent / 100))
         const totalToPay = basePrice - discountAmount
         setPriceBreakdown({
@@ -131,10 +121,11 @@ export default function CheckoutPage() {
 
     try {
       const { purchasePack } = await import("@/app/plans/actions")
+      const parsedPrice = customPrice ? Number.parseInt(customPrice) : undefined
       const result = await purchasePack(
         packId,
         undefined, // no discount code
-        customPrice || undefined,
+        parsedPrice,
       )
 
       if (result?.success && result.init_point) {
@@ -147,6 +138,26 @@ export default function CheckoutPage() {
     } finally {
       setIsProcessing(false)
     }
+  }
+
+  const handleCustomPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+
+    // Allow empty string
+    if (value === "") {
+      setCustomPrice("")
+      return
+    }
+
+    // Only allow positive integers
+    const parsed = Number.parseInt(value)
+    if (isNaN(parsed) || parsed < 0) return
+
+    // Validate against min and max
+    if (pack && parsed < pack.price) return
+    if (maxPrice && parsed > maxPrice) return
+
+    setCustomPrice(value)
   }
 
   if (loading) {
@@ -212,37 +223,37 @@ export default function CheckoutPage() {
                   </div>
                 </Card>
 
-                {availablePrices.length > 0 && (
-                  <Card className="p-6 rounded-3xl border-border">
-                    <h3 className="font-bold text-foreground mb-4 text-lg">Precio personalizado (opcional)</h3>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Seleccioná un precio personalizado para esta compra. Respeta el máximo de tu plan actual.
-                    </p>
-                    <div className="space-y-3">
-                      <Label htmlFor="custom-price" className="text-sm font-semibold">
-                        Elegí un precio
-                      </Label>
-                      <select
+                <Card className="p-6 rounded-3xl border-border">
+                  <h3 className="font-bold text-foreground mb-4 text-lg">Precio personalizado (opcional)</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Escribí un precio personalizado para esta compra. Debe estar entre ${formatPrice(pack.price)} y{" "}
+                    {maxPrice ? `$${formatPrice(maxPrice)}` : "sin límite"}.
+                  </p>
+                  <div className="space-y-3">
+                    <Label htmlFor="custom-price" className="text-sm font-semibold">
+                      Precio en ARS
+                    </Label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">
+                        $
+                      </span>
+                      <Input
                         id="custom-price"
-                        className="w-full h-12 px-4 rounded-xl border border-input bg-background text-foreground"
-                        value={customPrice || pack.price}
-                        onChange={(e) => {
-                          const value = Number.parseInt(e.target.value)
-                          setCustomPrice(value === pack.price ? null : value)
-                        }}
-                      >
-                        <option value={pack.price}>Precio base (${formatPrice(pack.price)})</option>
-                        {availablePrices
-                          .filter((p) => p !== pack.price)
-                          .map((price) => (
-                            <option key={price} value={price}>
-                              ${formatPrice(price)} ARS
-                            </option>
-                          ))}
-                      </select>
+                        type="number"
+                        placeholder={`Mínimo ${formatPrice(pack.price)}`}
+                        value={customPrice}
+                        onChange={handleCustomPriceChange}
+                        min={pack.price}
+                        max={maxPrice || undefined}
+                        step="1"
+                        className="pl-8 h-12 rounded-xl text-base"
+                      />
                     </div>
-                  </Card>
-                )}
+                    <p className="text-xs text-muted-foreground">
+                      Dejá vacío para usar el precio base (${formatPrice(pack.price)})
+                    </p>
+                  </div>
+                </Card>
 
                 <Button className="w-full rounded-full h-14 text-base font-bold" onClick={() => setStep("payment")}>
                   Continuar al pago

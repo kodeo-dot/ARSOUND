@@ -101,6 +101,37 @@ export default function StatisticsPage() {
             likes: pack.likes_count || 0,
           })),
         )
+
+        const { data: packPlays } = await supabase
+          .from("pack_plays")
+          .select("user_id")
+          .in(
+            "pack_id",
+            packs.map((p: any) => p.id),
+          )
+
+        // Count unique users who played
+        const uniquePlayUsers = new Set(packPlays?.filter((p) => p.user_id).map((p) => p.user_id) || [])
+        const uniquePlaysCount = uniquePlayUsers.size
+
+        const { data: packDownloads } = await supabase
+          .from("pack_downloads")
+          .select("user_id")
+          .in(
+            "pack_id",
+            packs.map((p: any) => p.id),
+          )
+
+        // Count unique users who downloaded
+        const uniqueDownloadUsers = new Set(packDownloads?.filter((d) => d.user_id).map((d) => d.user_id) || [])
+        const uniqueDownloadsCount = uniqueDownloadUsers.size
+
+        // Update profile with unique play and download counts
+        setProfile((prevProfile) => ({
+          ...prevProfile,
+          total_plays_count: uniquePlaysCount,
+          packs_count: uniqueDownloadsCount,
+        }))
       }
 
       // Calculate revenue and purchases
@@ -256,11 +287,11 @@ export default function StatisticsPage() {
             <div className="flex items-center justify-between mb-3">
               <Play className="h-7 w-7 text-secondary" />
               <div className="h-8 w-8 rounded-full bg-secondary/10 flex items-center justify-center">
-                <TrendingUp className="h-4 w-4 text-secondary" />
+                <Users className="h-4 w-4 text-secondary" />
               </div>
             </div>
             <div className="text-3xl font-black text-foreground">{profile?.total_plays_count || 0}</div>
-            <div className="text-sm text-muted-foreground font-medium mt-1">Reproducciones</div>
+            <div className="text-sm text-muted-foreground font-medium mt-1">Usuarios únicos (reproducciones)</div>
           </Card>
 
           {/* Additional stats for paid plans */}
