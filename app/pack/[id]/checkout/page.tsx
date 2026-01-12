@@ -77,14 +77,19 @@ export default function CheckoutPage() {
         if (error) throw error
         setPack(data)
 
+        console.log("[v0] Pack data:", data)
+        console.log("[v0] Creator plan:", data.profiles?.plan)
+
         if (data.profiles?.plan) {
           setCreatorPlan(data.profiles.plan as PlanType)
           setPlatformCommission(PLAN_FEATURES[data.profiles.plan as PlanType].commission)
 
           const maxPrice = PLAN_FEATURES[data.profiles.plan as PlanType].maxPrice
+          console.log("[v0] Max price for plan:", maxPrice)
           const filtered = maxPrice
             ? ALLOWED_PRICES.filter((p) => p <= maxPrice && p >= data.price)
             : ALLOWED_PRICES.filter((p) => p >= data.price)
+          console.log("[v0] Available prices:", filtered)
           setAvailablePrices(filtered)
         }
       } catch (error) {

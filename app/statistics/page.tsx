@@ -140,10 +140,15 @@ export default function StatisticsPage() {
       const userPlan = profileData?.plan || "free"
       const canAccessFullStats = ["de 0 a hit", "de 0 a hit+", "studio plus"].includes(userPlan)
 
+      console.log("[v0] User plan:", userPlan)
+      console.log("[v0] Can access full stats:", canAccessFullStats)
+
       if (canAccessFullStats) {
         const now = new Date()
         const last7Days = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
         const last28Days = new Date(now.getTime() - 28 * 24 * 60 * 60 * 1000)
+
+        console.log("[v0] Fetching profile views for user:", user.id)
 
         // Get total views
         const { count: totalCount } = await supabase
@@ -164,6 +169,8 @@ export default function StatisticsPage() {
           .select("*", { count: "exact", head: true })
           .eq("profile_id", user.id)
           .gte("viewed_at", last28Days.toISOString())
+
+        console.log("[v0] Profile views - Total:", totalCount, "Last 7 days:", last7Count, "Last 28 days:", last28Count)
 
         setProfileViews({
           last7Days: last7Count || 0,
