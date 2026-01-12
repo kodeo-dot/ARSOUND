@@ -127,7 +127,7 @@ export function Header() {
                     <DropdownMenuItem asChild>
                       <Link href="/statistics" className="flex items-center gap-2 cursor-pointer">
                         <BarChart3 className="h-4 w-4" />
-                        Estadísticas
+                        Dashboard
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
@@ -238,7 +238,7 @@ export function Header() {
                       className="w-full gap-2 rounded-full justify-start bg-transparent"
                     >
                       <BarChart3 className="h-4 w-4" />
-                      Estadísticas
+                      Dashboard
                     </Button>
                   </Link>
                   <Link href="/saved" onClick={() => setMobileMenuOpen(false)}>
