@@ -34,27 +34,36 @@ export default function AdminAppealsPage() {
   const fetchAppeals = async () => {
     try {
       console.log("[v0] Fetching appeals...")
-      const { data, error } = await supabase
+      const { data: appealsData, error } = await supabase
         .from("appeals")
-        .select(
-          `
-          *,
-          profiles!appeals_user_id_fkey (
-            username,
-            avatar_url,
-            blocked_reason
-          )
-        `,
-        )
+        .select("*")
         .order("created_at", { ascending: false })
 
-      console.log("[v0] Appeals fetch result:", { data, error, count: data?.length })
+      console.log("[v0] Appeals fetch result:", { data: appealsData, error, count: appealsData?.length })
 
       if (error) {
         console.error("[v0] Supabase error details:", error)
         throw error
       }
-      setAppeals(data || [])
+
+      if (appealsData && appealsData.length > 0) {
+        const userIds = appealsData.map((appeal) => appeal.user_id)
+        const { data: profilesData } = await supabase
+          .from("profiles")
+          .select("id, username, avatar_url, blocked_reason")
+          .in("id", userIds)
+
+        console.log("[v0] Profiles data:", profilesData)
+
+        const appealsWithProfiles = appealsData.map((appeal) => ({
+          ...appeal,
+          profiles: profilesData?.find((profile) => profile.id === appeal.user_id),
+        }))
+
+        setAppeals(appealsWithProfiles)
+      } else {
+        setAppeals([])
+      }
     } catch (error) {
       console.error("[v0] Error fetching appeals:", error)
       toast({
@@ -90,7 +99,7 @@ export default function AdminAppealsPage() {
 
       await supabase.from("admin_actions").insert({
         admin_id: user.id,
-        action_type: "unblock_user",
+        action_type: "unban_user",
         target_type: "user",
         target_id: selectedAppeal.user_id,
         details: { reason: "Appeal approved", notes: adminNotes },

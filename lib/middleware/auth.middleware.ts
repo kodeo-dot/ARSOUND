@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
+import { checkIfBlocked, isAllowedPathForBlockedUser } from "../auth/blocked-user"
 
 function clearAuthCookies(response: NextResponse, request: NextRequest) {
   response.cookies.delete("sb-access-token")
@@ -40,18 +41,16 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   if (user) {
-    const { data: profile } = await supabase.from("profiles").select("is_blocked").eq("id", user.id).single()
+    const blockedCheck = await checkIfBlocked(user.id)
 
-    if (profile?.is_blocked) {
+    if (blockedCheck.isBlocked) {
       const pathname = request.nextUrl.pathname
 
-      // Define strictly allowed paths for blocked users
-      const allowedPaths = ["/blocked", "/api/appeal", "/api/auth"]
-
-      const isAllowedPath = allowedPaths.some((path) => pathname.startsWith(path))
+      // Check if the current path is allowed for blocked users
+      const isAllowed = isAllowedPathForBlockedUser(pathname)
 
       // Block all other paths - redirect to /blocked
-      if (!isAllowedPath) {
+      if (!isAllowed) {
         const url = request.nextUrl.clone()
         url.pathname = "/blocked"
         return NextResponse.redirect(url)
