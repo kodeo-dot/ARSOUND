@@ -3,6 +3,7 @@ import { getProfile } from "@/lib/database/queries"
 import { createServerClient } from "@/lib/database/supabase.client"
 import { successResponse, errorResponse, validationErrorResponse } from "@/lib/utils/response"
 import { logger } from "@/lib/utils/logger"
+import { checkIfBlocked } from "@/lib/auth/blocked-user"
 
 export async function POST(request: Request) {
   try {
@@ -21,7 +22,9 @@ export async function POST(request: Request) {
       return errorResponse("Profile not found", 404)
     }
 
-    if (!profile.is_blocked) {
+    const blockedCheck = await checkIfBlocked(user.id)
+
+    if (!blockedCheck.isBlocked) {
       return errorResponse("User is not blocked", 400)
     }
 
