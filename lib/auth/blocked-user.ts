@@ -26,7 +26,7 @@ export async function checkIfBlocked(userId: string): Promise<BlockedUserCheck> 
       .select("*")
       .eq("target_id", userId)
       .eq("target_type", "user")
-      .eq("action_type", "block_user")
+      .eq("action_type", "ban_user")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle()
@@ -38,13 +38,12 @@ export async function checkIfBlocked(userId: string): Promise<BlockedUserCheck> 
     console.log("[v0] Block action found:", blockAction)
 
     if (blockAction) {
-      // Check if there's a corresponding unblock action after this block
       const { data: unblockAction } = await supabase
         .from("admin_actions")
         .select("*")
         .eq("target_id", userId)
         .eq("target_type", "user")
-        .eq("action_type", "unblock_user")
+        .eq("action_type", "unban_user")
         .gt("created_at", blockAction.created_at)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -52,7 +51,6 @@ export async function checkIfBlocked(userId: string): Promise<BlockedUserCheck> 
 
       console.log("[v0] Unblock action found:", unblockAction)
 
-      // If there's no unblock after the latest block, user is still blocked
       if (!unblockAction) {
         logger.info("Blocked user detected from admin_actions", "AUTH", {
           userId,
@@ -74,10 +72,6 @@ export async function checkIfBlocked(userId: string): Promise<BlockedUserCheck> 
 }
 
 export function isAllowedPathForBlockedUser(pathname: string): boolean {
-  // Only allow these paths for blocked users:
-  // - /blocked: The blocked user page
-  // - /api/appeal: API endpoint to submit appeals
-  // - /api/auth: Authentication endpoints (specifically for logout)
   const allowedPaths = ["/blocked", "/api/appeal", "/api/auth"]
 
   return allowedPaths.some((path) => pathname.startsWith(path))

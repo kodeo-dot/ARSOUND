@@ -76,7 +76,7 @@ export default function AdminUsersPage() {
       console.log("[v0] Blocking user via admin_actions:", selectedUser.id)
       const { error: actionError } = await supabase.from("admin_actions").insert({
         admin_id: user.id,
-        action_type: "block_user",
+        action_type: "ban_user",
         target_type: "user",
         target_id: selectedUser.id,
         details: { reason: banReason },
@@ -137,7 +137,7 @@ export default function AdminUsersPage() {
       console.log("[v0] Unblocking user via admin_actions:", userId)
       const { error: actionError } = await supabase.from("admin_actions").insert({
         admin_id: user.id,
-        action_type: "unblock_user",
+        action_type: "unban_user",
         target_type: "user",
         target_id: userId,
         details: { reason: "Unblocked from admin panel" },
