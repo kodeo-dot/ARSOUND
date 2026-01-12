@@ -61,6 +61,36 @@ export function ProfileLimitsCard({ userId, userPlan }: ProfileLimitsCardProps) 
     )
   }
 
+  const getDownloadDisplay = () => {
+    if (downloadLimit?.limit === "unlimited") {
+      return { used: downloadLimit?.used || 0, limit: "unlimited", remaining: "∞" }
+    }
+    const limit = downloadLimit?.limit || 10
+    const used = Math.min(downloadLimit?.used || 0, limit)
+    const remaining = Math.max(0, limit - used)
+    return { used, limit, remaining }
+  }
+
+  const getUploadDisplay = () => {
+    if (uploadLimit?.limit === "unlimited") {
+      return {
+        current: uploadLimit?.uploaded_this_month || uploadLimit?.total_packs || 0,
+        limit: "unlimited",
+        remaining: "∞",
+      }
+    }
+    const limit = uploadLimit?.limit || (userPlan === "free" ? 3 : 10)
+    const current =
+      userPlan === "free"
+        ? Math.min(uploadLimit?.total_packs || 0, limit)
+        : Math.min(uploadLimit?.uploaded_this_month || 0, limit)
+    const remaining = Math.max(0, limit - current)
+    return { current, limit, remaining }
+  }
+
+  const downloadDisplay = getDownloadDisplay()
+  const uploadDisplay = getUploadDisplay()
+
   return (
     <Card className="p-6 border-2 border-border bg-card rounded-2xl">
       <h3 className="font-bold text-foreground mb-6 text-lg">Tus límites</h3>
@@ -73,30 +103,30 @@ export function ProfileLimitsCard({ userId, userPlan }: ProfileLimitsCardProps) 
               <Download className="h-5 w-5 text-primary" />
               <span className="font-semibold text-foreground">Descargas este mes</span>
             </div>
-            {downloadLimit?.limit === "unlimited" ? (
+            {downloadDisplay.limit === "unlimited" ? (
               <span className="text-2xl font-black text-primary">∞</span>
             ) : (
               <span className="text-2xl font-black text-primary">
-                {downloadLimit?.used || 0} / {downloadLimit?.limit || 10}
+                {downloadDisplay.used} / {downloadDisplay.limit}
               </span>
             )}
           </div>
-          {downloadLimit?.limit !== "unlimited" && (
+          {downloadDisplay.limit !== "unlimited" && (
             <div className="w-full bg-muted/50 rounded-full h-3 mb-2">
               <div
                 className={`h-3 rounded-full transition-all ${
-                  downloadLimit?.remaining === 0 ? "bg-destructive" : "bg-primary"
+                  downloadDisplay.remaining === 0 ? "bg-destructive" : "bg-primary"
                 }`}
                 style={{
-                  width: `${downloadLimit?.limit ? ((downloadLimit?.used || 0) / downloadLimit.limit) * 100 : 0}%`,
+                  width: `${typeof downloadDisplay.limit === "number" ? Math.min(100, (downloadDisplay.used / downloadDisplay.limit) * 100) : 0}%`,
                 }}
               />
             </div>
           )}
           <p className="text-sm text-muted-foreground">
-            {downloadLimit?.limit === "unlimited"
+            {downloadDisplay.limit === "unlimited"
               ? "Descargas ilimitadas"
-              : `${downloadLimit?.remaining || 10} descargas restantes este mes`}
+              : `${downloadDisplay.remaining} descargas restantes este mes`}
           </p>
         </div>
 
@@ -109,51 +139,43 @@ export function ProfileLimitsCard({ userId, userPlan }: ProfileLimitsCardProps) 
                 {userPlan === "free" ? "Packs totales" : "Packs este mes"}
               </span>
             </div>
-            {uploadLimit?.limit === "unlimited" ? (
+            {uploadDisplay.limit === "unlimited" ? (
               <span className="text-2xl font-black text-secondary">∞</span>
             ) : (
               <span className="text-2xl font-black text-secondary">
-                {userPlan === "free"
-                  ? `${uploadLimit?.total_packs || 0} / ${uploadLimit?.limit || 3}`
-                  : `${uploadLimit?.uploaded_this_month || 0} / ${uploadLimit?.limit || 10}`}
+                {uploadDisplay.current} / {uploadDisplay.limit}
               </span>
             )}
           </div>
-          {uploadLimit?.limit !== "unlimited" && (
+          {uploadDisplay.limit !== "unlimited" && (
             <div className="w-full bg-muted/50 rounded-full h-3 mb-2">
               <div
                 className={`h-3 rounded-full transition-all ${
-                  uploadLimit?.remaining === 0 ? "bg-destructive" : "bg-secondary"
+                  uploadDisplay.remaining === 0 ? "bg-destructive" : "bg-secondary"
                 }`}
                 style={{
-                  width: `${
-                    uploadLimit?.limit
-                      ? userPlan === "free"
-                        ? ((uploadLimit?.total_packs || 0) / uploadLimit.limit) * 100
-                        : ((uploadLimit?.uploaded_this_month || 0) / uploadLimit.limit) * 100
-                      : 0
-                  }%`,
+                  width: `${typeof uploadDisplay.limit === "number" ? Math.min(100, (uploadDisplay.current / uploadDisplay.limit) * 100) : 0}%`,
                 }}
               />
             </div>
           )}
           <p className="text-sm text-muted-foreground">
-            {uploadLimit?.limit === "unlimited"
+            {uploadDisplay.limit === "unlimited"
               ? "Packs ilimitados"
               : userPlan === "free"
-                ? `${uploadLimit?.remaining || 3} packs restantes (total)`
-                : `${uploadLimit?.remaining || 10} packs restantes este mes`}
+                ? `${uploadDisplay.remaining} packs restantes (total)`
+                : `${uploadDisplay.remaining} packs restantes este mes`}
           </p>
         </div>
 
         {/* Warning when limits reached */}
-        {(uploadLimit?.remaining === 0 || downloadLimit?.remaining === 0) && (
+        {(uploadDisplay.remaining === 0 || downloadDisplay.remaining === 0) && (
           <div className="flex gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
             <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
             <p className="text-sm text-amber-600">
-              {uploadLimit?.remaining === 0 && downloadLimit?.remaining === 0
+              {uploadDisplay.remaining === 0 && downloadDisplay.remaining === 0
                 ? "Alcanzaste los límites de tu plan"
-                : uploadLimit?.remaining === 0
+                : uploadDisplay.remaining === 0
                   ? "Alcanzaste el límite de packs"
                   : "Alcanzaste el límite de descargas"}
             </p>
@@ -161,7 +183,7 @@ export function ProfileLimitsCard({ userId, userPlan }: ProfileLimitsCardProps) 
         )}
 
         {/* Upgrade CTA for Free users */}
-        {userPlan === "free" && (uploadLimit?.remaining === 0 || downloadLimit?.remaining === 0) && (
+        {userPlan === "free" && (uploadDisplay.remaining === 0 || downloadDisplay.remaining === 0) && (
           <Link href="/plans" className="block">
             <Button className="w-full h-11 gap-2 rounded-lg bg-primary hover:bg-primary/90">
               <Zap className="h-4 w-4" />
@@ -171,7 +193,7 @@ export function ProfileLimitsCard({ userId, userPlan }: ProfileLimitsCardProps) 
         )}
 
         {/* Upgrade CTA for De 0 a Hit users */}
-        {userPlan === "de_0_a_hit" && (uploadLimit?.remaining === 0 || downloadLimit?.remaining === 0) && (
+        {userPlan === "de_0_a_hit" && (uploadDisplay.remaining === 0 || downloadDisplay.remaining === 0) && (
           <Link href="/plans" className="block">
             <Button className="w-full h-11 gap-2 rounded-lg bg-purple-500 hover:bg-purple-600">
               <Crown className="h-4 w-4" />

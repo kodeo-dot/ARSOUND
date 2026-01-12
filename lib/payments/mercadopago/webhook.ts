@@ -2,6 +2,8 @@ import { getMercadoPagoConfig } from "./config"
 import { createPurchase, recordDownload, incrementPackCounter, updateUserPlan } from "../../database/queries"
 import { logger } from "../../utils/logger"
 import type { PlanType } from "../../types/database.types"
+import { createServerClient } from "@/lib/supabase/server-client"
+import { PLAN_FEATURES } from "@/lib/plans"
 
 interface PaymentData {
   id: string
@@ -245,6 +247,25 @@ async function processPlanSubscription(payment: PaymentData, metadata: any): Pro
       return false
     }
 
+    const supabase = await createServerClient()
+    const { data: profile } = await supabase.from("profiles").select("plan").eq("id", metadata.user_id).single()
+
+    const currentPlan = (profile?.plan as PlanType) || "free"
+    const newPlan = planType as PlanType
+
+    const planHierarchy: Record<PlanType, number> = { free: 0, de_0_a_hit: 1, studio_plus: 2 }
+    const isDowngrade = planHierarchy[newPlan] < planHierarchy[currentPlan]
+
+    if (isDowngrade) {
+      logger.info("Downgrade detected, handling excess packs", "MP_WEBHOOK", {
+        userId: metadata.user_id,
+        currentPlan,
+        newPlan,
+      })
+
+      await handleDowngrade(metadata.user_id, currentPlan, newPlan)
+    }
+
     // Calculate expiration (30 days for monthly plans)
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + 30)
@@ -255,6 +276,7 @@ async function processPlanSubscription(payment: PaymentData, metadata: any): Pro
       originalPlanType: metadata.plan_type,
       normalizedPlanType: planType,
       expiresAt: expiresAt.toISOString(),
+      isDowngrade,
     })
 
     const success = await updateUserPlan(metadata.user_id, planType as PlanType, expiresAt)
@@ -278,5 +300,72 @@ async function processPlanSubscription(payment: PaymentData, metadata: any): Pro
   } catch (error) {
     logger.error("Error processing plan subscription", "MP_WEBHOOK", error)
     return false
+  }
+}
+
+async function handleDowngrade(userId: string, currentPlan: PlanType, newPlan: PlanType): Promise<void> {
+  try {
+    const supabase = await createServerClient()
+    const newPlanFeatures = PLAN_FEATURES[newPlan]
+
+    // Get all active packs for the user
+    const { data: packs, error: packsError } = await supabase
+      .from("packs")
+      .select("id, created_at")
+      .eq("user_id", userId)
+      .eq("is_deleted", false)
+      .eq("archived", false)
+      .order("created_at", { ascending: false }) // Newest first
+
+    if (packsError || !packs) {
+      logger.error("Failed to fetch user packs for downgrade", "MP_WEBHOOK", { userId, error: packsError })
+      return
+    }
+
+    let packsToKeep = packs.length
+
+    // Determine how many packs the user can keep on the new plan
+    if (newPlan === "free" && newPlanFeatures.maxTotalPacks !== null) {
+      packsToKeep = newPlanFeatures.maxTotalPacks // Free: 3 packs total
+    } else if (newPlan === "de_0_a_hit" && newPlanFeatures.maxPacksPerMonth !== null) {
+      // For de_0_a_hit downgrade from studio_plus: keep the newest 10 packs
+      packsToKeep = newPlanFeatures.maxPacksPerMonth
+    }
+
+    // If user has more packs than allowed, archive the oldest ones
+    if (packs.length > packsToKeep) {
+      const packsToArchive = packs.slice(packsToKeep) // Keep newest, archive oldest
+      const packIdsToArchive = packsToArchive.map((p) => p.id)
+
+      logger.info("Archiving excess packs due to downgrade", "MP_WEBHOOK", {
+        userId,
+        totalPacks: packs.length,
+        packsToKeep,
+        packsToArchive: packIdsToArchive.length,
+      })
+
+      // Archive (soft delete) the excess packs
+      const { error: archiveError } = await supabase.from("packs").update({ archived: true }).in("id", packIdsToArchive)
+
+      if (archiveError) {
+        logger.error("Failed to archive excess packs", "MP_WEBHOOK", { userId, error: archiveError })
+      } else {
+        logger.info("Successfully archived excess packs", "MP_WEBHOOK", {
+          userId,
+          archivedCount: packIdsToArchive.length,
+        })
+      }
+    }
+
+    // Note: Downloads remain unchanged until end of month (as per requirements)
+    logger.info("Downgrade handled successfully", "MP_WEBHOOK", {
+      userId,
+      currentPlan,
+      newPlan,
+      totalPacks: packs.length,
+      packsKept: Math.min(packs.length, packsToKeep),
+    })
+  } catch (error) {
+    logger.error("Error handling downgrade", "MP_WEBHOOK", { userId, error })
   }
 }

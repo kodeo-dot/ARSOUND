@@ -121,9 +121,9 @@ export default function DashboardPage() {
             const uniquePlayUsers = new Set(plays?.filter((p) => p.user_id).map((p) => p.user_id) || [])
             const unique_plays = uniquePlayUsers.size
 
-            const { count: purchasesCount, error: purchasesError } = await supabase
+            const { data: purchases, error: purchasesError } = await supabase
               .from("purchases")
-              .select("*", { count: "exact", head: true })
+              .select("seller_earnings, amount_paid, amount")
               .eq("pack_id", pack.id)
               .eq("status", "completed")
 
@@ -131,7 +131,13 @@ export default function DashboardPage() {
               console.error(`[v0] Error loading purchases for pack ${pack.id}:`, purchasesError)
             }
 
-            const total_revenue = (purchasesCount || 0) * pack.price
+            // Sum actual earnings from completed purchases
+            const total_revenue =
+              purchases?.reduce((sum, purchase) => {
+                // Use seller_earnings if available, fallback to amount_paid, then amount
+                const earnings = purchase.seller_earnings || purchase.amount_paid || purchase.amount || 0
+                return sum + earnings
+              }, 0) || 0
 
             // Get comments count for this pack
             const { count: comments_count, error: commentsError } = await supabase

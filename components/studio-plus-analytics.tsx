@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, TrendingUp, TrendingDown, Globe, Clock, Percent, Package, DollarSign } from 'lucide-react'
+import { Loader2, TrendingUp, Percent, Package, DollarSign } from "lucide-react"
 import {
   BarChart,
   Bar,
@@ -27,6 +27,7 @@ export function StudioPlusAnalytics({ userId }: StudioPlusAnalyticsProps) {
   const [analytics, setAnalytics] = useState({
     total_plays: 0,
     total_sales: 0,
+    total_revenue: 0,
     conversion_rate: "0",
     packs_count: 0,
     top_packs: [] as any[],
@@ -40,17 +41,15 @@ export function StudioPlusAnalytics({ userId }: StudioPlusAnalyticsProps) {
         setLoading(true)
 
         // Fetch user's packs
-        const { data: packs } = await supabase
-          .from("packs")
-          .select("id, title, downloads_count")
-          .eq("user_id", userId)
+        const { data: packs } = await supabase.from("packs").select("id, title, downloads_count").eq("user_id", userId)
 
-        const packIds = packs?.map(p => p.id) || []
+        const packIds = packs?.map((p) => p.id) || []
 
         if (packIds.length === 0) {
           setAnalytics({
             total_plays: 0,
             total_sales: 0,
+            total_revenue: 0,
             conversion_rate: "0",
             packs_count: 0,
             top_packs: [],
@@ -60,30 +59,32 @@ export function StudioPlusAnalytics({ userId }: StudioPlusAnalyticsProps) {
         }
 
         // Fetch plays
-        const { data: plays } = await supabase
-          .from("pack_plays")
-          .select("*")
-          .in("pack_id", packIds)
+        const { data: plays } = await supabase.from("pack_plays").select("*").in("pack_id", packIds)
 
         // Fetch sales
-        const { data: sales } = await supabase
-          .from("purchases")
-          .select("*")
-          .in("pack_id", packIds)
+        const { data: sales } = await supabase.from("purchases").select("*").in("pack_id", packIds)
 
         // Calculate conversion rate
         const totalPlays = plays?.length || 0
         const totalSales = sales?.length || 0
         const conversionRate = totalPlays > 0 ? ((totalSales / totalPlays) * 100).toFixed(2) : "0"
 
+        const totalRevenue =
+          sales?.reduce((sum, sale) => {
+            // Use seller_earnings if available, fallback to amount_paid, then amount
+            const earnings = sale.seller_earnings || sale.amount_paid || sale.amount || 0
+            return sum + earnings
+          }, 0) || 0
+
         // Get top packs by sales
-        const topPacksData = packs
-          ?.sort((a, b) => (b.downloads_count || 0) - (a.downloads_count || 0))
-          .slice(0, 5)
-          .map(p => ({
-            name: p.title.length > 15 ? p.title.substring(0, 15) + "..." : p.title,
-            sales: p.downloads_count || 0,
-          })) || []
+        const topPacksData =
+          packs
+            ?.sort((a, b) => (b.downloads_count || 0) - (a.downloads_count || 0))
+            .slice(0, 5)
+            .map((p) => ({
+              name: p.title.length > 15 ? p.title.substring(0, 15) + "..." : p.title,
+              sales: p.downloads_count || 0,
+            })) || []
 
         // Get play activity by week
         const thirtyDaysAgo = new Date()
@@ -110,6 +111,7 @@ export function StudioPlusAnalytics({ userId }: StudioPlusAnalyticsProps) {
         setAnalytics({
           total_plays: totalPlays,
           total_sales: totalSales,
+          total_revenue: totalRevenue,
           conversion_rate: conversionRate,
           packs_count: packIds.length,
           top_packs: topPacksData,
@@ -142,16 +144,31 @@ export function StudioPlusAnalytics({ userId }: StudioPlusAnalyticsProps) {
         <Card className="p-6 rounded-3xl border-border bg-gradient-to-br from-primary/10 to-primary/5">
           <div className="flex items-center justify-between mb-2">
             <Package className="h-8 w-8 text-primary" />
-            <Badge variant="outline" className="text-xs">Este mes</Badge>
+            <Badge variant="outline" className="text-xs">
+              Este mes
+            </Badge>
           </div>
           <div className="text-3xl font-black text-foreground">{analytics.total_sales}</div>
           <div className="text-sm text-muted-foreground font-semibold mt-2">Ventas</div>
         </Card>
 
+        <Card className="p-6 rounded-3xl border-border bg-gradient-to-br from-green-500/10 to-green-500/5">
+          <div className="flex items-center justify-between mb-2">
+            <DollarSign className="h-8 w-8 text-green-500" />
+            <Badge variant="outline" className="text-xs">
+              Este mes
+            </Badge>
+          </div>
+          <div className="text-3xl font-black text-foreground">${analytics.total_revenue.toLocaleString("es-AR")}</div>
+          <div className="text-sm text-muted-foreground font-semibold mt-2">Ingresos</div>
+        </Card>
+
         <Card className="p-6 rounded-3xl border-border bg-gradient-to-br from-secondary/10 to-secondary/5">
           <div className="flex items-center justify-between mb-2">
             <TrendingUp className="h-8 w-8 text-secondary" />
-            <Badge variant="outline" className="text-xs">Este mes</Badge>
+            <Badge variant="outline" className="text-xs">
+              Este mes
+            </Badge>
           </div>
           <div className="text-3xl font-black text-foreground">{analytics.total_plays}</div>
           <div className="text-sm text-muted-foreground font-semibold mt-2">Reproducciones</div>
@@ -159,20 +176,11 @@ export function StudioPlusAnalytics({ userId }: StudioPlusAnalyticsProps) {
 
         <Card className="p-6 rounded-3xl border-border bg-gradient-to-br from-orange-500/10 to-orange-500/5">
           <div className="flex items-center justify-between mb-2">
-            <Percent className="h-8 w-8 text-orange-500" />
+            <Percent className="h-5 w-5 text-orange-500" />
             <TrendingUp className="h-5 w-5 text-orange-500/60" />
           </div>
           <div className="text-3xl font-black text-foreground">{analytics.conversion_rate}%</div>
           <div className="text-sm text-muted-foreground font-semibold mt-2">Tasa de Conversión</div>
-        </Card>
-
-        <Card className="p-6 rounded-3xl border-border bg-gradient-to-br from-green-500/10 to-green-500/5">
-          <div className="flex items-center justify-between mb-2">
-            <Package className="h-8 w-8 text-green-500" />
-            <Badge variant="outline" className="text-xs">Total</Badge>
-          </div>
-          <div className="text-3xl font-black text-foreground">{analytics.packs_count}</div>
-          <div className="text-sm text-muted-foreground font-semibold mt-2">Packs Activos</div>
         </Card>
       </div>
 
@@ -190,10 +198,7 @@ export function StudioPlusAnalytics({ userId }: StudioPlusAnalyticsProps) {
                   stroke="hsl(var(--muted-foreground))"
                   tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
                 />
-                <YAxis
-                  stroke="hsl(var(--muted-foreground))"
-                  tick={{ fill: "hsl(var(--muted-foreground))" }}
-                />
+                <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fill: "hsl(var(--muted-foreground))" }} />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "hsl(var(--card))",
@@ -223,10 +228,7 @@ export function StudioPlusAnalytics({ userId }: StudioPlusAnalyticsProps) {
                   stroke="hsl(var(--muted-foreground))"
                   tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
                 />
-                <YAxis
-                  stroke="hsl(var(--muted-foreground))"
-                  tick={{ fill: "hsl(var(--muted-foreground))" }}
-                />
+                <YAxis stroke="hsl(var(--muted-foreground))" tick={{ fill: "hsl(var(--muted-foreground))" }} />
                 <Tooltip
                   contentStyle={{
                     backgroundColor: "hsl(var(--card))",
@@ -254,13 +256,21 @@ export function StudioPlusAnalytics({ userId }: StudioPlusAnalyticsProps) {
           <div className="flex items-start gap-3">
             <TrendingUp className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
             <p className="text-sm text-foreground">
-              Tu tasa de conversión es de <strong>{analytics.conversion_rate}%</strong>. Esto significa que por cada 100 reproducciones, obtenés {Math.round(parseFloat(analytics.conversion_rate))} ventas.
+              Tu tasa de conversión es de <strong>{analytics.conversion_rate}%</strong>. Esto significa que por cada 100
+              reproducciones, obtenés {Math.round(Number.parseFloat(analytics.conversion_rate))} ventas.
             </p>
           </div>
           <div className="flex items-start gap-3">
             <Package className="h-5 w-5 text-secondary flex-shrink-0 mt-0.5" />
             <p className="text-sm text-foreground">
-              Tenés <strong>{analytics.packs_count}</strong> packs activos con un total de <strong>{analytics.total_sales}</strong> ventas y <strong>{analytics.total_plays}</strong> reproducciones.
+              Tenés <strong>{analytics.packs_count}</strong> packs activos con <strong>{analytics.total_sales}</strong>{" "}
+              ventas y <strong>${analytics.total_revenue.toLocaleString("es-AR")}</strong> en ingresos.
+            </p>
+          </div>
+          <div className="flex items-start gap-3">
+            <DollarSign className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-foreground">
+              Tus ingresos totales este mes son de <strong>${analytics.total_revenue.toLocaleString("es-AR")}</strong>.
             </p>
           </div>
         </div>
