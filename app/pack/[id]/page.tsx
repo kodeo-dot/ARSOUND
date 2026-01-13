@@ -524,11 +524,6 @@ export default function PackDetailPage() {
                     <Heart
                       className={`h-5 w-5 transition-all ${isLiked ? "fill-red-500 text-red-500 scale-110" : ""} ${isLiking ? "animate-pulse" : ""}`}
                     />
-                    {likesCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                        {likesCount > 99 ? "99+" : likesCount}
-                      </span>
-                    )}
                   </Button>
                   <Button
                     variant="outline"

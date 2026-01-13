@@ -269,19 +269,19 @@ export default function UploadPage() {
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
-    const numValue = Number.parseInt(value) || 0
-    if (numValue >= MIN_PRICE && numValue <= MAX_PRICE) {
-      setPrice(value)
-    } else if (numValue < MIN_PRICE && value !== "") {
-      setPrice(MIN_PRICE.toString())
-      toast({
-        title: "Precio mínimo",
-        description: `El precio mínimo es $${MIN_PRICE}`,
-        variant: "destructive",
-      })
-    } else if (numValue > MAX_PRICE) {
-      setPrice(MAX_PRICE.toString())
+    setPrice(value)
+  }
+
+  const getPriceError = (): string | null => {
+    if (!price || price === "") return null
+    const numValue = Number.parseInt(price) || 0
+    if (numValue < MIN_PRICE) {
+      return `El precio mínimo es $${MIN_PRICE.toLocaleString()} ARS`
     }
+    if (numValue > MAX_PRICE) {
+      return `El precio máximo para tu plan es $${MAX_PRICE.toLocaleString()} ARS`
+    }
+    return null
   }
 
   const addTag = () => {
@@ -389,6 +389,16 @@ export default function UploadPage() {
       toast({
         title: "Campos incompletos",
         description: "Por favor completá todos los campos requeridos y aceptá la licencia",
+        variant: "destructive",
+      })
+      setIsLoading(false)
+      return
+    }
+
+    if (useCustomPrice && getPriceError()) {
+      toast({
+        title: "Error en el precio",
+        description: getPriceError(),
         variant: "destructive",
       })
       setIsLoading(false)
@@ -1053,17 +1063,22 @@ export default function UploadPage() {
                     value={price}
                     onChange={handlePriceChange}
                     placeholder="Ingresá un precio personalizado"
-                    className="pl-8 h-12 rounded-xl text-base"
+                    className={`pl-8 h-12 rounded-xl text-base ${getPriceError() ? "border-red-500 focus-visible:ring-red-500" : ""}`}
                     required
-                    min="0"
-                    max={MAX_PRICE}
                     step="1"
                     disabled={isLoading}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Escribe cualquier precio entero hasta ${MAX_PRICE.toLocaleString()}
-                </p>
+                {getPriceError() ? (
+                  <p className="text-sm text-red-500 font-semibold flex items-center gap-2">
+                    <span className="text-lg">⚠️</span>
+                    {getPriceError()}
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Precio permitido: desde ${MIN_PRICE.toLocaleString()} hasta ${MAX_PRICE.toLocaleString()} ARS
+                  </p>
+                )}
               </div>
             ) : (
               <Select value={price} onValueChange={setPrice} required disabled={isLoading}>
