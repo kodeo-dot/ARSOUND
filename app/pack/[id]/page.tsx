@@ -65,7 +65,8 @@ export default function PackDetailPage() {
             profiles (
               username,
               display_name,
-              avatar_url
+              avatar_url,
+              mp_user_id
             )
           `)
           .eq("id", packId)
@@ -73,6 +74,7 @@ export default function PackDetailPage() {
 
         if (error) throw error
         console.log("[v0] Pack data loaded:", data)
+        console.log("[v0] Initial likes_count:", data.likes_count)
         setPack(data)
         setLikesCount(data.likes_count || 0)
 
@@ -191,6 +193,21 @@ export default function PackDetailPage() {
         setIsPurchasing(false)
       }
     } else {
+      if (user && pack?.profiles?.mp_user_id) {
+        const { data: buyerProfile } = await supabase.from("profiles").select("mp_user_id").eq("id", user.id).single()
+
+        if (buyerProfile?.mp_user_id && buyerProfile.mp_user_id === pack.profiles.mp_user_id) {
+          toast({
+            title: "No podés comprar este pack",
+            description:
+              "Detectamos que estás usando la misma cuenta de MercadoPago que el vendedor. No podés comprarte a vos mismo.",
+            variant: "destructive",
+          })
+          setIsPurchasing(false)
+          return
+        }
+      }
+
       window.location.href = `/pack/${packId}/checkout`
     }
   }
@@ -205,29 +222,57 @@ export default function PackDetailPage() {
       return
     }
 
+    console.log("[v0] handleLike called - isLiked:", isLiked, "current count:", likesCount)
     setIsLiking(true)
 
     try {
       if (isLiked) {
+        console.log("[v0] Removing like...")
         const { error } = await supabase.from("pack_likes").delete().eq("user_id", user.id).eq("pack_id", packId)
 
         if (!error) {
+          console.log("[v0] Like removed successfully")
           setIsLiked(false)
-          setLikesCount((prev) => Math.max(0, prev - 1))
+          setLikesCount((prev) => {
+            const newCount = Math.max(0, prev - 1)
+            console.log("[v0] Updated likes count:", prev, "->", newCount)
+            return newCount
+          })
+        } else {
+          console.error("[v0] Error removing like:", error)
         }
       } else {
+        console.log("[v0] Adding like...")
         const { error } = await supabase.from("pack_likes").insert({
           user_id: user.id,
           pack_id: packId,
         })
 
         if (!error) {
+          console.log("[v0] Like added successfully")
           setIsLiked(true)
-          setLikesCount((prev) => prev + 1)
+          setLikesCount((prev) => {
+            const newCount = prev + 1
+            console.log("[v0] Updated likes count:", prev, "->", newCount)
+            return newCount
+          })
+        } else {
+          console.error("[v0] Error adding like:", error)
         }
       }
+
+      const { data: packData, error: packError } = await supabase
+        .from("packs")
+        .select("likes_count")
+        .eq("id", packId)
+        .single()
+
+      if (!packError && packData) {
+        console.log("[v0] Real likes_count from DB:", packData.likes_count)
+        setLikesCount(packData.likes_count || 0)
+      }
     } catch (error) {
-      console.error("Error toggling like:", error)
+      console.error("[v0] Error toggling like:", error)
     } finally {
       setIsLiking(false)
     }
@@ -272,13 +317,11 @@ export default function PackDetailPage() {
         setAppliedDiscount(discountAmount)
         setDiscountReason(`${pack.discount_percent}% OFF - Oferta especial`)
       } else if (activeOffer) {
-        // Active offers (time-limited promotions)
         const offerAmount = Number(activeOffer.discount_percent) || 0
         const discountAmount = Math.round((pack.price * offerAmount) / 100)
         setAppliedDiscount(discountAmount)
         setDiscountReason(`${offerAmount}% OFF - Oferta temporal`)
       } else {
-        // No discount or requires code (code-based discounts are "secret")
         setAppliedDiscount(0)
         setDiscountReason("")
       }
@@ -545,57 +588,45 @@ export default function PackDetailPage() {
             </Card>
 
             {pack.description && (
-              <div className="space-y-3">
-                <h2 className="text-2xl font-black text-foreground">Descripción</h2>
-                <p className="text-base text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                  {pack.description}
-                </p>
-              </div>
+              <Card className="p-8 rounded-2xl border-border bg-card">
+                <h2 className="text-2xl font-black text-foreground mb-4">Descripción</h2>
+                <p className="text-foreground whitespace-pre-line leading-relaxed">{pack.description}</p>
+              </Card>
             )}
 
-            <Card className="p-6 rounded-2xl border-border bg-card">
-              <div className="flex items-start gap-4">
-                <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <FileText className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-foreground mb-2">Licencia de Uso</h3>
-                  <p className="text-sm text-muted-foreground mb-3 leading-relaxed">
-                    Al comprar o descargar este pack, obtenés una licencia global que te permite usar los samples en tus
-                    producciones comerciales y no comerciales. Los samples no pueden ser redistribuidos ni registrados
-                    en Content ID.
-                  </p>
-                  <Link href="/license" target="_blank">
-                    <Button variant="outline" size="sm" className="gap-2 bg-transparent">
-                      <FileText className="h-4 w-4" />
-                      Ver Licencia Completa
-                    </Button>
-                  </Link>
-                </div>
-              </div>
-            </Card>
-
             {pack.tags && pack.tags.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="text-sm font-bold text-muted-foreground uppercase">Tags</h3>
+              <Card className="p-8 rounded-2xl border-border bg-card">
+                <h2 className="text-2xl font-black text-foreground mb-4">Tags</h2>
                 <div className="flex flex-wrap gap-2">
                   {pack.tags.map((tag: string, index: number) => (
-                    <Badge
-                      key={index}
-                      variant="outline"
-                      className="px-4 py-1.5 rounded-full border-border hover:bg-accent cursor-pointer text-sm"
-                    >
+                    <Badge key={index} variant="outline" className="text-sm px-4 py-2">
                       {tag}
                     </Badge>
                   ))}
                 </div>
-              </div>
+              </Card>
             )}
+
+            <Card className="p-8 rounded-2xl border-border bg-card">
+              <h2 className="text-2xl font-black text-foreground mb-4 flex items-center gap-2">
+                <FileText className="h-6 w-6 text-primary" />
+                Licencia de Uso
+              </h2>
+              <p className="text-sm text-muted-foreground leading-relaxed mb-4">
+                Al comprar este pack, aceptás los términos de uso de ARSOUND. Podés usar estos samples en tus
+                producciones comerciales, pero no podés redistribuirlos o revenderlos como parte de otros sample packs.
+              </p>
+              <Link href="/license" target="_blank">
+                <Button variant="outline" size="sm" className="rounded-full bg-transparent">
+                  Ver licencia completa
+                </Button>
+              </Link>
+            </Card>
           </div>
         </div>
 
-        <div className="max-w-4xl mx-auto mt-16">
-          <PackComments packId={packId} packOwnerId={pack.user_id} isAuthenticated={!!user} currentUserId={user?.id} />
+        <div className="max-w-7xl mx-auto mt-16">
+          <PackComments packId={packId} />
         </div>
       </main>
 

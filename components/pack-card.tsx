@@ -87,29 +87,46 @@ export function PackCard({ pack }: PackCardProps) {
       return
     }
 
+    console.log("[v0] PackCard handleLike - pack:", pack.id, "isLiked:", isLiked, "count:", likesCount)
     setIsLiking(true)
 
     try {
       if (isLiked) {
+        console.log("[v0] Removing like from pack card...")
         const { error } = await supabase.from("pack_likes").delete().eq("user_id", user.id).eq("pack_id", pack.id)
 
         if (!error) {
+          console.log("[v0] Like removed from pack card")
           setIsLiked(false)
-          setLikesCount((prev) => Math.max(0, prev - 1))
+          setLikesCount((prev) => {
+            const newCount = Math.max(0, prev - 1)
+            console.log("[v0] PackCard count:", prev, "->", newCount)
+            return newCount
+          })
+        } else {
+          console.error("[v0] Error removing like from pack card:", error)
         }
       } else {
+        console.log("[v0] Adding like from pack card...")
         const { error } = await supabase.from("pack_likes").insert({
           user_id: user.id,
           pack_id: pack.id,
         })
 
         if (!error) {
+          console.log("[v0] Like added from pack card")
           setIsLiked(true)
-          setLikesCount((prev) => prev + 1)
+          setLikesCount((prev) => {
+            const newCount = prev + 1
+            console.log("[v0] PackCard count:", prev, "->", newCount)
+            return newCount
+          })
+        } else {
+          console.error("[v0] Error adding like from pack card:", error)
         }
       }
     } catch (error) {
-      console.error("Error toggling like:", error)
+      console.error("[v0] Error toggling like in pack card:", error)
     } finally {
       setIsLiking(false)
     }

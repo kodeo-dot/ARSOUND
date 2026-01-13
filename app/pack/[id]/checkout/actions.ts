@@ -3,6 +3,8 @@ import { PLAN_FEATURES, type PlanType } from "@/lib/plans"
 import type { DiscountCode, PriceBreakdown } from "@/types/discount"
 import { createMercadoPagoPreference } from "@/lib/payment" // Declare the variable here
 
+const MIN_PRICE = 500
+
 export async function getDiscountInfo(packId: string) {
   const supabase = await createClient()
 
@@ -148,10 +150,36 @@ export async function getPaymentLink(packId: string, discountCode: string | null
     return { success: false, error: "No autenticado" }
   }
 
-  const { data: pack } = await supabase.from("packs").select("*, studio:studios(*)").eq("id", packId).single()
+  const { data: pack } = await supabase
+    .from("packs")
+    .select("*, studio:studios(*), profiles!user_id(mp_user_id)")
+    .eq("id", packId)
+    .single()
 
   if (!pack) {
     return { success: false, error: "Pack no encontrado" }
+  }
+
+  const { data: buyerProfile } = await supabase.from("profiles").select("mp_user_id").eq("id", user.id).single()
+
+  if (pack.profiles?.mp_user_id && buyerProfile?.mp_user_id && pack.profiles.mp_user_id === buyerProfile.mp_user_id) {
+    console.log("[v0] Self-purchase attempt detected:", {
+      buyerId: user.id,
+      sellerId: pack.user_id,
+      mpUserId: buyerProfile.mp_user_id,
+    })
+    return {
+      success: false,
+      error:
+        "No podés comprar tu propio pack. Detectamos que estás usando la misma cuenta de MercadoPago que el vendedor.",
+    }
+  }
+
+  if (pack.user_id === user.id) {
+    return {
+      success: false,
+      error: "No podés comprar tu propio pack.",
+    }
   }
 
   const { data: profile } = await supabase.from("profiles").select("plan").eq("id", user.id).single()
@@ -189,8 +217,17 @@ export async function getPaymentLink(packId: string, discountCode: string | null
   const priceAfterDiscount = Math.max(0, basePrice - discountAmount)
 
   let finalBasePrice = priceAfterDiscount
-  if (customPrice && customPrice >= priceAfterDiscount && customPrice <= planFeatures.maxPackPrice) {
+  if (
+    customPrice &&
+    customPrice >= Math.max(priceAfterDiscount, MIN_PRICE) &&
+    customPrice <= planFeatures.maxPackPrice
+  ) {
     finalBasePrice = customPrice
+  } else if (customPrice && customPrice < MIN_PRICE) {
+    return {
+      success: false,
+      error: `El precio mínimo es $${MIN_PRICE}`,
+    }
   }
 
   const platformFee = finalBasePrice * (planFeatures.platformFeePercentage / 100)

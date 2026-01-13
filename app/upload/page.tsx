@@ -42,6 +42,7 @@ import { PRODUCT_TYPES, DAW_OPTIONS, type ProductTypeKey } from "@/lib/constants
 import { Switch } from "@/components/ui/switch"
 
 const ALL_PRICE_OPTIONS = Array.from({ length: 14 }, (_, i) => i * 5000)
+const MIN_PRICE = 500
 const ALL_DISCOUNT_OPTIONS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
 export default function UploadPage() {
@@ -102,7 +103,7 @@ export default function UploadPage() {
   const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
   const commission = PLAN_FEATURES[userPlan]?.commission ?? 0.15
 
-  const PRICE_OPTIONS = ALL_PRICE_OPTIONS.filter((price) => price <= MAX_PRICE)
+  const PRICE_OPTIONS = ALL_PRICE_OPTIONS.filter((price) => price >= MIN_PRICE && price <= MAX_PRICE)
   const DISCOUNT_OPTIONS = ALL_DISCOUNT_OPTIONS.filter((discount) => discount <= MAX_DISCOUNT)
 
   const priceNumber = Math.min(Number.parseFloat(price) || 0, MAX_PRICE)
@@ -269,9 +270,16 @@ export default function UploadPage() {
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     const numValue = Number.parseInt(value) || 0
-    if (numValue <= MAX_PRICE) {
+    if (numValue >= MIN_PRICE && numValue <= MAX_PRICE) {
       setPrice(value)
-    } else {
+    } else if (numValue < MIN_PRICE && value !== "") {
+      setPrice(MIN_PRICE.toString())
+      toast({
+        title: "Precio mínimo",
+        description: `El precio mínimo es $${MIN_PRICE}`,
+        variant: "destructive",
+      })
+    } else if (numValue > MAX_PRICE) {
       setPrice(MAX_PRICE.toString())
     }
   }
