@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Card } from "@/components/ui/card"
-import { LayoutDashboard, Package, Users, MessageSquare, Shield } from "lucide-react"
+import { LayoutDashboard, Package, Users, MessageSquare, Shield, DollarSign } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navItems = [
@@ -31,6 +31,11 @@ const navItems = [
     title: "Apelaciones",
     href: "/admin/appeals",
     icon: Shield,
+  },
+  {
+    title: "Precios de Planes",
+    href: "/admin/pricing",
+    icon: DollarSign,
   },
 ]
 

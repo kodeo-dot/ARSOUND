@@ -19,6 +19,7 @@ import {
   Download,
   BarChart3,
   Star,
+  Tag,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
@@ -26,12 +27,14 @@ import type { PlanType } from "@/lib/plans"
 import { PLAN_FEATURES } from "@/lib/plans"
 import { selectPlan } from "./actions"
 import { toast } from "@/hooks/use-toast"
+import { usePlanPricing } from "@/hooks/use-plan-pricing"
 
 export default function PlansPage() {
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null)
   const [currentPlan, setCurrentPlan] = useState<PlanType | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isProcessing, setIsProcessing] = useState(false)
+  const { getPlanPrice, isPlanDiscounted, getDiscountLabel, isLoading: pricingLoading } = usePlanPricing()
 
   useEffect(() => {
     fetchCurrentPlan()
@@ -69,6 +72,9 @@ export default function PlansPage() {
     }
   }
 
+  const de0aHitPrice = getPlanPrice("de_0_a_hit") || 5000
+  const studioPlusPrice = getPlanPrice("studio_plus") || 15000
+
   const plans = [
     {
       id: "free",
@@ -77,6 +83,9 @@ export default function PlansPage() {
       price: 0,
       priceLabel: "Gratis",
       subtitle: "Para comenzar",
+      basePrice: 0,
+      isDiscounted: false,
+      discountLabel: null,
       features: [
         { icon: FileArchive, text: "Hasta 3 packs activos", included: true },
         { icon: FileArchive, text: "Tamaño máximo por pack: 80 MB", included: true },
@@ -95,9 +104,12 @@ export default function PlansPage() {
       id: "de_0_a_hit",
       name: "De 0 a Hit",
       icon: Zap,
-      price: 5000,
-      priceLabel: "5.000 ARS",
+      price: de0aHitPrice,
+      priceLabel: `${de0aHitPrice.toLocaleString("es-AR")} ARS`,
       subtitle: "Para productores activos",
+      basePrice: 5000,
+      isDiscounted: isPlanDiscounted("de_0_a_hit"),
+      discountLabel: getDiscountLabel("de_0_a_hit"),
       features: [
         { icon: FileArchive, text: "Hasta 10 packs activos", included: true },
         { icon: FileArchive, text: "Tamaño máximo por pack: 250 MB", included: true },
@@ -120,9 +132,12 @@ export default function PlansPage() {
       id: "studio_plus",
       name: "Studio Plus",
       icon: Crown,
-      price: 15000,
-      priceLabel: "15.000 ARS",
+      price: studioPlusPrice,
+      priceLabel: `${studioPlusPrice.toLocaleString("es-AR")} ARS`,
       subtitle: "Para profesionales",
+      basePrice: 15000,
+      isDiscounted: isPlanDiscounted("studio_plus"),
+      discountLabel: getDiscountLabel("studio_plus"),
       features: [
         { icon: FileArchive, text: "Packs ilimitados", included: true },
         { icon: FileArchive, text: "Tamaño máximo por pack: 500 MB", included: true },
@@ -232,6 +247,12 @@ export default function PlansPage() {
                       Más Popular
                     </Badge>
                   )}
+                  {plan.isDiscounted && plan.discountLabel && (
+                    <Badge className="absolute -top-3 left-8 bg-green-500 text-white">
+                      <Tag className="h-3 w-3 mr-1" />
+                      {plan.discountLabel}
+                    </Badge>
+                  )}
                   {isCurrentPlan && (
                     <Badge className="absolute -top-3 right-8 bg-green-500 text-white">Plan Actual</Badge>
                   )}
@@ -255,6 +276,11 @@ export default function PlansPage() {
                   <p className="text-sm text-muted-foreground mb-6">{plan.subtitle}</p>
 
                   <div className="mb-8">
+                    {plan.isDiscounted && plan.basePrice > 0 && (
+                      <div className="text-lg line-through text-muted-foreground mb-1">
+                        ${plan.basePrice.toLocaleString("es-AR")}
+                      </div>
+                    )}
                     <div className="text-4xl font-black text-foreground mb-1">{plan.priceLabel}</div>
                     {plan.price > 0 && <div className="text-sm text-muted-foreground">por mes</div>}
                     {plan.price === 0 && <div className="text-sm text-muted-foreground">para siempre</div>}
@@ -412,17 +438,11 @@ export default function PlansPage() {
                     <td className="py-4 px-4 text-center bg-orange-500/5">Ilimitadas</td>
                     <td className="py-4 px-4 text-center text-foreground">Ilimitadas</td>
                   </tr>
-                  <tr className="border-b border-border">
+                  <tr>
                     <td className="py-4 px-4 font-semibold text-foreground">Estadísticas</td>
                     <td className="py-4 px-4 text-center text-muted-foreground">Básicas</td>
                     <td className="py-4 px-4 text-center bg-orange-500/5">Completas</td>
                     <td className="py-4 px-4 text-center text-foreground">Avanzadas + gráficas</td>
-                  </tr>
-                  <tr>
-                    <td className="py-4 px-4 font-semibold text-foreground">Soporte</td>
-                    <td className="py-4 px-4 text-center text-muted-foreground">Estándar</td>
-                    <td className="py-4 px-4 text-center bg-orange-500/5">Prioritario</td>
-                    <td className="py-4 px-4 text-center text-foreground">Premium</td>
                   </tr>
                 </tbody>
               </table>
