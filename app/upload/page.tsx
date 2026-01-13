@@ -268,7 +268,7 @@ export default function UploadPage() {
   }
 
   const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
+    const value = e.target.value.replace(/[^\d]/g, "")
     setPrice(value)
   }
 

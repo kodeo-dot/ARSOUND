@@ -156,7 +156,7 @@ export default function EditPackPage() {
   }
 
   const handleCustomPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
+    const value = e.target.value.replace(/[^\d]/g, "")
     setCustomPrice(value)
 
     if (value) {
