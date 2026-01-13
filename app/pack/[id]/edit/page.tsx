@@ -25,6 +25,7 @@ import {
 import { PLAN_FEATURES, type PlanType } from "@/lib/plans"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { GENRES, getSubgenres } from "@/lib/genres"
+import { Input } from "@/components/ui/input"
 
 const ALL_PRICE_OPTIONS = Array.from({ length: 14 }, (_, i) => i * 5000)
 const ALL_DISCOUNT_OPTIONS = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
@@ -48,6 +49,10 @@ export default function EditPackPage() {
   const [coverPreview, setCoverPreview] = useState<string | null>(null)
   const [genre, setGenre] = useState("")
   const [subgenre, setSubgenre] = useState("")
+
+  const [priceType, setPriceType] = useState<"preset" | "custom">("preset")
+  const [customPrice, setCustomPrice] = useState("")
+  const [priceError, setPriceError] = useState("")
 
   const MAX_PRICE = PLAN_FEATURES[userPlan].maxPrice || 65000
   const MAX_DISCOUNT = PLAN_FEATURES[userPlan]?.maxDiscountPercent || 50
@@ -93,7 +98,19 @@ export default function EditPackPage() {
       }
 
       setPack(packData)
-      setPrice(packData.price.toString())
+
+      const packPrice = packData.price
+      const isPreset = ALL_PRICE_OPTIONS.includes(packPrice)
+
+      if (isPreset) {
+        setPriceType("preset")
+        setPrice(packPrice.toString())
+      } else {
+        setPriceType("custom")
+        setCustomPrice(packPrice.toString())
+        setPrice(packPrice.toString())
+      }
+
       setDiscountPercent(packData.discount_percent?.toString() || "0")
       setCoverPreview(packData.cover_image_url)
       setGenre(packData.genre || "")
@@ -116,7 +133,63 @@ export default function EditPackPage() {
     setSubgenre("")
   }
 
+  const validateCustomPrice = (value: string) => {
+    const numValue = Number.parseInt(value)
+
+    if (!value || isNaN(numValue)) {
+      setPriceError("Ingresá un precio válido")
+      return false
+    }
+
+    if (numValue < 500) {
+      setPriceError("El precio mínimo es $500 ARS")
+      return false
+    }
+
+    if (numValue > MAX_PRICE) {
+      setPriceError(`El precio máximo para tu plan es $${MAX_PRICE.toLocaleString()} ARS`)
+      return false
+    }
+
+    setPriceError("")
+    return true
+  }
+
+  const handleCustomPriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    setCustomPrice(value)
+
+    if (value) {
+      validateCustomPrice(value)
+      setPrice(value)
+    }
+  }
+
+  const handlePriceTypeChange = (value: "preset" | "custom") => {
+    setPriceType(value)
+    setPriceError("")
+
+    if (value === "preset") {
+      setPrice("0")
+      setCustomPrice("")
+    } else {
+      setPrice("")
+      setCustomPrice("")
+    }
+  }
+
   const handleSave = async () => {
+    if (priceType === "custom") {
+      if (!validateCustomPrice(customPrice)) {
+        toast({
+          title: "Error en el precio",
+          description: "Por favor corregí el precio antes de guardar",
+          variant: "destructive",
+        })
+        return
+      }
+    }
+
     setSaving(true)
 
     try {
@@ -137,11 +210,12 @@ export default function EditPackPage() {
       }
 
       const discountValue = Number.parseInt(discountPercent) || 0
+      const finalPrice = priceType === "custom" ? Number.parseInt(customPrice) : Number.parseInt(price)
 
       const { error } = await supabase
         .from("packs")
         .update({
-          price: Number.parseInt(price),
+          price: finalPrice,
           has_discount: discountValue > 0,
           discount_percent: discountValue,
           cover_image_url: coverUrl,
@@ -240,6 +314,14 @@ export default function EditPackPage() {
     }
   }
 
+  const priceNumber = priceType === "custom" ? Number.parseFloat(customPrice) || 0 : Number.parseFloat(price) || 0
+  const discountPercentNumber = Number.parseFloat(discountPercent) || 0
+  const discountAmount = (priceNumber * discountPercentNumber) / 100
+  const priceAfterDiscount = priceNumber - discountAmount
+  const commission = PLAN_FEATURES[userPlan].commission
+  const commissionAmount = priceAfterDiscount * commission
+  const youWillReceive = priceAfterDiscount - commissionAmount
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -266,14 +348,6 @@ export default function EditPackPage() {
       </div>
     )
   }
-
-  const priceNumber = Number.parseFloat(price) || 0
-  const discountPercentNumber = Number.parseFloat(discountPercent) || 0
-  const discountAmount = (priceNumber * discountPercentNumber) / 100
-  const priceAfterDiscount = priceNumber - discountAmount
-  const commission = PLAN_FEATURES[userPlan].commission
-  const commissionAmount = priceAfterDiscount * commission
-  const youWillReceive = priceAfterDiscount - commissionAmount
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -341,7 +415,6 @@ export default function EditPackPage() {
               )}
             </div>
 
-            {/* Cover Image */}
             <div className="space-y-4">
               <Label htmlFor="cover" className="text-lg font-bold flex items-center gap-2 text-foreground">
                 <ImageIcon className="h-5 w-5 text-primary" />
@@ -381,26 +454,70 @@ export default function EditPackPage() {
               </div>
             </div>
 
-            {/* Price */}
             <div className="space-y-4">
-              <Label htmlFor="price" className="text-lg font-bold text-foreground">
-                Precio (ARS) *
-              </Label>
-              <Select value={price} onValueChange={setPrice} disabled={saving}>
-                <SelectTrigger className="text-base h-14 rounded-xl bg-card border-border text-lg font-semibold">
-                  <SelectValue placeholder="Seleccioná un precio" />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRICE_OPTIONS.map((priceOption) => (
-                    <SelectItem key={priceOption} value={priceOption.toString()}>
-                      {priceOption === 0 ? "GRATIS" : `$${priceOption.toLocaleString()} ARS`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-sm text-muted-foreground">
-                Precio máximo permitido: ${MAX_PRICE.toLocaleString()} ARS
-              </p>
+              <Label className="text-lg font-bold text-foreground">Precio (ARS) *</Label>
+
+              <div className="flex gap-2 mb-4">
+                <Button
+                  type="button"
+                  variant={priceType === "preset" ? "default" : "outline"}
+                  onClick={() => handlePriceTypeChange("preset")}
+                  className="flex-1"
+                  disabled={saving}
+                >
+                  Precio Predefinido
+                </Button>
+                <Button
+                  type="button"
+                  variant={priceType === "custom" ? "default" : "outline"}
+                  onClick={() => handlePriceTypeChange("custom")}
+                  className="flex-1"
+                  disabled={saving}
+                >
+                  Precio Personalizado
+                </Button>
+              </div>
+
+              {priceType === "preset" ? (
+                <>
+                  <Select value={price} onValueChange={setPrice} disabled={saving}>
+                    <SelectTrigger className="text-base h-14 rounded-xl bg-card border-border text-lg font-semibold">
+                      <SelectValue placeholder="Seleccioná un precio" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PRICE_OPTIONS.map((priceOption) => (
+                        <SelectItem key={priceOption} value={priceOption.toString()}>
+                          {priceOption === 0 ? "GRATIS" : `$${priceOption.toLocaleString()} ARS`}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    Precio máximo permitido: ${MAX_PRICE.toLocaleString()} ARS
+                  </p>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Input
+                      type="number"
+                      placeholder="Ingresá el precio (ej: 1000)"
+                      value={customPrice}
+                      onChange={handleCustomPriceChange}
+                      className={`text-base h-14 rounded-xl text-lg font-semibold ${
+                        priceError ? "border-red-500 focus-visible:ring-red-500" : ""
+                      }`}
+                      min={500}
+                      max={MAX_PRICE}
+                      disabled={saving}
+                    />
+                    {priceError && <p className="text-sm text-red-500 font-medium">{priceError}</p>}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Ingresá cualquier precio entre $500 y ${MAX_PRICE.toLocaleString()} ARS
+                  </p>
+                </>
+              )}
             </div>
 
             {priceNumber > 0 && (
