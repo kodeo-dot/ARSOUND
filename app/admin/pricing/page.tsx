@@ -125,13 +125,35 @@ export default function AdminPricingPage() {
     if (!newPrice && newPrice !== 0) return
 
     try {
+      console.log("[v0] Saving price for plan:", planId, "New price:", newPrice)
       setIsSaving(true)
       const supabase = createClient()
 
-      const { error } = await supabase.rpc("update_plan_pricing", {
-        p_plan_id: planId,
-        p_new_price: newPrice,
-      })
+      // Get the base price first
+      const plan = pricing.find((p) => p.plan_id === planId)
+      if (!plan) {
+        throw new Error("Plan not found")
+      }
+
+      const isDiscounted = newPrice < plan.base_price
+      const discountLabel = isDiscounted
+        ? `${Math.round(((plan.base_price - newPrice) / plan.base_price) * 100)}% OFF`
+        : null
+
+      console.log("[v0] Update data:", { newPrice, isDiscounted, discountLabel })
+
+      const { data, error } = await supabase
+        .from("plan_pricing")
+        .update({
+          current_price: newPrice,
+          is_discounted: isDiscounted,
+          discount_label: discountLabel,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("plan_id", planId)
+        .select()
+
+      console.log("[v0] Update result:", { data, error })
 
       if (error) throw error
 
@@ -146,7 +168,7 @@ export default function AdminPricingPage() {
       console.error("[v0] Error updating pricing:", error)
       toast({
         title: "Error",
-        description: "No se pudo actualizar el precio",
+        description: error instanceof Error ? error.message : "No se pudo actualizar el precio",
         variant: "destructive",
       })
     } finally {
