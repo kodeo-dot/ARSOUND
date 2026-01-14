@@ -463,32 +463,22 @@ export default function AdminPurchasesPage() {
                             <div className="text-xs text-muted-foreground">Descuento</div>
                           </div>
                         )}
-                        {purchase.type === "plan" && (
-                          <div>
-                            <div className="text-sm font-bold text-purple-600">${formatPrice(purchase.paid_price)}</div>
-                            <div className="text-xs text-muted-foreground">Ganancia Neta</div>
+                        <div>
+                          <div className="text-sm font-bold text-purple-600">${formatPrice(purchase.paid_price)}</div>
+                          <div className="text-xs text-muted-foreground">Ganancia Neta</div>
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-purple-600">
+                            ${formatPrice(purchase.platform_commission)}
                           </div>
-                        )}
-                        {purchase.type === "pack" && (
-                          <>
-                            {purchase.platform_commission > 0 && (
-                              <div>
-                                <div className="text-sm font-bold text-purple-600">
-                                  ${formatPrice(purchase.platform_commission)}
-                                </div>
-                                <div className="text-xs text-muted-foreground">Comisión</div>
-                              </div>
-                            )}
-                            {purchase.creator_earnings > 0 && (
-                              <div>
-                                <div className="text-sm font-bold text-blue-600">
-                                  ${formatPrice(purchase.creator_earnings)}
-                                </div>
-                                <div className="text-xs text-muted-foreground">Vendedor</div>
-                              </div>
-                            )}
-                          </>
-                        )}
+                          <div className="text-xs text-muted-foreground">Comisión</div>
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-blue-600">
+                            ${formatPrice(purchase.creator_earnings)}
+                          </div>
+                          <div className="text-xs text-muted-foreground">Vendedor</div>
+                        </div>
                       </div>
 
                       <div className="flex gap-2 mt-3">

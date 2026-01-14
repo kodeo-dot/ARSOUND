@@ -5,12 +5,15 @@ import {
   incrementPackCounter,
   updateUserPlan,
   createPlanPurchase,
+  getPackById,
+  getProfile,
 } from "../../database/queries"
 import { logger } from "../../utils/logger"
 import type { PlanType } from "../../types/database.types"
 import { createServerClient } from "@/lib/supabase/server-client"
 import { PLAN_FEATURES } from "@/lib/plans"
 import { sendPlanPurchaseNotification } from "../../email/notifications"
+import { calculateCommission } from "../../config/plans.config"
 
 interface PaymentData {
   id: string
@@ -201,19 +204,42 @@ async function processPackPurchase(payment: PaymentData, metadata: any): Promise
   const baseAmount = metadata.original_price || paidPrice
   const discountAmount = baseAmount - paidPrice
 
-  const platformCommission = metadata.commission_amount || 0
-  const creatorEarnings = paidPrice - platformCommission
+  let platformCommission = metadata.commission_amount || 0
+  let creatorEarnings = metadata.seller_earnings || 0
 
-  // Create purchase record
+  if (platformCommission === 0 && creatorEarnings === 0 && paidPrice > 0) {
+    try {
+      const pack = await getPackById(metadata.pack_id)
+      if (pack) {
+        const sellerProfile = await getProfile(pack.user_id)
+        const sellerPlan = (sellerProfile?.plan as PlanType) || "free"
+        platformCommission = calculateCommission(paidPrice, sellerPlan)
+        creatorEarnings = paidPrice - platformCommission
+
+        logger.info("Recalculated commission from seller plan", "MP_WEBHOOK", {
+          paymentId: payment.id,
+          sellerPlan,
+          paidPrice,
+          platformCommission,
+          creatorEarnings,
+        })
+      }
+    } catch (error) {
+      logger.error("Failed to recalculate commission", "MP_WEBHOOK", error)
+      platformCommission = 0
+      creatorEarnings = paidPrice
+    }
+  }
+
   const purchaseId = await createPurchase({
     buyer_id: metadata.buyer_id,
     seller_id: metadata.seller_id,
     pack_id: metadata.pack_id,
-    amount: paidPrice, // Keep amount as paid price for backwards compatibility
-    paid_price: paidPrice, // Actual price paid with discount
-    base_amount: baseAmount, // Original price before discount
+    amount: paidPrice,
+    paid_price: paidPrice,
+    base_amount: baseAmount,
     discount_amount: discountAmount,
-    platform_commission: platformCommission, // NET earnings for platform
+    platform_commission: platformCommission,
     creator_earnings: creatorEarnings,
     payment_method: "mercado_pago",
     mercado_pago_payment_id: payment.id,
@@ -226,10 +252,8 @@ async function processPackPurchase(payment: PaymentData, metadata: any): Promise
     return false
   }
 
-  // Record download
   await recordDownload(metadata.buyer_id, metadata.pack_id)
 
-  // Increment counters
   await incrementPackCounter(metadata.pack_id, "downloads_count")
 
   logger.info("Pack purchase processed", "MP_WEBHOOK", {
@@ -248,16 +272,11 @@ async function processPackPurchase(payment: PaymentData, metadata: any): Promise
 
 async function processPlanSubscription(payment: PaymentData, metadata: any): Promise<boolean> {
   try {
-    // Normalize plan type: remove _monthly suffix and handle variations
     let planType = metadata.plan_type || ""
 
-    // Remove _monthly suffix
     planType = planType.replace("_monthly", "")
-
-    // Normalize hyphens to underscores
     planType = planType.replace(/-/g, "_")
 
-    // Validate plan type
     const validPlans = ["free", "de_0_a_hit", "studio_plus"]
     if (!validPlans.includes(planType)) {
       logger.error("Invalid plan type", "MP_WEBHOOK", {
@@ -287,7 +306,6 @@ async function processPlanSubscription(payment: PaymentData, metadata: any): Pro
       await handleDowngrade(metadata.user_id, currentPlan, newPlan)
     }
 
-    // Calculate expiration (30 days for monthly plans)
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + 30)
 
@@ -334,7 +352,6 @@ async function processPlanSubscription(payment: PaymentData, metadata: any): Pro
 
     if (!purchaseId) {
       logger.error("Failed to create plan purchase record", "MP_WEBHOOK", { paymentId: payment.id })
-      // Don't fail the entire process if purchase record fails
     } else {
       logger.info("Plan purchase record created", "MP_WEBHOOK", {
         paymentId: payment.id,
@@ -343,7 +360,6 @@ async function processPlanSubscription(payment: PaymentData, metadata: any): Pro
     }
 
     try {
-      // Get user profile and email
       const { data: userProfile } = await supabase
         .from("profiles")
         .select("username, display_name")
@@ -380,7 +396,6 @@ async function processPlanSubscription(payment: PaymentData, metadata: any): Pro
       }
     } catch (emailError) {
       logger.error("Failed to send plan purchase email", "MP_WEBHOOK", emailError)
-      // Don't fail the entire process if email fails
     }
 
     logger.info("Plan subscription processed successfully", "MP_WEBHOOK", {
@@ -401,14 +416,13 @@ async function handleDowngrade(userId: string, currentPlan: PlanType, newPlan: P
     const supabase = await createServerClient()
     const newPlanFeatures = PLAN_FEATURES[newPlan]
 
-    // Get all active packs for the user
     const { data: packs, error: packsError } = await supabase
       .from("packs")
       .select("id, created_at")
       .eq("user_id", userId)
       .eq("is_deleted", false)
       .eq("archived", false)
-      .order("created_at", { ascending: false }) // Newest first
+      .order("created_at", { ascending: false })
 
     if (packsError || !packs) {
       logger.error("Failed to fetch user packs for downgrade", "MP_WEBHOOK", { userId, error: packsError })
@@ -417,17 +431,14 @@ async function handleDowngrade(userId: string, currentPlan: PlanType, newPlan: P
 
     let packsToKeep = packs.length
 
-    // Determine how many packs the user can keep on the new plan
     if (newPlan === "free" && newPlanFeatures.maxTotalPacks !== null) {
-      packsToKeep = newPlanFeatures.maxTotalPacks // Free: 3 packs total
+      packsToKeep = newPlanFeatures.maxTotalPacks
     } else if (newPlan === "de_0_a_hit" && newPlanFeatures.maxPacksPerMonth !== null) {
-      // For de_0_a_hit downgrade from studio_plus: keep the newest 10 packs
       packsToKeep = newPlanFeatures.maxPacksPerMonth
     }
 
-    // If user has more packs than allowed, archive the oldest ones
     if (packs.length > packsToKeep) {
-      const packsToArchive = packs.slice(packsToKeep) // Keep newest, archive oldest
+      const packsToArchive = packs.slice(packsToKeep)
       const packIdsToArchive = packsToArchive.map((p) => p.id)
 
       logger.info("Archiving excess packs due to downgrade", "MP_WEBHOOK", {
@@ -437,7 +448,6 @@ async function handleDowngrade(userId: string, currentPlan: PlanType, newPlan: P
         packsToArchive: packIdsToArchive.length,
       })
 
-      // Archive (soft delete) the excess packs
       const { error: archiveError } = await supabase.from("packs").update({ archived: true }).in("id", packIdsToArchive)
 
       if (archiveError) {
@@ -450,7 +460,6 @@ async function handleDowngrade(userId: string, currentPlan: PlanType, newPlan: P
       }
     }
 
-    // Note: Downloads remain unchanged until end of month (as per requirements)
     logger.info("Downgrade handled successfully", "MP_WEBHOOK", {
       userId,
       currentPlan,
