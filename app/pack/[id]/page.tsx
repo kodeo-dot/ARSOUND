@@ -5,7 +5,6 @@ import { Footer } from "@/components/footer"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { PackComments } from "@/components/pack-comments"
 import {
   Play,
   Heart,
@@ -618,10 +617,6 @@ export default function PackDetailPage() {
               </Link>
             </Card>
           </div>
-        </div>
-
-        <div className="max-w-7xl mx-auto mt-16">
-          <PackComments packId={packId} />
         </div>
       </main>
 
