@@ -156,6 +156,40 @@ export async function createPurchase(purchase: {
   return data.id
 }
 
+export async function createPlanPurchase(purchase: {
+  buyer_id: string
+  plan_type: string
+  amount: number
+  paid_price: number
+  base_amount: number
+  discount_amount: number
+  payment_method: string
+  mercado_pago_payment_id?: string
+  purchase_code: string
+}): Promise<string | null> {
+  const adminSupabase = await createAdminClient()
+
+  const { data, error } = await adminSupabase
+    .from("purchases")
+    .insert({
+      ...purchase,
+      pack_id: null,
+      seller_id: null,
+      platform_commission: purchase.paid_price, // 100% for platform (NET earnings)
+      creator_earnings: 0,
+      status: "completed",
+    })
+    .select("id")
+    .single()
+
+  if (error) {
+    console.error("[DB] Error creating plan purchase:", error)
+    return null
+  }
+
+  return data.id
+}
+
 export async function recordDownload(userId: string, packId: string): Promise<boolean> {
   const adminSupabase = await createAdminClient()
 

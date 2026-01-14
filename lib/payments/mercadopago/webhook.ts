@@ -1,5 +1,11 @@
 import { getMercadoPagoConfig } from "./config"
-import { createPurchase, recordDownload, incrementPackCounter, updateUserPlan } from "../../database/queries"
+import {
+  createPurchase,
+  recordDownload,
+  incrementPackCounter,
+  updateUserPlan,
+  createPlanPurchase,
+} from "../../database/queries"
 import { logger } from "../../utils/logger"
 import type { PlanType } from "../../types/database.types"
 import { createServerClient } from "@/lib/supabase/server-client"
@@ -285,6 +291,10 @@ async function processPlanSubscription(payment: PaymentData, metadata: any): Pro
     const expiresAt = new Date()
     expiresAt.setDate(expiresAt.getDate() + 30)
 
+    const paidPrice = metadata.final_price || payment.transaction_amount
+    const basePrice = metadata.base_price || paidPrice
+    const discountAmount = basePrice - paidPrice
+
     logger.info("Starting plan activation", "MP_WEBHOOK", {
       paymentId: payment.id,
       userId: metadata.user_id,
@@ -292,6 +302,9 @@ async function processPlanSubscription(payment: PaymentData, metadata: any): Pro
       normalizedPlanType: planType,
       expiresAt: expiresAt.toISOString(),
       isDowngrade,
+      paidPrice,
+      basePrice,
+      discountAmount,
     })
 
     const success = await updateUserPlan(metadata.user_id, planType as PlanType, expiresAt)
@@ -303,6 +316,30 @@ async function processPlanSubscription(payment: PaymentData, metadata: any): Pro
         planType,
       })
       return false
+    }
+
+    const purchaseCode = `ARSND-${payment.id.substring(0, 8).toUpperCase()}`
+
+    const purchaseId = await createPlanPurchase({
+      buyer_id: metadata.user_id,
+      plan_type: planType,
+      amount: paidPrice,
+      paid_price: paidPrice,
+      base_amount: basePrice,
+      discount_amount: discountAmount,
+      payment_method: "mercado_pago",
+      mercado_pago_payment_id: payment.id,
+      purchase_code: purchaseCode,
+    })
+
+    if (!purchaseId) {
+      logger.error("Failed to create plan purchase record", "MP_WEBHOOK", { paymentId: payment.id })
+      // Don't fail the entire process if purchase record fails
+    } else {
+      logger.info("Plan purchase record created", "MP_WEBHOOK", {
+        paymentId: payment.id,
+        purchaseId,
+      })
     }
 
     try {
@@ -327,7 +364,7 @@ async function processPlanSubscription(payment: PaymentData, metadata: any): Pro
           userEmail: user.email,
           userName: userProfile?.display_name || userProfile?.username || "Usuario",
           planName: planNames[planType] || planType,
-          amount: metadata.final_price || payment.transaction_amount,
+          amount: paidPrice,
           expiresAt: expiresAt.toLocaleDateString("es-AR", {
             year: "numeric",
             month: "long",

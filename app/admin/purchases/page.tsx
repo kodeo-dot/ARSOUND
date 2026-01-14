@@ -63,6 +63,25 @@ interface Profile {
   avatar_url: string | null
 }
 
+function BuyerEmail({ buyerId }: { buyerId: string }) {
+  const [email, setEmail] = useState<string | null>(null)
+  const supabase = createBrowserClient()
+
+  useEffect(() => {
+    const fetchEmail = async () => {
+      const { data } = await supabase.auth.admin.getUserById(buyerId)
+      if (data?.user?.email) {
+        setEmail(data.user.email)
+      }
+    }
+    fetchEmail()
+  }, [buyerId])
+
+  if (!email) return null
+
+  return <p className="text-xs text-muted-foreground">{email}</p>
+}
+
 export default function AdminPurchasesPage() {
   const [purchases, setPurchases] = useState<UnifiedPurchase[]>([])
   const [packsMap, setPacksMap] = useState<Record<string, Pack>>({})
@@ -85,43 +104,35 @@ export default function AdminPurchasesPage() {
     try {
       setLoading(true)
 
-      // Load pack purchases
-      const { data: packPurchasesData, error: packPurchasesError } = await supabase
+      const { data: allPurchasesData, error: purchasesError } = await supabase
         .from("purchases")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(500)
 
-      if (packPurchasesError) {
-        console.error("[v0] Error loading pack purchases:", packPurchasesError)
+      if (purchasesError) {
+        console.error("[v0] Error loading purchases:", purchasesError)
       }
 
-      const { data: planPurchasesData, error: planPurchasesError } = await supabase
-        .from("user_plans")
-        .select("*")
-        .neq("plan_type", "free")
-        .order("created_at", { ascending: false })
-        .limit(500)
+      console.log("[v0] All purchases from DB:", allPurchasesData?.length)
 
-      if (planPurchasesError) {
-        console.error("[v0] Error loading plan purchases:", planPurchasesError)
-      }
-
-      console.log("[v0] Pack purchases:", packPurchasesData?.length)
-      console.log("[v0] Plan purchases (paid only):", planPurchasesData?.length)
-
-      // Combine and normalize both types of purchases
+      // Normalize purchases
       const allPurchases: UnifiedPurchase[] = []
 
-      if (packPurchasesData) {
-        packPurchasesData.forEach((p) => {
-          console.log("[v0] Pack purchase:", p)
+      if (allPurchasesData) {
+        allPurchasesData.forEach((p) => {
+          console.log("[v0] Purchase from DB:", p)
+
+          // Determine type based on whether it has pack_id or plan_type
+          const type = p.pack_id ? "pack" : "plan"
+
           allPurchases.push({
             id: p.id,
-            type: "pack" as PurchaseType,
+            type: type as PurchaseType,
             buyer_id: p.buyer_id,
             seller_id: p.seller_id,
             pack_id: p.pack_id,
+            plan_type: p.plan_type,
             amount_paid: Number(p.paid_price || p.amount) || 0,
             paid_price: Number(p.paid_price || p.amount) || 0,
             base_amount: Number(p.base_amount || p.amount) || 0,
@@ -134,37 +145,6 @@ export default function AdminPurchasesPage() {
             mercado_pago_payment_id: p.mercado_pago_payment_id,
             seller_mp_user_id: p.seller_mp_user_id,
             created_at: p.created_at,
-          })
-        })
-      }
-
-      // Add plan purchases - normalize to match purchase format
-      if (planPurchasesData) {
-        planPurchasesData.forEach((p) => {
-          console.log("[v0] Plan purchase:", p)
-          const planPrices: Record<string, number> = {
-            de_0_a_hit: 4900,
-            studio_plus: 8900,
-          }
-          const amountPaid = planPrices[p.plan_type] || 0
-
-          allPurchases.push({
-            id: p.id,
-            type: "plan" as PurchaseType,
-            buyer_id: p.user_id,
-            amount_paid: amountPaid,
-            paid_price: amountPaid,
-            base_amount: amountPaid,
-            discount_amount: 0,
-            platform_commission: amountPaid,
-            creator_earnings: 0,
-            commission_percent: 100,
-            status: p.is_active ? "completed" : "expired",
-            payment_method: null,
-            mercado_pago_payment_id: null,
-            seller_mp_user_id: null,
-            created_at: p.created_at,
-            plan_type: p.plan_type,
           })
         })
       }
@@ -528,79 +508,176 @@ export default function AdminPurchasesPage() {
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Detalles de la Compra</DialogTitle>
+            <DialogTitle className="text-2xl font-black">Detalles de la Compra</DialogTitle>
           </DialogHeader>
 
           {selectedPurchase && (
             <div className="space-y-6">
-              <div className="flex gap-4">
-                {selectedPurchase.type === "plan" ? (
-                  <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center flex-shrink-0">
-                    <Crown className="h-12 w-12 text-white" />
-                  </div>
-                ) : (
-                  <img
-                    src={
-                      packsMap[selectedPurchase.pack_id!]?.cover_image_url ||
-                      "/placeholder.svg?height=96&width=96" ||
-                      "/placeholder.svg" ||
-                      "/placeholder.svg"
-                    }
-                    alt="Cover"
-                    className="w-24 h-24 rounded-lg object-cover flex-shrink-0"
-                  />
-                )}
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-xl font-bold text-foreground mb-1">
-                    {selectedPurchase.type === "plan"
-                      ? `Plan: ${getPlanName(selectedPurchase.plan_type!)}`
-                      : packsMap[selectedPurchase.pack_id!]?.title || "Pack eliminado"}
-                  </h3>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge variant="outline">{selectedPurchase.type === "plan" ? "Plan" : "Pack"}</Badge>
-                    <Badge
-                      variant="secondary"
-                      className={
-                        selectedPurchase.status === "completed"
-                          ? "bg-green-500/10 text-green-600"
-                          : selectedPurchase.status === "pending"
-                            ? "bg-yellow-500/10 text-yellow-600"
-                            : "bg-red-500/10 text-red-600"
-                      }
-                    >
-                      {selectedPurchase.status === "completed"
-                        ? "Completado"
-                        : selectedPurchase.status === "pending"
-                          ? "Pendiente"
-                          : "Fallido"}
-                    </Badge>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="p-3 rounded-xl bg-muted/50 border border-border">
-                      <div className="text-xs text-muted-foreground mb-1">Código de Compra</div>
-                      <div className="flex items-center gap-2">
-                        <code className="text-base font-bold text-foreground font-mono">
-                          {selectedPurchase.id.slice(0, 8).toUpperCase()}
-                        </code>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                          onClick={() => handleCopyCode(selectedPurchase.id.slice(0, 8).toUpperCase())}
-                        >
-                          {copiedCode === selectedPurchase.id.slice(0, 8).toUpperCase() ? (
-                            <Check className="h-3 w-3 text-green-600" />
-                          ) : (
-                            <Copy className="h-3 w-3" />
-                          )}
-                        </Button>
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">ID completo: {selectedPurchase.id}</div>
-                    </div>
-                  </div>
-                </div>
+              {/* Purchase Type Badge */}
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="text-sm">
+                  {selectedPurchase.type === "plan" ? "Compra de Plan" : "Compra de Pack"}
+                </Badge>
+                <Badge
+                  variant="secondary"
+                  className={
+                    selectedPurchase.status === "completed"
+                      ? "bg-green-500/10 text-green-600"
+                      : selectedPurchase.status === "pending"
+                        ? "bg-yellow-500/10 text-yellow-600"
+                        : "bg-red-500/10 text-red-600"
+                  }
+                >
+                  {selectedPurchase.status === "completed"
+                    ? "Completado"
+                    : selectedPurchase.status === "pending"
+                      ? "Pendiente"
+                      : "Fallido"}
+                </Badge>
               </div>
 
+              {/* Item Info */}
+              {selectedPurchase.type === "plan" ? (
+                <Card className="p-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center flex-shrink-0">
+                      <Crown className="h-8 w-8 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-lg">{getPlanName(selectedPurchase.plan_type!)}</h3>
+                      <p className="text-sm text-muted-foreground">Plan de suscripción mensual</p>
+                    </div>
+                  </div>
+                </Card>
+              ) : (
+                <Card className="p-4">
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={
+                        selectedPurchase.pack_id && packsMap[selectedPurchase.pack_id]?.cover_image_url
+                          ? packsMap[selectedPurchase.pack_id].cover_image_url!
+                          : "/placeholder.svg?height=64&width=64"
+                      }
+                      alt="Pack"
+                      className="w-16 h-16 rounded-lg object-cover"
+                    />
+                    <div className="flex-1">
+                      <h3 className="font-bold text-lg">
+                        {selectedPurchase.pack_id && packsMap[selectedPurchase.pack_id]
+                          ? packsMap[selectedPurchase.pack_id].title
+                          : "Pack eliminado"}
+                      </h3>
+                      {selectedPurchase.pack_id && packsMap[selectedPurchase.pack_id] && (
+                        <Link
+                          href={`/pack/${selectedPurchase.pack_id}`}
+                          className="text-sm text-primary hover:underline flex items-center gap-1"
+                        >
+                          Ver pack <ExternalLink className="h-3 w-3" />
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+              {/* Purchase Code */}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">Código de Compra</label>
+                <div className="flex gap-2">
+                  <code className="flex-1 px-4 py-3 bg-muted rounded-xl font-mono text-sm">
+                    {selectedPurchase.id.substring(0, 8).toUpperCase()}
+                  </code>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="rounded-xl bg-transparent"
+                    onClick={() => handleCopyCode(selectedPurchase.id.substring(0, 8).toUpperCase())}
+                  >
+                    {copiedCode === selectedPurchase.id.substring(0, 8).toUpperCase() ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">ID completo: {selectedPurchase.id}</p>
+              </div>
+
+              {/* Buyer Info */}
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-2 block">Comprador</label>
+                <Card className="p-4">
+                  <div className="flex items-center gap-3">
+                    {buyersMap[selectedPurchase.buyer_id]?.avatar_url ? (
+                      <img
+                        src={buyersMap[selectedPurchase.buyer_id].avatar_url! || "/placeholder.svg"}
+                        alt="Avatar"
+                        className="w-10 h-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <User className="h-5 w-5 text-primary" />
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <p className="font-semibold">
+                        {buyersMap[selectedPurchase.buyer_id]?.display_name ||
+                          buyersMap[selectedPurchase.buyer_id]?.username ||
+                          "Desconocido"}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        @{buyersMap[selectedPurchase.buyer_id]?.username || "unknown"}
+                      </p>
+                      {/* Buyer Email */}
+                      <BuyerEmail buyerId={selectedPurchase.buyer_id} />
+                    </div>
+                    <Link href={`/profile/${buyersMap[selectedPurchase.buyer_id]?.username || ""}`}>
+                      <Button variant="outline" size="sm" className="rounded-full bg-transparent">
+                        Ver perfil
+                      </Button>
+                    </Link>
+                  </div>
+                </Card>
+              </div>
+
+              {/* Seller Info (only for pack purchases) */}
+              {selectedPurchase.type === "pack" && selectedPurchase.seller_id && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground mb-2 block">Vendedor</label>
+                  <Card className="p-4">
+                    <div className="flex items-center gap-3">
+                      {sellersMap[selectedPurchase.seller_id]?.avatar_url ? (
+                        <img
+                          src={sellersMap[selectedPurchase.seller_id].avatar_url! || "/placeholder.svg"}
+                          alt="Avatar"
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <User className="h-5 w-5 text-primary" />
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <p className="font-semibold">
+                          {sellersMap[selectedPurchase.seller_id]?.display_name ||
+                            sellersMap[selectedPurchase.seller_id]?.username ||
+                            "Desconocido"}
+                        </p>
+                        <p className="text-sm text-muted-foreground">
+                          @{sellersMap[selectedPurchase.seller_id]?.username || "unknown"}
+                        </p>
+                      </div>
+                      <Link href={`/profile/${sellersMap[selectedPurchase.seller_id]?.username || ""}`}>
+                        <Button variant="outline" size="sm" className="rounded-full bg-transparent">
+                          Ver perfil
+                        </Button>
+                      </Link>
+                    </div>
+                  </Card>
+                </div>
+              )}
+
+              {/* Additional Purchase Details */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card className="p-4 rounded-xl">
                   <div className="flex items-center gap-3 mb-2">
