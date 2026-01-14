@@ -47,17 +47,40 @@ export default function AdminDashboard() {
         .from("purchases")
         .select("amount, platform_commission, status")
 
-      console.log("[v0] Purchases data:", purchasesData)
-      console.log("[v0] Purchases error:", purchasesError)
+      const { data: planPurchasesData, error: planPurchasesError } = await supabase
+        .from("user_plans")
+        .select("plan_type, is_active, created_at")
+        .neq("plan_type", "free")
+
+      console.log("[v0] Pack purchases data:", purchasesData)
+      console.log("[v0] Plan purchases data:", planPurchasesData)
 
       let totalRevenue = 0
       let platformCommission = 0
       let totalPurchases = 0
 
+      // Add pack purchases revenue
       if (purchasesData && !purchasesError) {
-        totalRevenue = purchasesData.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
-        platformCommission = purchasesData.reduce((sum, p) => sum + (Number(p.platform_commission) || 0), 0)
-        totalPurchases = purchasesData.filter((p) => p.status === "completed").length
+        totalRevenue += purchasesData.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+        platformCommission += purchasesData.reduce((sum, p) => sum + (Number(p.platform_commission) || 0), 0)
+        totalPurchases += purchasesData.filter((p) => p.status === "completed").length
+      }
+
+      // Add plan purchases revenue (excluding free)
+      if (planPurchasesData && !planPurchasesError) {
+        const planPrices: Record<string, number> = {
+          de_0_a_hit: 4900,
+          studio_plus: 8900,
+        }
+
+        planPurchasesData.forEach((plan) => {
+          const amount = planPrices[plan.plan_type] || 0
+          totalRevenue += amount
+          platformCommission += Math.round(amount * 0.1)
+          if (plan.is_active) {
+            totalPurchases += 1
+          }
+        })
       }
 
       console.log("[v0] Calculated stats:", { totalRevenue, platformCommission, totalPurchases })

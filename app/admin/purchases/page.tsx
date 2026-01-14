@@ -88,35 +88,45 @@ export default function AdminPurchasesPage() {
         .from("purchases")
         .select("*")
         .order("created_at", { ascending: false })
-        .limit(100)
+        .limit(500)
 
       if (packPurchasesError) {
         console.error("[v0] Error loading pack purchases:", packPurchasesError)
       }
 
-      // Load plan purchases (user_plans)
       const { data: planPurchasesData, error: planPurchasesError } = await supabase
         .from("user_plans")
         .select("*")
+        .neq("plan_type", "free")
         .order("created_at", { ascending: false })
-        .limit(100)
+        .limit(500)
 
       if (planPurchasesError) {
         console.error("[v0] Error loading plan purchases:", planPurchasesError)
       }
 
       console.log("[v0] Pack purchases:", packPurchasesData?.length)
-      console.log("[v0] Plan purchases:", planPurchasesData?.length)
+      console.log("[v0] Plan purchases (paid only):", planPurchasesData?.length)
 
       // Combine and normalize both types of purchases
       const allPurchases: UnifiedPurchase[] = []
 
-      // Add pack purchases
       if (packPurchasesData) {
         packPurchasesData.forEach((p) => {
+          console.log("[v0] Pack purchase amount:", p.amount, "type:", typeof p.amount)
           allPurchases.push({
-            ...p,
+            id: p.id,
             type: "pack" as PurchaseType,
+            buyer_id: p.buyer_id,
+            pack_id: p.pack_id,
+            amount: Number(p.amount) || 0,
+            discount_amount: Number(p.discount_amount) || 0,
+            platform_commission: Number(p.platform_commission) || 0,
+            creator_earnings: Number(p.creator_earnings) || 0,
+            status: p.status || "completed",
+            payment_method: p.payment_method,
+            mercado_pago_payment_id: p.mercado_pago_payment_id,
+            created_at: p.created_at,
           })
         })
       }
@@ -124,13 +134,13 @@ export default function AdminPurchasesPage() {
       // Add plan purchases - normalize to match purchase format
       if (planPurchasesData) {
         planPurchasesData.forEach((p) => {
-          // Get plan price from type
+          // Get plan price from type (in centavos)
           const planPrices: Record<string, number> = {
-            free: 0,
             de_0_a_hit: 4900,
             studio_plus: 8900,
           }
           const amount = planPrices[p.plan_type] || 0
+          const commission = Math.round(amount * 0.1)
 
           allPurchases.push({
             id: p.id,
@@ -138,8 +148,8 @@ export default function AdminPurchasesPage() {
             buyer_id: p.user_id,
             amount: amount,
             discount_amount: 0,
-            platform_commission: amount * 0.1, // 10% commission
-            creator_earnings: 0, // Plans don't have creator earnings
+            platform_commission: commission,
+            creator_earnings: 0,
             status: p.is_active ? "completed" : "expired",
             payment_method: null,
             mercado_pago_payment_id: null,
@@ -151,6 +161,9 @@ export default function AdminPurchasesPage() {
 
       // Sort by date
       allPurchases.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+      console.log("[v0] Total unified purchases:", allPurchases.length)
+      console.log("[v0] Sample purchase:", allPurchases[0])
 
       setPurchases(allPurchases)
 
@@ -235,7 +248,6 @@ export default function AdminPurchasesPage() {
 
   const getPlanName = (planType: string) => {
     const names: Record<string, string> = {
-      free: "Free",
       de_0_a_hit: "De 0 a Hit",
       studio_plus: "Studio Plus",
     }
