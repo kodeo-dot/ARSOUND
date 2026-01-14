@@ -8,7 +8,6 @@ import {
   Heart,
   ShoppingBag,
   UserPlus,
-  Sparkles,
   Download,
   Eye,
   AlertCircle,
@@ -108,7 +107,7 @@ export default function NotificationsPage() {
         return `respondió tu comentario${isOwner ? " (Creador del pack)" : ""}`
       case "review":
         const rating = notif.metadata?.rating
-        return `dejó una review ${rating ? `(${rating}⭐)` : ""} en tu pack "${notif.metadata?.pack_name || notif.pack?.name}"`
+        return `dejó una review ${rating ? `(${rating}★)` : ""} en tu pack "${notif.metadata?.pack_name || notif.pack?.name}"`
       case "question":
         return `hizo una pregunta sobre tu pack "${notif.metadata?.pack_name || notif.pack?.name}"`
       case "answer":
@@ -225,7 +224,7 @@ export default function NotificationsPage() {
                 </Button>
               </Link>
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-lg">
+                <div className="p-2 bg-primary/10 rounded-xl">
                   <Bell className="h-5 w-5 text-primary" />
                 </div>
                 <div>
@@ -270,17 +269,17 @@ export default function NotificationsPage() {
                   key={notif.id}
                   href={getNotificationLink(notif)}
                   onClick={() => !notif.is_read && markAsRead(notif.id)}
-                  className={`block p-5 rounded-xl border transition-all hover:shadow-md hover:border-primary/30 ${
-                    !notif.is_read ? "bg-primary/5 border-primary/20 shadow-sm" : "bg-card hover:bg-accent/50"
+                  className={`block p-5 rounded-2xl border transition-all hover:shadow-sm ${
+                    !notif.is_read ? "bg-primary/5 border-primary/30" : "bg-card border-border hover:border-primary/20"
                   }`}
                 >
                   <div className="flex items-start gap-4">
                     {notif.type === "limit_reached" ? (
-                      <div className={`p-3 rounded-full ${getNotificationColor(notif.type)}`}>
+                      <div className={`p-3 rounded-xl ${getNotificationColor(notif.type)}`}>
                         {getNotificationIcon(notif.type)}
                       </div>
                     ) : (
-                      <div className="relative">
+                      <div className="relative flex-shrink-0">
                         <UserAvatar
                           avatarUrl={notif.actor?.avatar_url}
                           username={notif.actor?.username}
@@ -326,7 +325,7 @@ export default function NotificationsPage() {
                     </div>
 
                     {!notif.is_read && (
-                      <div className="flex items-center gap-2">
+                      <div className="flex-shrink-0">
                         <div className="w-2 h-2 bg-primary rounded-full" />
                       </div>
                     )}
@@ -350,10 +349,7 @@ export default function NotificationsPage() {
                       Cargando...
                     </>
                   ) : (
-                    <>
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Cargar más
-                    </>
+                    "Cargar más"
                   )}
                 </Button>
               </div>

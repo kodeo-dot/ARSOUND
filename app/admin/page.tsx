@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { Package, Users, MessageSquare, Shield, TrendingUp } from "lucide-react"
+import { Package, Users, MessageSquare, Shield, TrendingUp, DollarSign, ShoppingCart } from "lucide-react"
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({
@@ -12,6 +12,9 @@ export default function AdminDashboard() {
     totalComments: 0,
     pendingAppeals: 0,
     recentPacks: 0,
+    totalRevenue: 0,
+    totalPurchases: 0,
+    platformCommission: 0,
   })
   const [loading, setLoading] = useState(true)
   const supabase = createBrowserClient()
@@ -22,6 +25,8 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     try {
+      console.log("[v0] Fetching admin stats...")
+
       const [{ count: packsCount }, { count: usersCount }, { count: commentsCount }, { count: appealsCount }] =
         await Promise.all([
           supabase.from("packs").select("*", { count: "exact", head: true }),
@@ -38,50 +43,98 @@ export default function AdminDashboard() {
         .select("*", { count: "exact", head: true })
         .gte("created_at", sevenDaysAgo.toISOString())
 
+      const { data: purchasesData, error: purchasesError } = await supabase
+        .from("purchases")
+        .select("amount, platform_commission, status")
+
+      console.log("[v0] Purchases data:", purchasesData)
+      console.log("[v0] Purchases error:", purchasesError)
+
+      let totalRevenue = 0
+      let platformCommission = 0
+      let totalPurchases = 0
+
+      if (purchasesData && !purchasesError) {
+        totalRevenue = purchasesData.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+        platformCommission = purchasesData.reduce((sum, p) => sum + (Number(p.platform_commission) || 0), 0)
+        totalPurchases = purchasesData.filter((p) => p.status === "completed").length
+      }
+
+      console.log("[v0] Calculated stats:", { totalRevenue, platformCommission, totalPurchases })
+
       setStats({
         totalPacks: packsCount || 0,
         totalUsers: usersCount || 0,
         totalComments: commentsCount || 0,
         pendingAppeals: appealsCount || 0,
         recentPacks: recentPacksCount || 0,
+        totalRevenue,
+        totalPurchases,
+        platformCommission,
       })
     } catch (error) {
-      console.error("Error fetching stats:", error)
+      console.error("[v0] Error fetching stats:", error)
     } finally {
       setLoading(false)
     }
   }
 
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat("es-AR", {
+      style: "decimal",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(price)
+  }
+
   const statCards = [
+    {
+      title: "Ingresos Totales",
+      value: `$${formatPrice(stats.totalRevenue)}`,
+      icon: DollarSign,
+      color: "text-green-500",
+    },
+    {
+      title: "Compras Completadas",
+      value: stats.totalPurchases,
+      icon: ShoppingCart,
+      color: "text-blue-500",
+    },
+    {
+      title: "Comisiones Plataforma",
+      value: `$${formatPrice(stats.platformCommission)}`,
+      icon: TrendingUp,
+      color: "text-purple-500",
+    },
     {
       title: "Total Packs",
       value: stats.totalPacks,
       icon: Package,
-      color: "text-blue-500",
+      color: "text-cyan-500",
     },
     {
       title: "Total Usuarios",
       value: stats.totalUsers,
       icon: Users,
-      color: "text-green-500",
+      color: "text-orange-500",
     },
     {
       title: "Comentarios",
       value: stats.totalComments,
       icon: MessageSquare,
-      color: "text-purple-500",
+      color: "text-pink-500",
     },
     {
       title: "Apelaciones Pendientes",
       value: stats.pendingAppeals,
       icon: Shield,
-      color: "text-orange-500",
+      color: "text-red-500",
     },
     {
       title: "Packs últimos 7 días",
       value: stats.recentPacks,
       icon: TrendingUp,
-      color: "text-pink-500",
+      color: "text-indigo-500",
     },
   ]
 
@@ -92,7 +145,7 @@ export default function AdminDashboard() {
         <p className="text-lg text-muted-foreground">Vista general de la plataforma ARSOUND</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {statCards.map((stat) => {
           const Icon = stat.icon
           return (
