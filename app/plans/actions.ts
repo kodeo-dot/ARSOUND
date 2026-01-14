@@ -165,20 +165,35 @@ export async function selectPlan(planId: string) {
  * Creates a Mercado Pago preference for pack purchase
  */
 export async function purchasePack(packId: string, discountCode?: string, customPrice?: number) {
-  console.log("[v0] purchasePack called with:", { packId, discountCode, customPrice })
+  console.log("[v0] 🔵 purchasePack called with:", { packId, discountCode, customPrice })
 
   const supabase = await createServerClient()
 
+  console.log("[v0] 🔑 Checking authentication...")
+
   const {
     data: { user },
+    error: authError,
   } = await supabase.auth.getUser()
 
+  console.log("[v0] 🔍 Auth check result:", {
+    hasUser: !!user,
+    userId: user?.id,
+    email: user?.email,
+    authError: authError?.message,
+  })
+
+  if (authError) {
+    console.error("[v0] ❌ Auth error:", authError)
+    return { success: false, message: `Error de autenticación: ${authError.message}` }
+  }
+
   if (!user) {
-    console.log("[v0] No authenticated user")
+    console.error("[v0] ❌ No authenticated user found")
     return { success: false, message: "Por favor inicia sesión para continuar" }
   }
 
-  console.log("[v0] User authenticated:", user.id)
+  console.log("[v0] ✅ User authenticated:", user.id)
 
   const testMode = process.env.MERCADO_PAGO_TEST_MODE === "true"
   const accessToken = testMode ? process.env.MERCADO_PAGO_TEST_ACCESS_TOKEN : process.env.MERCADO_PAGO_ACCESS_TOKEN

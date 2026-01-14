@@ -120,29 +120,47 @@ export default function CheckoutPage() {
   }, [pack])
 
   const handleConfirmPurchase = async () => {
-    console.log("[v0] Starting purchase for packId:", packId)
+    console.log("[v0] 🛒 Starting purchase for packId:", packId)
+
+    const {
+      data: { user: currentUser },
+    } = await supabase.auth.getUser()
+
+    console.log("[v0] 🔑 Current user check before purchase:", {
+      hasUser: !!currentUser,
+      userId: currentUser?.id,
+      email: currentUser?.email,
+    })
+
+    if (!currentUser) {
+      console.error("[v0] ❌ User not authenticated, redirecting to login")
+      alert("Tu sesión expiró. Por favor iniciá sesión nuevamente.")
+      router.push("/login")
+      return
+    }
+
     setIsProcessing(true)
 
     try {
       const { purchasePack } = await import("@/app/plans/actions")
-      console.log("[v0] Calling purchasePack with packId:", packId)
+      console.log("[v0] 📞 Calling purchasePack with packId:", packId)
 
       const result = await purchasePack(
         packId,
         undefined, // no discount code
       )
 
-      console.log("[v0] purchasePack result:", result)
+      console.log("[v0] 📦 purchasePack result:", result)
 
       if (result?.success && result.init_point) {
-        console.log("[v0] Redirecting to payment:", result.init_point)
+        console.log("[v0] ✅ Redirecting to payment:", result.init_point)
         window.location.href = result.init_point
       } else {
-        console.error("[v0] Payment failed:", result?.message)
+        console.error("[v0] ❌ Payment failed:", result?.message)
         alert(`Error: ${result?.message || "No se pudo procesar el pago"}`)
       }
     } catch (error) {
-      console.error("[v0] Error in handleConfirmPurchase:", error)
+      console.error("[v0] ❌ Error in handleConfirmPurchase:", error)
       alert("Error al procesar el pago. Intentá de nuevo.")
     } finally {
       setIsProcessing(false)
