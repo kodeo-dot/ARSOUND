@@ -231,12 +231,11 @@ export default function AdminPurchasesPage() {
   }
 
   const formatPrice = (price: number) => {
-    const valueInPesos = price / 100
     return new Intl.NumberFormat("es-AR", {
       style: "decimal",
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
-    }).format(valueInPesos)
+    }).format(price)
   }
 
   const formatDate = (date: string) => {
@@ -541,6 +540,7 @@ export default function AdminPurchasesPage() {
                     src={
                       packsMap[selectedPurchase.pack_id!]?.cover_image_url ||
                       "/placeholder.svg?height=96&width=96" ||
+                      "/placeholder.svg" ||
                       "/placeholder.svg"
                     }
                     alt="Cover"
