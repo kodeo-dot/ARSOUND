@@ -45,7 +45,7 @@ export default function AdminDashboard() {
 
       const { data: purchasesData, error: purchasesError } = await supabase
         .from("purchases")
-        .select("amount, platform_commission, status")
+        .select("amount_paid, platform_earnings, status")
 
       const { data: planPurchasesData, error: planPurchasesError } = await supabase
         .from("user_plans")
@@ -61,8 +61,8 @@ export default function AdminDashboard() {
 
       // Add pack purchases revenue
       if (purchasesData && !purchasesError) {
-        totalRevenue += purchasesData.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
-        platformCommission += purchasesData.reduce((sum, p) => sum + (Number(p.platform_commission) || 0), 0)
+        totalRevenue += purchasesData.reduce((sum, p) => sum + (Number(p.amount_paid) || 0), 0)
+        platformCommission += purchasesData.reduce((sum, p) => sum + (Number(p.platform_earnings) || 0), 0)
         totalPurchases += purchasesData.filter((p) => p.status === "completed").length
       }
 

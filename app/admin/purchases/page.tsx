@@ -32,13 +32,15 @@ interface UnifiedPurchase {
   id: string
   type: PurchaseType
   buyer_id: string
-  amount: number
-  discount_amount: number
-  platform_commission: number
-  creator_earnings: number
+  amount_paid: number
+  discount_percent: number
+  platform_earnings: number
+  seller_earnings: number
+  commission_percent: number
   status: string
   payment_method: string | null
   mercado_pago_payment_id: string | null
+  seller_mp_user_id: string | null
   created_at: string
   // Pack-specific
   pack_id?: string
@@ -113,19 +115,21 @@ export default function AdminPurchasesPage() {
 
       if (packPurchasesData) {
         packPurchasesData.forEach((p) => {
-          console.log("[v0] Pack purchase amount:", p.amount, "type:", typeof p.amount)
+          console.log("[v0] Pack purchase amount:", p.amount_paid, "type:", typeof p.amount_paid)
           allPurchases.push({
             id: p.id,
             type: "pack" as PurchaseType,
             buyer_id: p.buyer_id,
             pack_id: p.pack_id,
-            amount: Number(p.amount) || 0,
-            discount_amount: Number(p.discount_amount) || 0,
-            platform_commission: Number(p.commission_percent) || 0,
-            creator_earnings: Number(p.seller_earnings) || 0,
+            amount_paid: Number(p.amount_paid) || 0,
+            discount_percent: Number(p.discount_percent) || 0,
+            platform_earnings: Number(p.platform_earnings) || 0,
+            seller_earnings: Number(p.seller_earnings) || 0,
+            commission_percent: Number(p.commission_percent) || 0,
             status: p.status || "completed",
             payment_method: p.payment_method,
             mercado_pago_payment_id: p.mercado_pago_payment_id,
+            seller_mp_user_id: p.seller_mp_user_id,
             created_at: p.created_at,
           })
         })
@@ -139,20 +143,22 @@ export default function AdminPurchasesPage() {
             de_0_a_hit: 4900,
             studio_plus: 8900,
           }
-          const amount = planPrices[p.plan_type] || 0
-          const commission = Math.round(amount * 0.1)
+          const amountPaid = planPrices[p.plan_type] || 0
+          const platformEarnings = Math.round(amountPaid * 0.1)
 
           allPurchases.push({
             id: p.id,
             type: "plan" as PurchaseType,
             buyer_id: p.user_id,
-            amount: amount,
-            discount_amount: 0,
-            platform_commission: commission,
-            creator_earnings: 0,
+            amount_paid: amountPaid,
+            discount_percent: 0,
+            platform_earnings: platformEarnings,
+            seller_earnings: 0,
+            commission_percent: 10,
             status: p.is_active ? "completed" : "expired",
             payment_method: null,
             mercado_pago_payment_id: null,
+            seller_mp_user_id: null,
             created_at: p.created_at,
             plan_type: p.plan_type,
           })
@@ -273,8 +279,8 @@ export default function AdminPurchasesPage() {
     return matchesSearch && matchesStatus && matchesType
   })
 
-  const totalRevenue = purchases.reduce((sum, p) => sum + (p.amount || 0), 0)
-  const totalCommission = purchases.reduce((sum, p) => sum + (p.platform_commission || 0), 0)
+  const totalRevenue = purchases.reduce((sum, p) => sum + (p.amount_paid || 0), 0)
+  const totalCommission = purchases.reduce((sum, p) => sum + (p.platform_earnings || 0), 0)
   const completedPurchases = purchases.filter((p) => p.status === "completed").length
 
   console.log("[v0] Total purchases:", purchases.length)
@@ -463,23 +469,29 @@ export default function AdminPurchasesPage() {
 
                       <div className="flex flex-wrap items-center gap-4 mt-3">
                         <div>
-                          <div className="text-lg font-black text-foreground">${formatPrice(purchase.amount)}</div>
+                          <div className="text-lg font-black text-foreground">${formatPrice(purchase.amount_paid)}</div>
                           <div className="text-xs text-muted-foreground">ARS</div>
                         </div>
-                        {purchase.discount_amount > 0 && (
+                        {purchase.discount_percent > 0 && (
                           <div>
-                            <div className="text-sm font-bold text-green-600">
-                              -${formatPrice(purchase.discount_amount)}
-                            </div>
+                            <div className="text-sm font-bold text-green-600">{purchase.discount_percent}% OFF</div>
                             <div className="text-xs text-muted-foreground">Descuento</div>
                           </div>
                         )}
-                        {purchase.platform_commission > 0 && (
+                        {purchase.platform_earnings > 0 && (
                           <div>
                             <div className="text-sm font-bold text-purple-600">
-                              ${formatPrice(purchase.platform_commission)}
+                              ${formatPrice(purchase.platform_earnings)}
                             </div>
                             <div className="text-xs text-muted-foreground">Comisión</div>
+                          </div>
+                        )}
+                        {purchase.seller_earnings > 0 && (
+                          <div>
+                            <div className="text-sm font-bold text-blue-600">
+                              ${formatPrice(purchase.seller_earnings)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">Vendedor</div>
                           </div>
                         )}
                       </div>
@@ -654,33 +666,31 @@ export default function AdminPurchasesPage() {
                 <div className="flex justify-between items-center p-4 rounded-xl bg-card border border-border">
                   <span className="text-sm text-muted-foreground">Monto Total</span>
                   <span className="text-xl font-black text-foreground">
-                    ${formatPrice(selectedPurchase.amount)} ARS
+                    ${formatPrice(selectedPurchase.amount_paid)} ARS
                   </span>
                 </div>
 
-                {selectedPurchase.discount_amount > 0 && (
+                {selectedPurchase.discount_percent > 0 && (
                   <div className="flex justify-between items-center p-4 rounded-xl bg-green-500/10 border border-green-500/20">
                     <span className="text-sm text-green-600">Descuento Aplicado</span>
-                    <span className="text-lg font-black text-green-600">
-                      -${formatPrice(selectedPurchase.discount_amount)} ARS
-                    </span>
+                    <span className="text-lg font-black text-green-600">{selectedPurchase.discount_percent}% OFF</span>
                   </div>
                 )}
 
-                {selectedPurchase.platform_commission > 0 && (
+                {selectedPurchase.platform_earnings > 0 && (
                   <div className="flex justify-between items-center p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
                     <span className="text-sm text-purple-600">Comisión Plataforma</span>
                     <span className="text-lg font-black text-purple-600">
-                      ${formatPrice(selectedPurchase.platform_commission)} ARS
+                      ${formatPrice(selectedPurchase.platform_earnings)} ARS
                     </span>
                   </div>
                 )}
 
-                {selectedPurchase.type === "pack" && selectedPurchase.creator_earnings > 0 && (
+                {selectedPurchase.type === "pack" && selectedPurchase.seller_earnings > 0 && (
                   <div className="flex justify-between items-center p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
                     <span className="text-sm text-blue-600">Ganancias Creador</span>
                     <span className="text-lg font-black text-blue-600">
-                      ${formatPrice(selectedPurchase.creator_earnings)} ARS
+                      ${formatPrice(selectedPurchase.seller_earnings)} ARS
                     </span>
                   </div>
                 )}
