@@ -55,7 +55,7 @@ export async function createPackPreference(
     throw new NotFoundError("Seller profile")
   }
 
-  if (!sellerProfile.mp_connected || !sellerProfile.mp_user_id || !sellerProfile.mp_access_token) {
+  if (!sellerProfile.mp_connected || !sellerProfile.mp_user_id) {
     throw new ForbiddenError("El vendedor no tiene Mercado Pago conectado correctamente")
   }
 
@@ -94,7 +94,7 @@ export async function createPackPreference(
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://arsound.com.ar"
 
-  console.log("[v0] 💰 PREFERENCE: Creating pack preference with payment split", {
+  console.log("[v0] 💰 SPLIT PAYMENTS: Creating pack preference with payment split", {
     packId,
     packTitle: pack.title,
     sellerId: pack.user_id,
@@ -107,8 +107,9 @@ export async function createPackPreference(
     commissionPercent: `${((commissionAmount / finalPrice) * 100).toFixed(1)}%`,
     sellerEarnings: `$${sellerEarnings.toFixed(2)}`,
     sellerPercent: `${((sellerEarnings / finalPrice) * 100).toFixed(1)}%`,
-    split: `${finalPrice} = ${commissionAmount} (Arsound) + ${sellerEarnings} (Vendedor)`,
-    usingSellerToken: true,
+    split: `Total: $${finalPrice} = $${commissionAmount} (Arsound comisión) + $${sellerEarnings} (Vendedor)`,
+    usingMarketplaceToken: true,
+    collectorId: sellerProfile.mp_user_id,
   })
 
   const preferenceData: PreferenceData = {
@@ -134,7 +135,7 @@ export async function createPackPreference(
       email: buyerEmail,
     },
     external_reference: `pack_${buyerId}_${packId}`,
-    marketplace_fee: commissionAmount,
+    collector_id: sellerProfile.mp_user_id,
     application_fee: commissionAmount,
     metadata: {
       type: "pack_purchase",
@@ -153,11 +154,14 @@ export async function createPackPreference(
     },
   }
 
-  console.log("[v0] 📦 PREFERENCE: Metadata being sent to Mercado Pago", {
+  console.log("[v0] 📦 SPLIT PAYMENTS: Preference data", {
+    collector_id: preferenceData.collector_id,
+    application_fee: preferenceData.application_fee,
+    total_amount: finalPrice,
     metadata: preferenceData.metadata,
   })
 
-  return await createPreferenceWithToken(preferenceData, sellerProfile.mp_access_token)
+  return await createPreference(preferenceData)
 }
 
 export async function createPlanPreference(
