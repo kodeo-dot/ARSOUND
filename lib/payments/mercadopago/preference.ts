@@ -70,17 +70,14 @@ export async function createPackPreference(
     finalPrice = Math.floor(basePrice * (1 - appliedDiscountPercent / 100))
   }
 
-  // Apply discount code if provided (overrides pack discount)
   if (discountCode) {
     const discount = await getDiscountCode(packId, discountCode)
 
     if (discount) {
-      // Validate expiration
       if (discount.expires_at && new Date(discount.expires_at) < new Date()) {
         throw new PaymentError("El código de descuento ha expirado")
       }
 
-      // Validate max uses
       if (discount.max_uses && discount.uses_count >= discount.max_uses) {
         throw new PaymentError("El código ha alcanzado el límite de usos")
       }
@@ -88,7 +85,6 @@ export async function createPackPreference(
       appliedDiscountPercent = discount.discount_percent
       finalPrice = Math.floor(basePrice * (1 - appliedDiscountPercent / 100))
 
-      // Increment usage
       await incrementDiscountCodeUsage(discount.id)
     }
   }
@@ -98,16 +94,20 @@ export async function createPackPreference(
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://arsound.com.ar"
 
-  console.log("[v0] Creating pack preference with payment split:", {
+  console.log("[v0] 💰 PREFERENCE: Creating pack preference with payment split", {
     packId,
+    packTitle: pack.title,
     sellerId: pack.user_id,
-    sellerMpUserId: sellerProfile.mp_user_id,
-    basePrice,
-    finalPrice,
-    appliedDiscountPercent,
-    commissionAmount,
-    sellerEarnings,
     sellerPlan,
+    sellerMpUserId: sellerProfile.mp_user_id,
+    basePrice: `$${basePrice.toFixed(2)}`,
+    finalPrice: `$${finalPrice.toFixed(2)}`,
+    discount: appliedDiscountPercent > 0 ? `${appliedDiscountPercent}%` : "none",
+    commissionAmount: `$${commissionAmount.toFixed(2)}`,
+    commissionPercent: `${((commissionAmount / finalPrice) * 100).toFixed(1)}%`,
+    sellerEarnings: `$${sellerEarnings.toFixed(2)}`,
+    sellerPercent: `${((sellerEarnings / finalPrice) * 100).toFixed(1)}%`,
+    split: `${finalPrice} = ${commissionAmount} (Arsound) + ${sellerEarnings} (Vendedor)`,
   })
 
   const preferenceData: PreferenceData = {
@@ -116,7 +116,7 @@ export async function createPackPreference(
         id: pack.id,
         title: pack.title,
         quantity: 1,
-        unit_price: finalPrice, // Charge the discounted price
+        unit_price: finalPrice,
         currency_id: "ARS",
         picture_url: pack.cover_url || undefined,
         description: `Sample Pack - ${pack.genre}`,
@@ -146,12 +146,16 @@ export async function createPackPreference(
       commission_percent: calculateCommission(100, sellerPlan) / 100,
       commission_amount: commissionAmount,
       seller_earnings: sellerEarnings,
-      final_price: finalPrice, // Price actually charged (with discount)
-      original_price: basePrice, // Original price before discount
+      final_price: finalPrice,
+      original_price: basePrice,
       discount_percent: appliedDiscountPercent,
       discount_code: discountCode || null,
     },
   }
+
+  console.log("[v0] 📦 PREFERENCE: Metadata being sent to Mercado Pago", {
+    metadata: preferenceData.metadata,
+  })
 
   return await createPreference(preferenceData)
 }

@@ -226,6 +226,12 @@ export async function purchasePack(packId: string, discountCode?: string, custom
     const sellerPlan = (sellerProfile.plan as PlanType) || "free"
     const commission = PLAN_FEATURES[sellerPlan].commission
 
+    console.log("[v0] 💰 SELLER PLAN INFO:", {
+      sellerId: pack.user_id,
+      sellerPlan: sellerPlan,
+      commissionRate: `${(commission * 100).toFixed(1)}%`,
+    })
+
     const basePrice = customPrice || pack.price
     let finalPrice = basePrice
     let appliedDiscountPercent = 0
@@ -233,11 +239,25 @@ export async function purchasePack(packId: string, discountCode?: string, custom
     if (!customPrice && pack.has_discount && pack.discount_percent > 0) {
       finalPrice = Math.floor(pack.price * (1 - pack.discount_percent / 100))
       appliedDiscountPercent = pack.discount_percent
-      console.log("[v0] Calculating discounted price:", finalPrice, "discount:", appliedDiscountPercent + "%")
+      console.log("[v0] 🏷️ DISCOUNT APPLIED:", {
+        basePrice,
+        discountPercent: appliedDiscountPercent + "%",
+        finalPrice,
+        savings: basePrice - finalPrice,
+      })
     }
 
     const commissionAmount = Math.floor(finalPrice * commission)
     const sellerEarnings = finalPrice - commissionAmount
+
+    console.log("[v0] 💵 PAYMENT SPLIT CALCULATION:", {
+      packTitle: pack.title,
+      finalPrice: `$${finalPrice.toFixed(2)}`,
+      commissionAmount: `$${commissionAmount.toFixed(2)}`,
+      commissionPercent: `${(commission * 100).toFixed(1)}%`,
+      sellerEarnings: `$${sellerEarnings.toFixed(2)}`,
+      verification: `${finalPrice} = ${commissionAmount} (Arsound) + ${sellerEarnings} (Vendedor)`,
+    })
 
     const origin = await getOrigin()
     console.log("[v0] Final origin being used:", origin)
@@ -286,7 +306,7 @@ export async function purchasePack(packId: string, discountCode?: string, custom
       },
     }
 
-    console.log("[v0] Preference data being sent:", JSON.stringify(preferenceData, null, 2))
+    console.log("[v0] 📦 PREFERENCE METADATA:", JSON.stringify(preferenceData.metadata, null, 2))
 
     const response = await fetch("https://api.mercadopago.com/checkout/preferences", {
       method: "POST",

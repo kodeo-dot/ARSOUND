@@ -204,10 +204,28 @@ async function processPackPurchase(payment: PaymentData, metadata: any): Promise
   const baseAmount = metadata.original_price || paidPrice
   const discountAmount = baseAmount - paidPrice
 
+  console.log("[v0] 🎯 WEBHOOK: Processing pack purchase", {
+    paymentId: payment.id,
+    packId: metadata.pack_id,
+    sellerId: metadata.seller_id,
+    buyerId: metadata.buyer_id,
+  })
+
   let platformCommission = metadata.commission_amount || 0
   let creatorEarnings = metadata.seller_earnings || 0
 
+  console.log("[v0] 💰 WEBHOOK: Payment metadata values", {
+    paidPrice,
+    baseAmount,
+    discountAmount,
+    platformCommission: metadata.commission_amount,
+    creatorEarnings: metadata.seller_earnings,
+    sellerPlan: metadata.seller_plan,
+  })
+
   if (platformCommission === 0 && creatorEarnings === 0 && paidPrice > 0) {
+    console.log("[v0] ⚠️ WEBHOOK: Commission data missing, recalculating...")
+
     try {
       const pack = await getPackById(metadata.pack_id)
       if (pack) {
@@ -216,20 +234,30 @@ async function processPackPurchase(payment: PaymentData, metadata: any): Promise
         platformCommission = calculateCommission(paidPrice, sellerPlan)
         creatorEarnings = paidPrice - platformCommission
 
-        logger.info("Recalculated commission from seller plan", "MP_WEBHOOK", {
+        console.log("[v0] ✅ WEBHOOK: Recalculated commission from seller plan", {
           paymentId: payment.id,
           sellerPlan,
           paidPrice,
           platformCommission,
           creatorEarnings,
+          commissionPercent: `${((platformCommission / paidPrice) * 100).toFixed(1)}%`,
         })
       }
     } catch (error) {
-      logger.error("Failed to recalculate commission", "MP_WEBHOOK", error)
+      console.error("[v0] ❌ WEBHOOK: Failed to recalculate commission", error)
       platformCommission = 0
       creatorEarnings = paidPrice
     }
   }
+
+  console.log("[v0] 💵 WEBHOOK: FINAL PAYMENT SPLIT", {
+    totalPaid: `$${paidPrice.toFixed(2)}`,
+    platformCommission: `$${platformCommission.toFixed(2)}`,
+    platformPercent: `${((platformCommission / paidPrice) * 100).toFixed(1)}%`,
+    creatorEarnings: `$${creatorEarnings.toFixed(2)}`,
+    creatorPercent: `${((creatorEarnings / paidPrice) * 100).toFixed(1)}%`,
+    verification: `${paidPrice} = ${platformCommission} (Arsound) + ${creatorEarnings} (Vendedor)`,
+  })
 
   const purchaseId = await createPurchase({
     buyer_id: metadata.buyer_id,
@@ -248,13 +276,29 @@ async function processPackPurchase(payment: PaymentData, metadata: any): Promise
   })
 
   if (!purchaseId) {
+    console.error("[v0] ❌ WEBHOOK: Failed to create purchase record")
     logger.error("Failed to create purchase", "MP_WEBHOOK", { paymentId: payment.id })
     return false
   }
 
-  await recordDownload(metadata.buyer_id, metadata.pack_id)
+  console.log("[v0] ✅ WEBHOOK: Purchase record created in database", {
+    purchaseId,
+    purchaseCode,
+  })
 
+  await recordDownload(metadata.buyer_id, metadata.pack_id)
   await incrementPackCounter(metadata.pack_id, "downloads_count")
+
+  console.log("[v0] 🎉 WEBHOOK: Pack purchase processed successfully", {
+    paymentId: payment.id,
+    purchaseId,
+    packId: metadata.pack_id,
+    summary: {
+      paid: `$${paidPrice.toFixed(2)}`,
+      arsound: `$${platformCommission.toFixed(2)}`,
+      seller: `$${creatorEarnings.toFixed(2)}`,
+    },
+  })
 
   logger.info("Pack purchase processed", "MP_WEBHOOK", {
     paymentId: payment.id,
