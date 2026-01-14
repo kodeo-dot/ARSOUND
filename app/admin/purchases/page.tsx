@@ -33,9 +33,8 @@ interface UnifiedPurchase {
   buyer_id: string
   seller_id?: string
   amount_paid: number
-  base_amount: number
   discount_amount: number
-  platform_commission: number
+  platform_earnings: number
   creator_earnings: number
   commission_percent: number
   status: string
@@ -126,6 +125,7 @@ export default function AdminPurchasesPage() {
               id: p.id,
               amount: p.amount,
               amount_paid: p.amount_paid,
+              platform_earnings: p.platform_earnings,
               platform_commission: p.platform_commission,
               creator_earnings: p.creator_earnings,
             })
@@ -142,9 +142,8 @@ export default function AdminPurchasesPage() {
             pack_id: p.pack_id,
             plan_type: p.plan_type,
             amount_paid: Number(p.amount_paid || p.amount) || 0,
-            base_amount: Number(p.amount) || 0,
             discount_amount: Number(p.discount_amount) || 0,
-            platform_commission: Number(p.platform_commission) || 0,
+            platform_earnings: Number(p.platform_earnings || p.platform_commission) || 0,
             creator_earnings: Number(p.creator_earnings || p.seller_earnings) || 0,
             commission_percent: Number(p.commission_percent) || 0,
             status: p.status || "completed",
@@ -163,9 +162,8 @@ export default function AdminPurchasesPage() {
       console.log("[v0] Sample normalized purchase:", allPurchases[0])
       console.log("[v0] Purchases with pricing data:", {
         withAmountPaid: allPurchases.filter((p) => p.amount_paid > 0).length,
-        withBaseAmount: allPurchases.filter((p) => p.base_amount > 0).length,
-        withCommission: allPurchases.filter((p) => p.platform_commission > 0).length,
-        withEarnings: allPurchases.filter((p) => p.creator_earnings > 0).length,
+        withPlatformEarnings: allPurchases.filter((p) => p.platform_earnings > 0).length,
+        withCreatorEarnings: allPurchases.filter((p) => p.creator_earnings > 0).length,
       })
 
       setPurchases(allPurchases)
@@ -276,7 +274,7 @@ export default function AdminPurchasesPage() {
   })
 
   const totalRevenue = purchases.reduce((sum, p) => sum + (p.amount_paid || 0), 0)
-  const totalPlatformEarnings = purchases.reduce((sum, p) => sum + (p.platform_commission || 0), 0)
+  const totalPlatformEarnings = purchases.reduce((sum, p) => sum + (p.platform_earnings || 0), 0)
   const completedPurchases = purchases.filter((p) => p.status === "completed").length
 
   console.log("[v0] Total purchases:", purchases.length)
@@ -465,26 +463,14 @@ export default function AdminPurchasesPage() {
 
                       <div className="flex flex-wrap items-center gap-4 mt-3">
                         <div>
-                          <div className="text-lg font-black text-foreground">${formatPrice(purchase.base_amount)}</div>
-                          <div className="text-xs text-muted-foreground">Precio Base</div>
-                        </div>
-                        {purchase.discount_amount > 0 && (
-                          <div>
-                            <div className="text-sm font-bold text-green-600">
-                              -${formatPrice(purchase.discount_amount)}
-                            </div>
-                            <div className="text-xs text-muted-foreground">Descuento</div>
-                          </div>
-                        )}
-                        <div>
-                          <div className="text-sm font-bold text-blue-600">${formatPrice(purchase.amount_paid)}</div>
-                          <div className="text-xs text-muted-foreground">Pagado</div>
+                          <div className="text-lg font-black text-foreground">${formatPrice(purchase.amount_paid)}</div>
+                          <div className="text-xs text-muted-foreground">Precio</div>
                         </div>
                         <div>
                           <div className="text-sm font-bold text-purple-600">
-                            ${formatPrice(purchase.platform_commission)}
+                            ${formatPrice(purchase.platform_earnings)}
                           </div>
-                          <div className="text-xs text-muted-foreground">Comisión Plataforma</div>
+                          <div className="text-xs text-muted-foreground">Ganancia Plataforma</div>
                         </div>
                         {purchase.type === "pack" && purchase.creator_earnings > 0 && (
                           <div>
@@ -733,7 +719,7 @@ export default function AdminPurchasesPage() {
                       <div>
                         <p className="text-xs text-muted-foreground">Precio Base</p>
                         <p className="font-bold text-lg line-through text-muted-foreground">
-                          ${formatPrice(selectedPurchase.base_amount)} ARS
+                          ${formatPrice(selectedPurchase.amount_paid)} ARS
                         </p>
                       </div>
                     </div>
@@ -760,7 +746,7 @@ export default function AdminPurchasesPage() {
                     <div>
                       <p className="text-xs text-muted-foreground">Ganancia Neta Plataforma</p>
                       <p className="font-bold text-lg">
-                        ${formatPrice(selectedPurchase.platform_commission)} ({selectedPurchase.commission_percent}%)
+                        ${formatPrice(selectedPurchase.platform_earnings)} ({selectedPurchase.commission_percent}%)
                       </p>
                     </div>
                   </div>
@@ -797,7 +783,7 @@ export default function AdminPurchasesPage() {
                 <Card className="p-4 rounded-xl bg-green-500/5">
                   <p className="text-sm font-bold text-green-600 mb-1">
                     Descuento aplicado: ${formatPrice(selectedPurchase.discount_amount)} (-
-                    {Math.round((selectedPurchase.discount_amount / selectedPurchase.base_amount) * 100)}%)
+                    {Math.round((selectedPurchase.discount_amount / selectedPurchase.amount_paid) * 100)}%)
                   </p>
                 </Card>
               )}
