@@ -14,6 +14,7 @@ import { createServerClient } from "@/lib/supabase/server-client"
 import { PLAN_FEATURES } from "@/lib/plans"
 import { sendPlanPurchaseNotification } from "../../email/notifications"
 import { calculateCommission } from "../../config/plans.config"
+import { createTransferToSeller } from "./transfer"
 
 interface PaymentData {
   id: string
@@ -341,6 +342,7 @@ async function processPackPurchase(payment: PaymentData, metadata: any): Promise
     packId: metadata.pack_id,
     sellerId: metadata.seller_id,
     buyerId: metadata.buyer_id,
+    usesOAuthSplit: metadata.uses_oauth_split || false,
   })
 
   let platformCommission = metadata.commission_amount || 0
@@ -353,6 +355,7 @@ async function processPackPurchase(payment: PaymentData, metadata: any): Promise
     platformCommission: metadata.commission_amount,
     creatorEarnings: metadata.seller_earnings,
     sellerPlan: metadata.seller_plan,
+    usesOAuthSplit: metadata.uses_oauth_split,
   })
 
   if (platformCommission === 0 && creatorEarnings === 0 && paidPrice > 0) {
@@ -405,7 +408,7 @@ async function processPackPurchase(payment: PaymentData, metadata: any): Promise
     mercado_pago_payment_id: payment.id,
     seller_mp_user_id: metadata.seller_mp_user_id,
     purchase_code: purchaseCode,
-    payment_status: "approved", // Explicitly set approved status
+    payment_status: "approved",
   })
 
   if (!purchaseId) {
@@ -422,6 +425,58 @@ async function processPackPurchase(payment: PaymentData, metadata: any): Promise
   await recordDownload(metadata.buyer_id, metadata.pack_id)
   await incrementPackCounter(metadata.pack_id, "downloads_count")
 
+  if (metadata.uses_oauth_split) {
+    console.log("[v0] ✅ WEBHOOK: OAuth split was used - Mercado Pago already divided the payment automatically", {
+      sellerReceived: `$${creatorEarnings.toFixed(2)}`,
+      arsoundReceived: `$${platformCommission.toFixed(2)}`,
+      note: "No manual transfer needed - MP handled the split",
+    })
+  } else if (metadata.needs_transfer && metadata.seller_mp_user_id && creatorEarnings > 0) {
+    console.log("[v0] 💸 WEBHOOK: OAuth split NOT used, attempting manual transfer", {
+      sellerMpUserId: metadata.seller_mp_user_id,
+      amount: creatorEarnings,
+    })
+
+    try {
+      const pack = await getPackById(metadata.pack_id)
+      const packTitle = pack?.title || "Pack"
+
+      const transferResult = await createTransferToSeller(
+        metadata.seller_mp_user_id,
+        creatorEarnings,
+        purchaseId,
+        packTitle,
+      )
+
+      if (transferResult) {
+        console.log("[v0] ✅ WEBHOOK: Transfer initiated successfully", {
+          transferId: transferResult.transfer_id,
+          status: transferResult.status,
+          amount: `$${creatorEarnings.toFixed(2)}`,
+        })
+      } else {
+        console.log("[v0] ⚠️ WEBHOOK: Transfer failed - seller will need manual payout", {
+          purchaseId,
+          sellerMpUserId: metadata.seller_mp_user_id,
+          amount: creatorEarnings,
+        })
+      }
+    } catch (transferError) {
+      console.error("[v0] ❌ WEBHOOK: Error during transfer attempt", transferError)
+      logger.error("Transfer failed", "MP_WEBHOOK", {
+        purchaseId,
+        sellerMpUserId: metadata.seller_mp_user_id,
+        amount: creatorEarnings,
+        error: transferError,
+      })
+    }
+  } else if (!metadata.seller_mp_user_id) {
+    console.log("[v0] ℹ️ WEBHOOK: Seller doesn't have MP connected - no automatic transfer", {
+      sellerId: metadata.seller_id,
+      amount: creatorEarnings,
+    })
+  }
+
   console.log("[v0] 🎉 WEBHOOK: Pack purchase processed successfully", {
     paymentId: payment.id,
     purchaseId,
@@ -430,6 +485,7 @@ async function processPackPurchase(payment: PaymentData, metadata: any): Promise
       paid: `$${paidPrice.toFixed(2)}`,
       arsound: `$${platformCommission.toFixed(2)}`,
       seller: `$${creatorEarnings.toFixed(2)}`,
+      splitMethod: metadata.uses_oauth_split ? "OAuth (automatic)" : "Manual transfer",
     },
   })
 
@@ -525,7 +581,7 @@ async function processPlanSubscription(payment: PaymentData, metadata: any): Pro
       payment_method: "mercado_pago",
       mercado_pago_payment_id: payment.id,
       purchase_code: purchaseCode,
-      payment_status: "approved", // Explicitly set approved status
+      payment_status: "approved",
     })
 
     if (!purchaseId) {
