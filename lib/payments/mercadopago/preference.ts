@@ -55,8 +55,8 @@ export async function createPackPreference(
     throw new NotFoundError("Seller profile")
   }
 
-  if (!sellerProfile.mp_connected || !sellerProfile.mp_user_id) {
-    throw new ForbiddenError("El vendedor no tiene Mercado Pago conectado")
+  if (!sellerProfile.mp_connected || !sellerProfile.mp_user_id || !sellerProfile.mp_access_token) {
+    throw new ForbiddenError("El vendedor no tiene Mercado Pago conectado correctamente")
   }
 
   const sellerPlan = (sellerProfile.plan as PlanType) || "free"
@@ -108,6 +108,7 @@ export async function createPackPreference(
     sellerEarnings: `$${sellerEarnings.toFixed(2)}`,
     sellerPercent: `${((sellerEarnings / finalPrice) * 100).toFixed(1)}%`,
     split: `${finalPrice} = ${commissionAmount} (Arsound) + ${sellerEarnings} (Vendedor)`,
+    usingSellerToken: true,
   })
 
   const preferenceData: PreferenceData = {
@@ -133,7 +134,6 @@ export async function createPackPreference(
       email: buyerEmail,
     },
     external_reference: `pack_${buyerId}_${packId}`,
-    collector_id: sellerProfile.mp_user_id,
     marketplace_fee: commissionAmount,
     application_fee: commissionAmount,
     metadata: {
@@ -157,7 +157,7 @@ export async function createPackPreference(
     metadata: preferenceData.metadata,
   })
 
-  return await createPreference(preferenceData)
+  return await createPreferenceWithToken(preferenceData, sellerProfile.mp_access_token)
 }
 
 export async function createPlanPreference(
@@ -204,14 +204,17 @@ export async function createPlanPreference(
   return await createPreference(preferenceData)
 }
 
-async function createPreference(data: PreferenceData): Promise<{ init_point: string; preference_id: string }> {
-  const config = getMercadoPagoConfig()
+async function createPreferenceWithToken(
+  data: PreferenceData,
+  accessToken: string,
+): Promise<{ init_point: string; preference_id: string }> {
+  console.log("[v0] 🔑 Creating preference with seller's access token")
 
   const response = await fetch("https://api.mercadopago.com/checkout/preferences", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${config.accessToken}`,
+      Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify(data),
   })
@@ -235,4 +238,9 @@ async function createPreference(data: PreferenceData): Promise<{ init_point: str
     init_point: preference.init_point,
     preference_id: preference.id,
   }
+}
+
+async function createPreference(data: PreferenceData): Promise<{ init_point: string; preference_id: string }> {
+  const config = getMercadoPagoConfig()
+  return await createPreferenceWithToken(data, config.accessToken)
 }
