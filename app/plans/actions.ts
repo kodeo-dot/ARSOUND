@@ -67,17 +67,21 @@ async function createMercadoPagoPreference(planType: string) {
   }
 
   try {
-    const planPrices: Record<string, number> = {
-      de_0_a_hit: 1,
-      de_0_a_hit_monthly: 1,
-      studio_plus: 15000,
-      studio_plus_monthly: 15000,
+    const { data: planPricing, error: pricingError } = await supabase
+      .from("plan_pricing")
+      .select("current_price, base_price")
+      .eq("plan_id", planType)
+      .single()
+
+    if (pricingError || !planPricing) {
+      console.error("[v0] Failed to get plan pricing from DB:", pricingError)
+      return { success: false, message: "No se pudo obtener el precio del plan" }
     }
 
-    const price = planPrices[planType]
-    if (!price) {
-      return { success: false, message: "Plan inválido" }
-    }
+    const finalPrice = planPricing.current_price
+    const basePrice = planPricing.base_price
+
+    console.log("[v0] Plan pricing from DB:", { planType, finalPrice, basePrice })
 
     const origin = await getOrigin()
     console.log("[v0] Final origin being used:", origin)
@@ -98,7 +102,7 @@ async function createMercadoPagoPreference(planType: string) {
           id: planType,
           title: `Plan ARSOUND - ${planType.includes("de_0") ? "De 0 a Hit" : "Studio Plus"}`,
           quantity: 1,
-          unit_price: price,
+          unit_price: finalPrice,
           currency_id: "ARS",
         },
       ],
@@ -108,6 +112,8 @@ async function createMercadoPagoPreference(planType: string) {
         plan_type: planType,
         user_id: user.id,
         test_mode: testMode,
+        final_price: finalPrice,
+        base_price: basePrice,
       },
     }
 
@@ -181,7 +187,7 @@ export async function purchasePack(packId: string, discountCode?: string, custom
   try {
     const { data: pack, error: packError } = await supabase
       .from("packs")
-      .select("id, title, price, user_id, discount_percent, has_discount")
+      .select("id, title, price, final_price, user_id, discount_percent, has_discount")
       .eq("id", packId)
       .single()
 
@@ -206,10 +212,10 @@ export async function purchasePack(packId: string, discountCode?: string, custom
     let finalPrice = basePrice
     let appliedDiscountPercent = 0
 
-    if (!customPrice && pack.has_discount && pack.discount_percent > 0) {
-      appliedDiscountPercent = pack.discount_percent
-      finalPrice = Math.floor(basePrice * (1 - appliedDiscountPercent / 100))
-      console.log("[v0] Applying pack discount:", appliedDiscountPercent, "%, final price:", finalPrice)
+    if (!customPrice && pack.has_discount && pack.final_price) {
+      finalPrice = pack.final_price
+      appliedDiscountPercent = pack.discount_percent || 0
+      console.log("[v0] Using pack final_price from DB:", finalPrice, "discount:", appliedDiscountPercent + "%")
     }
 
     // Apply discount code if provided (takes precedence over pack discount)

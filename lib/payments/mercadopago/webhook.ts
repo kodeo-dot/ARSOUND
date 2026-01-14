@@ -4,6 +4,7 @@ import { logger } from "../../utils/logger"
 import type { PlanType } from "../../types/database.types"
 import { createServerClient } from "@/lib/supabase/server-client"
 import { PLAN_FEATURES } from "@/lib/plans"
+import { sendPlanPurchaseNotification } from "../../email/notifications"
 
 interface PaymentData {
   id: string
@@ -302,6 +303,47 @@ async function processPlanSubscription(payment: PaymentData, metadata: any): Pro
         planType,
       })
       return false
+    }
+
+    try {
+      // Get user profile and email
+      const { data: userProfile } = await supabase
+        .from("profiles")
+        .select("username, display_name")
+        .eq("id", metadata.user_id)
+        .single()
+
+      const {
+        data: { user },
+      } = await supabase.auth.admin.getUserById(metadata.user_id)
+
+      if (user?.email) {
+        const planNames: Record<string, string> = {
+          de_0_a_hit: "De 0 a Hit",
+          studio_plus: "Studio Plus",
+        }
+
+        await sendPlanPurchaseNotification({
+          userEmail: user.email,
+          userName: userProfile?.display_name || userProfile?.username || "Usuario",
+          planName: planNames[planType] || planType,
+          amount: metadata.final_price || payment.transaction_amount,
+          expiresAt: expiresAt.toLocaleDateString("es-AR", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          }),
+        })
+
+        logger.info("Plan purchase email sent", "MP_WEBHOOK", {
+          paymentId: payment.id,
+          userId: metadata.user_id,
+          email: user.email,
+        })
+      }
+    } catch (emailError) {
+      logger.error("Failed to send plan purchase email", "MP_WEBHOOK", emailError)
+      // Don't fail the entire process if email fails
     }
 
     logger.info("Plan subscription processed successfully", "MP_WEBHOOK", {
