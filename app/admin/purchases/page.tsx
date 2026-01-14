@@ -34,7 +34,6 @@ interface UnifiedPurchase {
   seller_id?: string
   amount_paid: number
   base_amount: number
-  paid_price: number
   discount_amount: number
   platform_commission: number
   creator_earnings: number
@@ -122,12 +121,11 @@ export default function AdminPurchasesPage() {
 
       if (allPurchasesData) {
         allPurchasesData.forEach((p) => {
-          if (!p.paid_price && !p.base_amount) {
+          if (!p.amount && !p.amount_paid) {
             console.warn("[v0] Purchase missing price data:", {
               id: p.id,
               amount: p.amount,
-              paid_price: p.paid_price,
-              base_amount: p.base_amount,
+              amount_paid: p.amount_paid,
               platform_commission: p.platform_commission,
               creator_earnings: p.creator_earnings,
             })
@@ -143,14 +141,11 @@ export default function AdminPurchasesPage() {
             seller_id: p.seller_id,
             pack_id: p.pack_id,
             plan_type: p.plan_type,
-            // Use paid_price if available, fallback to amount
-            amount_paid: Number(p.paid_price || p.amount) || 0,
-            paid_price: Number(p.paid_price || p.amount) || 0,
-            // Use base_amount if available, fallback to amount + discount
-            base_amount: Number(p.base_amount || p.amount + (p.discount_amount || 0)) || 0,
+            amount_paid: Number(p.amount_paid || p.amount) || 0,
+            base_amount: Number(p.amount) || 0,
             discount_amount: Number(p.discount_amount) || 0,
             platform_commission: Number(p.platform_commission) || 0,
-            creator_earnings: Number(p.creator_earnings) || 0,
+            creator_earnings: Number(p.creator_earnings || p.seller_earnings) || 0,
             commission_percent: Number(p.commission_percent) || 0,
             status: p.status || "completed",
             payment_method: p.payment_method,
@@ -167,7 +162,7 @@ export default function AdminPurchasesPage() {
       console.log("[v0] Total unified purchases:", allPurchases.length)
       console.log("[v0] Sample normalized purchase:", allPurchases[0])
       console.log("[v0] Purchases with pricing data:", {
-        withPaidPrice: allPurchases.filter((p) => p.paid_price > 0).length,
+        withAmountPaid: allPurchases.filter((p) => p.amount_paid > 0).length,
         withBaseAmount: allPurchases.filter((p) => p.base_amount > 0).length,
         withCommission: allPurchases.filter((p) => p.platform_commission > 0).length,
         withEarnings: allPurchases.filter((p) => p.creator_earnings > 0).length,
@@ -280,7 +275,7 @@ export default function AdminPurchasesPage() {
     return matchesSearch && matchesStatus && matchesType
   })
 
-  const totalRevenue = purchases.reduce((sum, p) => sum + (p.paid_price || 0), 0)
+  const totalRevenue = purchases.reduce((sum, p) => sum + (p.amount_paid || 0), 0)
   const totalPlatformEarnings = purchases.reduce((sum, p) => sum + (p.platform_commission || 0), 0)
   const completedPurchases = purchases.filter((p) => p.status === "completed").length
 
@@ -482,7 +477,7 @@ export default function AdminPurchasesPage() {
                           </div>
                         )}
                         <div>
-                          <div className="text-sm font-bold text-blue-600">${formatPrice(purchase.paid_price)}</div>
+                          <div className="text-sm font-bold text-blue-600">${formatPrice(purchase.amount_paid)}</div>
                           <div className="text-xs text-muted-foreground">Pagado</div>
                         </div>
                         <div>
@@ -752,7 +747,7 @@ export default function AdminPurchasesPage() {
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Precio Pagado</p>
-                      <p className="font-bold text-lg">${formatPrice(selectedPurchase.paid_price)} ARS</p>
+                      <p className="font-bold text-lg">${formatPrice(selectedPurchase.amount_paid)} ARS</p>
                     </div>
                   </div>
                 </Card>
