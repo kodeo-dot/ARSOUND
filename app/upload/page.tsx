@@ -660,7 +660,7 @@ export default function UploadPage() {
           <Card className="p-8 rounded-3xl border-2 border-primary/30 bg-primary/5 mb-12">
             <div className="grid md:grid-cols-2 gap-8 items-center">
               <div>
-                <h2 className="text-2xl font-black text-foreground mb-3">¿Querés tener el 100% de tus ganancias?</h2>
+                <h2 className="text-2xl font-black text-foreground mb-3">¿Querés maximizar tus ganancias?</h2>
                 <p className="text-muted-foreground mb-6">
                   Mejorá tu plan y accedé a beneficios exclusivos como comisiones reducidas, sin límites de packs y
                   descuentos ilimitados.
