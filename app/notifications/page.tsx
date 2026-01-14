@@ -16,6 +16,7 @@ import {
   Star,
   MessageCircle,
   MessageSquare,
+  ArrowLeft,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { UserAvatar } from "@/components/user-avatar"
@@ -216,23 +217,31 @@ export default function NotificationsPage() {
       <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
         <div className="container max-w-4xl py-4 px-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/10 rounded-lg">
-                <Bell className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold">Notificaciones</h1>
-                {unreadCount > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    {unreadCount} {unreadCount === 1 ? "nueva" : "nuevas"}
-                  </p>
-                )}
+            <div className="flex items-center gap-4">
+              <Link href="/">
+                <Button variant="ghost" size="sm" className="gap-2">
+                  <ArrowLeft className="h-4 w-4" />
+                  Volver
+                </Button>
+              </Link>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <Bell className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-black">Notificaciones</h1>
+                  {unreadCount > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {unreadCount} {unreadCount === 1 ? "nueva" : "nuevas"}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
             {unreadCount > 0 && (
-              <Button variant="outline" size="sm" onClick={markAllAsRead}>
+              <Button variant="outline" size="sm" onClick={markAllAsRead} className="rounded-xl bg-transparent">
                 <Check className="h-4 w-4 mr-2" />
-                Marcar todas como leídas
+                Marcar todas
               </Button>
             )}
           </div>
@@ -245,11 +254,11 @@ export default function NotificationsPage() {
             <div className="inline-flex items-center justify-center p-4 bg-muted rounded-2xl mb-4">
               <Bell className="h-12 w-12 text-muted-foreground" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">No tienes notificaciones</h3>
+            <h3 className="text-lg font-black text-foreground mb-2">No tienes notificaciones</h3>
             <p className="text-sm text-muted-foreground mb-6">
               Cuando alguien interactúe con tu contenido, aparecerá aquí
             </p>
-            <Button asChild>
+            <Button asChild className="rounded-xl">
               <Link href="/">Explorar ARSOUND</Link>
             </Button>
           </div>
@@ -267,7 +276,7 @@ export default function NotificationsPage() {
                 >
                   <div className="flex items-start gap-4">
                     {notif.type === "limit_reached" ? (
-                      <div className={`p-3 rounded-full bg-white ${getNotificationColor(notif.type)}`}>
+                      <div className={`p-3 rounded-full ${getNotificationColor(notif.type)}`}>
                         {getNotificationIcon(notif.type)}
                       </div>
                     ) : (
@@ -279,7 +288,7 @@ export default function NotificationsPage() {
                           size="lg"
                         />
                         <div
-                          className={`absolute -bottom-1 -right-1 p-1.5 rounded-full bg-white border-2 border-background ${getNotificationColor(
+                          className={`absolute -bottom-1 -right-1 p-1.5 rounded-full border-2 border-background ${getNotificationColor(
                             notif.type,
                           )}`}
                         >
@@ -291,9 +300,9 @@ export default function NotificationsPage() {
                     <div className="flex-1 min-w-0">
                       {notif.type === "limit_reached" ? (
                         <>
-                          <p className="text-sm font-semibold text-foreground mb-1">Límite de descargas alcanzado</p>
+                          <p className="text-sm font-black text-foreground mb-1">Límite de descargas alcanzado</p>
                           <p className="text-sm text-muted-foreground leading-relaxed">{getNotificationText(notif)}</p>
-                          <Button size="sm" variant="outline" className="mt-3 bg-transparent">
+                          <Button size="sm" variant="outline" className="mt-3 rounded-xl bg-transparent">
                             Mejorar plan
                             <ArrowRight className="h-3 w-3 ml-2" />
                           </Button>
@@ -301,7 +310,7 @@ export default function NotificationsPage() {
                       ) : (
                         <>
                           <p className="text-sm leading-relaxed">
-                            <span className="font-semibold text-foreground">
+                            <span className="font-black text-foreground">
                               {notif.actor?.display_name || notif.actor?.username}
                             </span>{" "}
                             <span className="text-muted-foreground">{getNotificationText(notif)}</span>
@@ -318,8 +327,7 @@ export default function NotificationsPage() {
 
                     {!notif.is_read && (
                       <div className="flex items-center gap-2">
-                        <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-                        <span className="text-xs font-medium text-primary">Nueva</span>
+                        <div className="w-2 h-2 bg-primary rounded-full" />
                       </div>
                     )}
                   </div>
@@ -334,7 +342,7 @@ export default function NotificationsPage() {
                   size="lg"
                   onClick={() => loadNotifications(notifications.length)}
                   disabled={loadingMore}
-                  className="min-w-[200px]"
+                  className="min-w-[200px] rounded-xl"
                 >
                   {loadingMore ? (
                     <>
@@ -344,7 +352,7 @@ export default function NotificationsPage() {
                   ) : (
                     <>
                       <Sparkles className="h-4 w-4 mr-2" />
-                      Cargar más notificaciones
+                      Cargar más
                     </>
                   )}
                 </Button>
