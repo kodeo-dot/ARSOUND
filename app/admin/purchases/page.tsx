@@ -20,15 +20,18 @@ import {
   User,
   FileText,
   Loader2,
+  Crown,
 } from "lucide-react"
 import Link from "next/link"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-interface Purchase {
+type PurchaseType = "pack" | "plan"
+
+interface UnifiedPurchase {
   id: string
+  type: PurchaseType
   buyer_id: string
-  pack_id: string
   amount: number
   discount_amount: number
   platform_commission: number
@@ -37,6 +40,10 @@ interface Purchase {
   payment_method: string | null
   mercado_pago_payment_id: string | null
   created_at: string
+  // Pack-specific
+  pack_id?: string
+  // Plan-specific
+  plan_type?: string
 }
 
 interface Pack {
@@ -55,14 +62,15 @@ interface Profile {
 }
 
 export default function AdminPurchasesPage() {
-  const [purchases, setPurchases] = useState<Purchase[]>([])
+  const [purchases, setPurchases] = useState<UnifiedPurchase[]>([])
   const [packsMap, setPacksMap] = useState<Record<string, Pack>>({})
   const [buyersMap, setBuyersMap] = useState<Record<string, Profile>>({})
   const [sellersMap, setSellersMap] = useState<Record<string, Profile>>({})
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [selectedPurchase, setSelectedPurchase] = useState<Purchase | null>(null)
+  const [typeFilter, setTypeFilter] = useState<string>("all")
+  const [selectedPurchase, setSelectedPurchase] = useState<UnifiedPurchase | null>(null)
   const [detailsOpen, setDetailsOpen] = useState(false)
   const [copiedCode, setCopiedCode] = useState<string | null>(null)
   const supabase = createBrowserClient()
@@ -75,34 +83,96 @@ export default function AdminPurchasesPage() {
     try {
       setLoading(true)
 
-      const { data: purchasesData, error: purchasesError } = await supabase
+      // Load pack purchases
+      const { data: packPurchasesData, error: packPurchasesError } = await supabase
         .from("purchases")
         .select("*")
         .order("created_at", { ascending: false })
         .limit(100)
 
-      if (purchasesError || !purchasesData) {
-        console.error("Error loading purchases:", purchasesError)
-        return
+      if (packPurchasesError) {
+        console.error("[v0] Error loading pack purchases:", packPurchasesError)
       }
 
-      setPurchases(purchasesData)
+      // Load plan purchases (user_plans)
+      const { data: planPurchasesData, error: planPurchasesError } = await supabase
+        .from("user_plans")
+        .select("*")
+        .order("created_at", { ascending: false })
+        .limit(100)
 
-      const packIds = [...new Set(purchasesData.map((p) => p.pack_id))]
-      const { data: packs } = await supabase
-        .from("packs")
-        .select("id, title, cover_image_url, user_id, file_url")
-        .in("id", packIds)
+      if (planPurchasesError) {
+        console.error("[v0] Error loading plan purchases:", planPurchasesError)
+      }
 
-      if (packs) {
-        const mapPacks: Record<string, Pack> = {}
-        packs.forEach((pack) => {
-          mapPacks[pack.id] = pack as Pack
+      console.log("[v0] Pack purchases:", packPurchasesData?.length)
+      console.log("[v0] Plan purchases:", planPurchasesData?.length)
+
+      // Combine and normalize both types of purchases
+      const allPurchases: UnifiedPurchase[] = []
+
+      // Add pack purchases
+      if (packPurchasesData) {
+        packPurchasesData.forEach((p) => {
+          allPurchases.push({
+            ...p,
+            type: "pack" as PurchaseType,
+          })
         })
-        setPacksMap(mapPacks)
       }
 
-      const buyerIds = [...new Set(purchasesData.map((p) => p.buyer_id))]
+      // Add plan purchases - normalize to match purchase format
+      if (planPurchasesData) {
+        planPurchasesData.forEach((p) => {
+          // Get plan price from type
+          const planPrices: Record<string, number> = {
+            free: 0,
+            de_0_a_hit: 4900,
+            studio_plus: 8900,
+          }
+          const amount = planPrices[p.plan_type] || 0
+
+          allPurchases.push({
+            id: p.id,
+            type: "plan" as PurchaseType,
+            buyer_id: p.user_id,
+            amount: amount,
+            discount_amount: 0,
+            platform_commission: amount * 0.1, // 10% commission
+            creator_earnings: 0, // Plans don't have creator earnings
+            status: p.is_active ? "completed" : "expired",
+            payment_method: null,
+            mercado_pago_payment_id: null,
+            created_at: p.created_at,
+            plan_type: p.plan_type,
+          })
+        })
+      }
+
+      // Sort by date
+      allPurchases.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+
+      setPurchases(allPurchases)
+
+      // Load packs info for pack purchases
+      const packIds = allPurchases.filter((p) => p.type === "pack" && p.pack_id).map((p) => p.pack_id!)
+      if (packIds.length > 0) {
+        const { data: packs } = await supabase
+          .from("packs")
+          .select("id, title, cover_image_url, user_id, file_url")
+          .in("id", packIds)
+
+        if (packs) {
+          const mapPacks: Record<string, Pack> = {}
+          packs.forEach((pack) => {
+            mapPacks[pack.id] = pack as Pack
+          })
+          setPacksMap(mapPacks)
+        }
+      }
+
+      // Load buyer profiles
+      const buyerIds = [...new Set(allPurchases.map((p) => p.buyer_id))]
       const { data: buyers } = await supabase
         .from("profiles")
         .select("id, username, display_name, avatar_url")
@@ -116,8 +186,9 @@ export default function AdminPurchasesPage() {
         setBuyersMap(mapBuyers)
       }
 
-      if (packs) {
-        const sellerIds = [...new Set(packs.map((p) => p.user_id))]
+      // Load seller profiles for packs
+      if (Object.keys(packsMap).length > 0) {
+        const sellerIds = [...new Set(Object.values(packsMap).map((p) => p.user_id))]
         const { data: sellers } = await supabase
           .from("profiles")
           .select("id, username, display_name, avatar_url")
@@ -132,7 +203,7 @@ export default function AdminPurchasesPage() {
         }
       }
     } catch (error) {
-      console.error("Error loading purchases:", error)
+      console.error("[v0] Error loading purchases:", error)
     } finally {
       setLoading(false)
     }
@@ -162,8 +233,17 @@ export default function AdminPurchasesPage() {
     setTimeout(() => setCopiedCode(null), 2000)
   }
 
+  const getPlanName = (planType: string) => {
+    const names: Record<string, string> = {
+      free: "Free",
+      de_0_a_hit: "De 0 a Hit",
+      studio_plus: "Studio Plus",
+    }
+    return names[planType] || planType
+  }
+
   const filteredPurchases = purchases.filter((purchase) => {
-    const pack = packsMap[purchase.pack_id]
+    const pack = purchase.pack_id ? packsMap[purchase.pack_id] : null
     const buyer = buyersMap[purchase.buyer_id]
     const seller = pack ? sellersMap[pack.user_id] : null
 
@@ -172,16 +252,22 @@ export default function AdminPurchasesPage() {
       purchase.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       pack?.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       buyer?.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      seller?.username.toLowerCase().includes(searchTerm.toLowerCase())
+      seller?.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (purchase.plan_type && getPlanName(purchase.plan_type).toLowerCase().includes(searchTerm.toLowerCase()))
 
     const matchesStatus = statusFilter === "all" || purchase.status === statusFilter
+    const matchesType = typeFilter === "all" || purchase.type === typeFilter
 
-    return matchesSearch && matchesStatus
+    return matchesSearch && matchesStatus && matchesType
   })
 
-  const totalRevenue = purchases.reduce((sum, p) => sum + p.amount, 0)
+  const totalRevenue = purchases.reduce((sum, p) => sum + (p.amount || 0), 0)
   const totalCommission = purchases.reduce((sum, p) => sum + (p.platform_commission || 0), 0)
   const completedPurchases = purchases.filter((p) => p.status === "completed").length
+
+  console.log("[v0] Total purchases:", purchases.length)
+  console.log("[v0] Total revenue:", totalRevenue)
+  console.log("[v0] Total commission:", totalCommission)
 
   if (loading) {
     return (
@@ -197,7 +283,9 @@ export default function AdminPurchasesPage() {
     <div className="space-y-8">
       <div>
         <h1 className="text-4xl font-black text-foreground mb-2">Compras</h1>
-        <p className="text-lg text-muted-foreground">Administración completa de todas las transacciones</p>
+        <p className="text-lg text-muted-foreground">
+          Administración completa de todas las transacciones (Packs y Planes)
+        </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -243,21 +331,32 @@ export default function AdminPurchasesPage() {
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Buscar por código, pack, comprador o vendedor..."
+              placeholder="Buscar por código, pack, plan, comprador o vendedor..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10 rounded-xl"
             />
           </div>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
+            <SelectTrigger className="w-full md:w-[180px] rounded-xl">
+              <SelectValue placeholder="Tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los tipos</SelectItem>
+              <SelectItem value="pack">Packs</SelectItem>
+              <SelectItem value="plan">Planes</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full md:w-[200px] rounded-xl">
-              <SelectValue placeholder="Filtrar por estado" />
+            <SelectTrigger className="w-full md:w-[180px] rounded-xl">
+              <SelectValue placeholder="Estado" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="completed">Completado</SelectItem>
               <SelectItem value="pending">Pendiente</SelectItem>
               <SelectItem value="failed">Fallido</SelectItem>
+              <SelectItem value="expired">Expirado</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -270,7 +369,7 @@ export default function AdminPurchasesPage() {
             </div>
           ) : (
             filteredPurchases.map((purchase) => {
-              const pack = packsMap[purchase.pack_id]
+              const pack = purchase.pack_id ? packsMap[purchase.pack_id] : null
               const buyer = buyersMap[purchase.buyer_id]
               const seller = pack ? sellersMap[pack.user_id] : null
 
@@ -285,28 +384,43 @@ export default function AdminPurchasesPage() {
                 >
                   <div className="flex flex-col md:flex-row gap-4">
                     <div className="flex-shrink-0">
-                      <img
-                        src={pack?.cover_image_url || "/placeholder.svg?height=80&width=80"}
-                        alt={pack?.title || "Pack"}
-                        className="w-20 h-20 rounded-lg object-cover"
-                      />
+                      {purchase.type === "plan" ? (
+                        <div className="w-20 h-20 rounded-lg bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center">
+                          <Crown className="h-10 w-10 text-white" />
+                        </div>
+                      ) : (
+                        <img
+                          src={pack?.cover_image_url || "/placeholder.svg?height=80&width=80"}
+                          alt={pack?.title || "Pack"}
+                          className="w-20 h-20 rounded-lg object-cover"
+                        />
+                      )}
                     </div>
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-4 mb-2">
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-bold text-foreground mb-1 line-clamp-1">
-                            {pack?.title || "Pack eliminado"}
-                          </h3>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h3 className="font-bold text-foreground line-clamp-1">
+                              {purchase.type === "plan"
+                                ? `Plan: ${getPlanName(purchase.plan_type!)}`
+                                : pack?.title || "Pack eliminado"}
+                            </h3>
+                            <Badge variant="outline" className="text-xs">
+                              {purchase.type === "plan" ? "Plan" : "Pack"}
+                            </Badge>
+                          </div>
                           <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                             <div className="flex items-center gap-1">
                               <User className="h-3 w-3" />
                               <span>Comprador: {buyer?.username || "Desconocido"}</span>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <Package className="h-3 w-3" />
-                              <span>Vendedor: {seller?.username || "Desconocido"}</span>
-                            </div>
+                            {purchase.type === "pack" && (
+                              <div className="flex items-center gap-1">
+                                <Package className="h-3 w-3" />
+                                <span>Vendedor: {seller?.username || "Desconocido"}</span>
+                              </div>
+                            )}
                             <div className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
                               <span>{formatDate(purchase.created_at)}</span>
@@ -320,14 +434,18 @@ export default function AdminPurchasesPage() {
                               ? "bg-green-500/10 text-green-600"
                               : purchase.status === "pending"
                                 ? "bg-yellow-500/10 text-yellow-600"
-                                : "bg-red-500/10 text-red-600"
+                                : purchase.status === "expired"
+                                  ? "bg-gray-500/10 text-gray-600"
+                                  : "bg-red-500/10 text-red-600"
                           }
                         >
                           {purchase.status === "completed"
                             ? "Completado"
                             : purchase.status === "pending"
                               ? "Pendiente"
-                              : "Fallido"}
+                              : purchase.status === "expired"
+                                ? "Expirado"
+                                : "Fallido"}
                         </Badge>
                       </div>
 
@@ -368,18 +486,34 @@ export default function AdminPurchasesPage() {
                           <Eye className="h-3 w-3 mr-1" />
                           Ver Detalles
                         </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="rounded-full text-xs bg-transparent"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            window.open(`/pack/${purchase.pack_id}`, "_blank")
-                          }}
-                        >
-                          <ExternalLink className="h-3 w-3 mr-1" />
-                          Ver Pack
-                        </Button>
+                        {purchase.type === "pack" && purchase.pack_id && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-full text-xs bg-transparent"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              window.open(`/pack/${purchase.pack_id}`, "_blank")
+                            }}
+                          >
+                            <ExternalLink className="h-3 w-3 mr-1" />
+                            Ver Pack
+                          </Button>
+                        )}
+                        {purchase.type === "pack" && buyer && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-full text-xs bg-transparent"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              window.open(`/profile/${buyer.username}`, "_blank")
+                            }}
+                          >
+                            <User className="h-3 w-3 mr-1" />
+                            Ver Perfil
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -421,18 +555,49 @@ export default function AdminPurchasesPage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="p-4 rounded-xl bg-card border border-border">
-                  <div className="text-xs text-muted-foreground mb-2">Pack</div>
+                  <div className="text-xs text-muted-foreground mb-2">Tipo</div>
                   <div className="flex items-center gap-2">
-                    <Package className="h-4 w-4 text-foreground" />
-                    <Link
-                      href={`/pack/${selectedPurchase.pack_id}`}
-                      className="text-sm font-bold text-foreground hover:text-primary line-clamp-1"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {packsMap[selectedPurchase.pack_id]?.title || "Pack eliminado"}
-                    </Link>
+                    {selectedPurchase.type === "plan" ? (
+                      <>
+                        <Crown className="h-4 w-4 text-purple-600" />
+                        <span className="text-sm font-bold text-foreground">Plan de Suscripción</span>
+                      </>
+                    ) : (
+                      <>
+                        <Package className="h-4 w-4 text-foreground" />
+                        <span className="text-sm font-bold text-foreground">Pack de Sonidos</span>
+                      </>
+                    )}
                   </div>
                 </div>
+
+                {selectedPurchase.type === "plan" ? (
+                  <div className="p-4 rounded-xl bg-card border border-border">
+                    <div className="text-xs text-muted-foreground mb-2">Plan</div>
+                    <div className="flex items-center gap-2">
+                      <Crown className="h-4 w-4 text-purple-600" />
+                      <span className="text-sm font-bold text-foreground">
+                        {getPlanName(selectedPurchase.plan_type!)}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-xl bg-card border border-border">
+                    <div className="text-xs text-muted-foreground mb-2">Pack</div>
+                    <div className="flex items-center gap-2">
+                      <Package className="h-4 w-4 text-foreground" />
+                      {selectedPurchase.pack_id && (
+                        <Link
+                          href={`/pack/${selectedPurchase.pack_id}`}
+                          className="text-sm font-bold text-foreground hover:text-primary line-clamp-1"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {packsMap[selectedPurchase.pack_id]?.title || "Pack eliminado"}
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 <div className="p-4 rounded-xl bg-card border border-border">
                   <div className="text-xs text-muted-foreground mb-2">Comprador</div>
@@ -448,11 +613,11 @@ export default function AdminPurchasesPage() {
                   </div>
                 </div>
 
-                <div className="p-4 rounded-xl bg-card border border-border">
-                  <div className="text-xs text-muted-foreground mb-2">Vendedor</div>
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-foreground" />
-                    {packsMap[selectedPurchase.pack_id] && (
+                {selectedPurchase.type === "pack" && selectedPurchase.pack_id && packsMap[selectedPurchase.pack_id] && (
+                  <div className="p-4 rounded-xl bg-card border border-border">
+                    <div className="text-xs text-muted-foreground mb-2">Vendedor</div>
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-foreground" />
                       <Link
                         href={`/profile/${sellersMap[packsMap[selectedPurchase.pack_id].user_id]?.username}`}
                         className="text-sm font-bold text-foreground hover:text-primary"
@@ -460,9 +625,9 @@ export default function AdminPurchasesPage() {
                       >
                         {sellersMap[packsMap[selectedPurchase.pack_id].user_id]?.username || "Desconocido"}
                       </Link>
-                    )}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="p-4 rounded-xl bg-card border border-border">
                   <div className="text-xs text-muted-foreground mb-2">Fecha y Hora</div>
@@ -499,9 +664,9 @@ export default function AdminPurchasesPage() {
                   </div>
                 )}
 
-                {selectedPurchase.creator_earnings > 0 && (
+                {selectedPurchase.type === "pack" && selectedPurchase.creator_earnings > 0 && (
                   <div className="flex justify-between items-center p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                    <span className="text-sm text-blue-600">Ganancia Creador</span>
+                    <span className="text-sm text-blue-600">Ganancias Creador</span>
                     <span className="text-lg font-black text-blue-600">
                       ${formatPrice(selectedPurchase.creator_earnings)} ARS
                     </span>
@@ -509,80 +674,40 @@ export default function AdminPurchasesPage() {
                 )}
               </div>
 
-              <div className="space-y-3">
-                <div className="flex justify-between p-3 rounded-xl bg-muted/20">
-                  <span className="text-sm text-muted-foreground">Estado</span>
-                  <Badge
-                    className={
-                      selectedPurchase.status === "completed"
-                        ? "bg-green-500/10 text-green-600"
-                        : selectedPurchase.status === "pending"
-                          ? "bg-yellow-500/10 text-yellow-600"
-                          : "bg-red-500/10 text-red-600"
-                    }
-                  >
-                    {selectedPurchase.status === "completed"
-                      ? "Completado"
-                      : selectedPurchase.status === "pending"
-                        ? "Pendiente"
-                        : "Fallido"}
-                  </Badge>
-                </div>
-
-                {selectedPurchase.payment_method && (
-                  <div className="flex justify-between p-3 rounded-xl bg-muted/20">
-                    <span className="text-sm text-muted-foreground">Método de Pago</span>
+              {selectedPurchase.payment_method && (
+                <div className="p-4 rounded-xl bg-card border border-border">
+                  <div className="text-xs text-muted-foreground mb-2">Método de Pago</div>
+                  <div className="flex items-center gap-2">
+                    <CreditCard className="h-4 w-4 text-foreground" />
                     <span className="text-sm font-bold text-foreground capitalize">
                       {selectedPurchase.payment_method}
                     </span>
                   </div>
-                )}
-
-                {selectedPurchase.mercado_pago_payment_id && (
-                  <div className="p-3 rounded-xl bg-muted/20">
-                    <div className="text-sm text-muted-foreground mb-1">ID de Pago MercadoPago</div>
-                    <code className="text-xs font-mono text-foreground">
-                      {selectedPurchase.mercado_pago_payment_id}
-                    </code>
-                  </div>
-                )}
-
-                {packsMap[selectedPurchase.pack_id]?.file_url && (
-                  <div className="p-3 rounded-xl bg-muted/20">
-                    <div className="text-sm text-muted-foreground mb-2">Archivo</div>
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-foreground" />
-                      <a
-                        href={packsMap[selectedPurchase.pack_id].file_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs font-mono text-primary hover:underline line-clamp-1"
-                      >
-                        {packsMap[selectedPurchase.pack_id].file_url}
-                      </a>
+                  {selectedPurchase.mercado_pago_payment_id && (
+                    <div className="mt-2 text-xs text-muted-foreground font-mono">
+                      ID: {selectedPurchase.mercado_pago_payment_id}
                     </div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              )}
 
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="flex-1 rounded-xl bg-transparent"
-                  onClick={() => window.open(`/pack/${selectedPurchase.pack_id}`, "_blank")}
-                >
-                  <ExternalLink className="h-4 w-4 mr-2" />
-                  Ver Pack
-                </Button>
-                <Button
-                  variant="outline"
-                  className="flex-1 rounded-xl bg-transparent"
-                  onClick={() => window.open(`/profile/${buyersMap[selectedPurchase.buyer_id]?.username}`, "_blank")}
-                >
-                  <User className="h-4 w-4 mr-2" />
-                  Ver Comprador
-                </Button>
-              </div>
+              {selectedPurchase.type === "pack" && selectedPurchase.pack_id && packsMap[selectedPurchase.pack_id] && (
+                <div className="p-4 rounded-xl bg-card border border-border">
+                  <div className="text-xs text-muted-foreground mb-2">Archivo Descargable</div>
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-foreground" />
+                    <a
+                      href={packsMap[selectedPurchase.pack_id].file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm font-bold text-primary hover:underline line-clamp-1"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Descargar archivo
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>

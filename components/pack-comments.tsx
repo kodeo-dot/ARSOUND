@@ -67,6 +67,16 @@ export function PackComments({ packId, packOwnerId, isAuthenticated, currentUser
       return
     }
 
+    if (!isAuthenticated) {
+      toast({
+        title: "Error",
+        description: "Debes iniciar sesión para comentar",
+        variant: "destructive",
+      })
+      return
+    }
+
+    console.log("[v0] Submitting comment:", newComment)
     setIsSubmitting(true)
     try {
       const response = await fetch(`/api/packs/${packId}/comments`, {
@@ -75,7 +85,9 @@ export function PackComments({ packId, packOwnerId, isAuthenticated, currentUser
         body: JSON.stringify({ comment: newComment }),
       })
 
+      console.log("[v0] Comment response status:", response.status)
       const data = await response.json()
+      console.log("[v0] Comment response data:", data)
 
       if (data.success) {
         toast({
@@ -91,6 +103,7 @@ export function PackComments({ packId, packOwnerId, isAuthenticated, currentUser
         })
       }
     } catch (error) {
+      console.error("[v0] Error submitting comment:", error)
       toast({
         title: "Error",
         description: "No se pudo publicar el comentario",
@@ -111,6 +124,16 @@ export function PackComments({ packId, packOwnerId, isAuthenticated, currentUser
       return
     }
 
+    if (!isAuthenticated) {
+      toast({
+        title: "Error",
+        description: "Debes iniciar sesión para responder",
+        variant: "destructive",
+      })
+      return
+    }
+
+    console.log("[v0] Submitting reply:", replyText, "to parent:", parentId)
     try {
       const response = await fetch(`/api/packs/${packId}/comments`, {
         method: "POST",
@@ -118,7 +141,9 @@ export function PackComments({ packId, packOwnerId, isAuthenticated, currentUser
         body: JSON.stringify({ comment: replyText, parentId }),
       })
 
+      console.log("[v0] Reply response status:", response.status)
       const data = await response.json()
+      console.log("[v0] Reply response data:", data)
 
       if (data.success) {
         toast({
@@ -135,6 +160,7 @@ export function PackComments({ packId, packOwnerId, isAuthenticated, currentUser
         })
       }
     } catch (error) {
+      console.error("[v0] Error submitting reply:", error)
       toast({
         title: "Error",
         description: "No se pudo publicar la respuesta",
