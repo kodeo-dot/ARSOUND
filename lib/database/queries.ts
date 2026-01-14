@@ -132,6 +132,7 @@ export async function createPurchase(purchase: {
   creator_earnings: number
   payment_method: string
   mercado_pago_payment_id?: string
+  seller_mp_user_id?: string // Added seller_mp_user_id to track MercadoPago seller ID
   purchase_code: string
 }): Promise<string | null> {
   const adminSupabase = await createAdminClient()

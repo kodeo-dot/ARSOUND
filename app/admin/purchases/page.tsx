@@ -32,6 +32,7 @@ interface UnifiedPurchase {
   id: string
   type: PurchaseType
   buyer_id: string
+  seller_id?: string
   amount_paid: number
   discount_percent: number
   platform_earnings: number
@@ -115,11 +116,12 @@ export default function AdminPurchasesPage() {
 
       if (packPurchasesData) {
         packPurchasesData.forEach((p) => {
-          console.log("[v0] Pack purchase amount:", p.amount_paid, "type:", typeof p.amount_paid)
+          console.log("[v0] Pack purchase:", p)
           allPurchases.push({
             id: p.id,
             type: "pack" as PurchaseType,
             buyer_id: p.buyer_id,
+            seller_id: p.seller_id,
             pack_id: p.pack_id,
             amount_paid: Number(p.amount_paid) || 0,
             discount_percent: Number(p.discount_percent) || 0,
@@ -138,6 +140,7 @@ export default function AdminPurchasesPage() {
       // Add plan purchases - normalize to match purchase format
       if (planPurchasesData) {
         planPurchasesData.forEach((p) => {
+          console.log("[v0] Plan purchase:", p)
           // Get plan price from type (in centavos)
           const planPrices: Record<string, number> = {
             de_0_a_hit: 4900,
@@ -205,9 +208,8 @@ export default function AdminPurchasesPage() {
         setBuyersMap(mapBuyers)
       }
 
-      // Load seller profiles for packs
-      if (Object.keys(packsMap).length > 0) {
-        const sellerIds = [...new Set(Object.values(packsMap).map((p) => p.user_id))]
+      const sellerIds = [...new Set(allPurchases.filter((p) => p.seller_id).map((p) => p.seller_id!))]
+      if (sellerIds.length > 0) {
         const { data: sellers } = await supabase
           .from("profiles")
           .select("id, username, display_name, avatar_url")
@@ -229,11 +231,12 @@ export default function AdminPurchasesPage() {
   }
 
   const formatPrice = (price: number) => {
+    const valueInPesos = price / 100
     return new Intl.NumberFormat("es-AR", {
       style: "decimal",
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(price)
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(valueInPesos)
   }
 
   const formatDate = (date: string) => {
@@ -263,7 +266,7 @@ export default function AdminPurchasesPage() {
   const filteredPurchases = purchases.filter((purchase) => {
     const pack = purchase.pack_id ? packsMap[purchase.pack_id] : null
     const buyer = buyersMap[purchase.buyer_id]
-    const seller = pack ? sellersMap[pack.user_id] : null
+    const seller = purchase.seller_id ? sellersMap[purchase.seller_id] : null
 
     const matchesSearch =
       !searchTerm ||
@@ -389,7 +392,7 @@ export default function AdminPurchasesPage() {
             filteredPurchases.map((purchase) => {
               const pack = purchase.pack_id ? packsMap[purchase.pack_id] : null
               const buyer = buyersMap[purchase.buyer_id]
-              const seller = pack ? sellersMap[pack.user_id] : null
+              const seller = purchase.seller_id ? sellersMap[purchase.seller_id] : null
 
               return (
                 <div
@@ -433,7 +436,7 @@ export default function AdminPurchasesPage() {
                               <User className="h-3 w-3" />
                               <span>Comprador: {buyer?.username || "Desconocido"}</span>
                             </div>
-                            {purchase.type === "pack" && (
+                            {purchase.type === "pack" && seller && (
                               <div className="flex items-center gap-1">
                                 <Package className="h-3 w-3" />
                                 <span>Vendedor: {seller?.username || "Desconocido"}</span>
@@ -508,36 +511,8 @@ export default function AdminPurchasesPage() {
                           }}
                         >
                           <Eye className="h-3 w-3 mr-1" />
-                          Ver Detalles
+                          Ver detalles
                         </Button>
-                        {purchase.type === "pack" && purchase.pack_id && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-full text-xs bg-transparent"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              window.open(`/pack/${purchase.pack_id}`, "_blank")
-                            }}
-                          >
-                            <ExternalLink className="h-3 w-3 mr-1" />
-                            Ver Pack
-                          </Button>
-                        )}
-                        {purchase.type === "pack" && buyer && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-full text-xs bg-transparent"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              window.open(`/profile/${buyer.username}`, "_blank")
-                            }}
-                          >
-                            <User className="h-3 w-3 mr-1" />
-                            Ver Perfil
-                          </Button>
-                        )}
                       </div>
                     </div>
                   </div>
@@ -549,185 +524,207 @@ export default function AdminPurchasesPage() {
       </Card>
 
       <Dialog open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <DialogContent className="sm:max-w-2xl rounded-3xl">
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Detalles Completos de la Compra</DialogTitle>
+            <DialogTitle>Detalles de la Compra</DialogTitle>
           </DialogHeader>
+
           {selectedPurchase && (
             <div className="space-y-6">
-              <div className="p-5 rounded-2xl bg-muted/30 border border-border">
-                <div className="text-sm text-muted-foreground mb-2">Código de Compra</div>
-                <div className="flex items-center gap-2">
-                  <code className="text-xl font-black text-foreground font-mono">
-                    {selectedPurchase.id.slice(0, 8).toUpperCase()}
-                  </code>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleCopyCode(selectedPurchase.id)}
-                    className="h-8 w-8 p-0"
-                  >
-                    {copiedCode === selectedPurchase.id ? (
-                      <Check className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <Copy className="h-4 w-4" />
-                    )}
-                  </Button>
-                </div>
-                <div className="text-xs text-muted-foreground mt-1 font-mono">{selectedPurchase.id}</div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 rounded-xl bg-card border border-border">
-                  <div className="text-xs text-muted-foreground mb-2">Tipo</div>
-                  <div className="flex items-center gap-2">
-                    {selectedPurchase.type === "plan" ? (
-                      <>
-                        <Crown className="h-4 w-4 text-purple-600" />
-                        <span className="text-sm font-bold text-foreground">Plan de Suscripción</span>
-                      </>
-                    ) : (
-                      <>
-                        <Package className="h-4 w-4 text-foreground" />
-                        <span className="text-sm font-bold text-foreground">Pack de Sonidos</span>
-                      </>
-                    )}
-                  </div>
-                </div>
-
+              <div className="flex gap-4">
                 {selectedPurchase.type === "plan" ? (
-                  <div className="p-4 rounded-xl bg-card border border-border">
-                    <div className="text-xs text-muted-foreground mb-2">Plan</div>
-                    <div className="flex items-center gap-2">
-                      <Crown className="h-4 w-4 text-purple-600" />
-                      <span className="text-sm font-bold text-foreground">
-                        {getPlanName(selectedPurchase.plan_type!)}
-                      </span>
-                    </div>
+                  <div className="w-24 h-24 rounded-lg bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center flex-shrink-0">
+                    <Crown className="h-12 w-12 text-white" />
                   </div>
                 ) : (
-                  <div className="p-4 rounded-xl bg-card border border-border">
-                    <div className="text-xs text-muted-foreground mb-2">Pack</div>
-                    <div className="flex items-center gap-2">
-                      <Package className="h-4 w-4 text-foreground" />
-                      {selectedPurchase.pack_id && (
-                        <Link
-                          href={`/pack/${selectedPurchase.pack_id}`}
-                          className="text-sm font-bold text-foreground hover:text-primary line-clamp-1"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {packsMap[selectedPurchase.pack_id]?.title || "Pack eliminado"}
-                        </Link>
-                      )}
-                    </div>
-                  </div>
+                  <img
+                    src={
+                      packsMap[selectedPurchase.pack_id!]?.cover_image_url ||
+                      "/placeholder.svg?height=96&width=96" ||
+                      "/placeholder.svg"
+                    }
+                    alt="Cover"
+                    className="w-24 h-24 rounded-lg object-cover flex-shrink-0"
+                  />
                 )}
-
-                <div className="p-4 rounded-xl bg-card border border-border">
-                  <div className="text-xs text-muted-foreground mb-2">Comprador</div>
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-foreground" />
-                    <Link
-                      href={`/profile/${buyersMap[selectedPurchase.buyer_id]?.username}`}
-                      className="text-sm font-bold text-foreground hover:text-primary"
-                      onClick={(e) => e.stopPropagation()}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-xl font-bold text-foreground mb-1">
+                    {selectedPurchase.type === "plan"
+                      ? `Plan: ${getPlanName(selectedPurchase.plan_type!)}`
+                      : packsMap[selectedPurchase.pack_id!]?.title || "Pack eliminado"}
+                  </h3>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge variant="outline">{selectedPurchase.type === "plan" ? "Plan" : "Pack"}</Badge>
+                    <Badge
+                      variant="secondary"
+                      className={
+                        selectedPurchase.status === "completed"
+                          ? "bg-green-500/10 text-green-600"
+                          : selectedPurchase.status === "pending"
+                            ? "bg-yellow-500/10 text-yellow-600"
+                            : "bg-red-500/10 text-red-600"
+                      }
                     >
-                      {buyersMap[selectedPurchase.buyer_id]?.username || "Desconocido"}
-                    </Link>
+                      {selectedPurchase.status === "completed"
+                        ? "Completado"
+                        : selectedPurchase.status === "pending"
+                          ? "Pendiente"
+                          : "Fallido"}
+                    </Badge>
                   </div>
-                </div>
-
-                {selectedPurchase.type === "pack" && selectedPurchase.pack_id && packsMap[selectedPurchase.pack_id] && (
-                  <div className="p-4 rounded-xl bg-card border border-border">
-                    <div className="text-xs text-muted-foreground mb-2">Vendedor</div>
+                  <div className="text-sm text-muted-foreground space-y-1">
                     <div className="flex items-center gap-2">
-                      <User className="h-4 w-4 text-foreground" />
-                      <Link
-                        href={`/profile/${sellersMap[packsMap[selectedPurchase.pack_id].user_id]?.username}`}
-                        className="text-sm font-bold text-foreground hover:text-primary"
-                        onClick={(e) => e.stopPropagation()}
+                      <FileText className="h-4 w-4" />
+                      <span className="font-mono text-xs">{selectedPurchase.id}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0"
+                        onClick={() => handleCopyCode(selectedPurchase.id)}
                       >
-                        {sellersMap[packsMap[selectedPurchase.pack_id].user_id]?.username || "Desconocido"}
-                      </Link>
+                        {copiedCode === selectedPurchase.id ? (
+                          <Check className="h-3 w-3 text-green-600" />
+                        ) : (
+                          <Copy className="h-3 w-3" />
+                        )}
+                      </Button>
                     </div>
                   </div>
-                )}
-
-                <div className="p-4 rounded-xl bg-card border border-border">
-                  <div className="text-xs text-muted-foreground mb-2">Fecha y Hora</div>
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-4 w-4 text-foreground" />
-                    <span className="text-sm font-bold text-foreground">{formatDate(selectedPurchase.created_at)}</span>
-                  </div>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <div className="flex justify-between items-center p-4 rounded-xl bg-card border border-border">
-                  <span className="text-sm text-muted-foreground">Monto Total</span>
-                  <span className="text-xl font-black text-foreground">
-                    ${formatPrice(selectedPurchase.amount_paid)} ARS
-                  </span>
-                </div>
-
-                {selectedPurchase.discount_percent > 0 && (
-                  <div className="flex justify-between items-center p-4 rounded-xl bg-green-500/10 border border-green-500/20">
-                    <span className="text-sm text-green-600">Descuento Aplicado</span>
-                    <span className="text-lg font-black text-green-600">{selectedPurchase.discount_percent}% OFF</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="p-4 rounded-xl">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 rounded-lg bg-blue-500/10">
+                      <User className="h-4 w-4 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Comprador</p>
+                      <p className="font-bold text-sm">
+                        {buyersMap[selectedPurchase.buyer_id]?.username || "Desconocido"}
+                      </p>
+                    </div>
                   </div>
+                </Card>
+
+                {selectedPurchase.type === "pack" && selectedPurchase.seller_id && (
+                  <Card className="p-4 rounded-xl">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 rounded-lg bg-purple-500/10">
+                        <Package className="h-4 w-4 text-purple-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Vendedor</p>
+                        <p className="font-bold text-sm">
+                          {sellersMap[selectedPurchase.seller_id]?.username || "Desconocido"}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
                 )}
 
-                {selectedPurchase.platform_earnings > 0 && (
-                  <div className="flex justify-between items-center p-4 rounded-xl bg-purple-500/10 border border-purple-500/20">
-                    <span className="text-sm text-purple-600">Comisión Plataforma</span>
-                    <span className="text-lg font-black text-purple-600">
-                      ${formatPrice(selectedPurchase.platform_earnings)} ARS
-                    </span>
+                <Card className="p-4 rounded-xl">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 rounded-lg bg-green-500/10">
+                      <DollarSign className="h-4 w-4 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Monto Total</p>
+                      <p className="font-bold text-lg">${formatPrice(selectedPurchase.amount_paid)} ARS</p>
+                    </div>
                   </div>
+                </Card>
+
+                <Card className="p-4 rounded-xl">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 rounded-lg bg-purple-500/10">
+                      <CreditCard className="h-4 w-4 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Comisión Plataforma</p>
+                      <p className="font-bold text-lg">
+                        ${formatPrice(selectedPurchase.platform_earnings)} ({selectedPurchase.commission_percent}%)
+                      </p>
+                    </div>
+                  </div>
+                </Card>
+
+                {selectedPurchase.seller_earnings > 0 && (
+                  <Card className="p-4 rounded-xl">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 rounded-lg bg-blue-500/10">
+                        <DollarSign className="h-4 w-4 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Ganancia Vendedor</p>
+                        <p className="font-bold text-lg">${formatPrice(selectedPurchase.seller_earnings)} ARS</p>
+                      </div>
+                    </div>
+                  </Card>
                 )}
 
-                {selectedPurchase.type === "pack" && selectedPurchase.seller_earnings > 0 && (
-                  <div className="flex justify-between items-center p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
-                    <span className="text-sm text-blue-600">Ganancias Creador</span>
-                    <span className="text-lg font-black text-blue-600">
-                      ${formatPrice(selectedPurchase.seller_earnings)} ARS
-                    </span>
+                <Card className="p-4 rounded-xl">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="p-2 rounded-lg bg-orange-500/10">
+                      <Calendar className="h-4 w-4 text-orange-600" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Fecha de Compra</p>
+                      <p className="font-bold text-sm">{formatDate(selectedPurchase.created_at)}</p>
+                    </div>
                   </div>
-                )}
+                </Card>
               </div>
+
+              {selectedPurchase.discount_percent > 0 && (
+                <Card className="p-4 rounded-xl bg-green-500/5">
+                  <p className="text-sm font-bold text-green-600 mb-1">
+                    Descuento aplicado: {selectedPurchase.discount_percent}%
+                  </p>
+                </Card>
+              )}
 
               {selectedPurchase.payment_method && (
-                <div className="p-4 rounded-xl bg-card border border-border">
-                  <div className="text-xs text-muted-foreground mb-2">Método de Pago</div>
-                  <div className="flex items-center gap-2">
-                    <CreditCard className="h-4 w-4 text-foreground" />
-                    <span className="text-sm font-bold text-foreground capitalize">
-                      {selectedPurchase.payment_method}
-                    </span>
-                  </div>
-                  {selectedPurchase.mercado_pago_payment_id && (
-                    <div className="mt-2 text-xs text-muted-foreground font-mono">
-                      ID: {selectedPurchase.mercado_pago_payment_id}
+                <div className="space-y-2">
+                  <h4 className="font-bold text-sm text-foreground">Información de Pago</h4>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-muted-foreground text-xs">Método</p>
+                      <p className="font-mono text-xs">{selectedPurchase.payment_method}</p>
                     </div>
-                  )}
+                    {selectedPurchase.mercado_pago_payment_id && (
+                      <div>
+                        <p className="text-muted-foreground text-xs">ID Mercado Pago</p>
+                        <p className="font-mono text-xs">{selectedPurchase.mercado_pago_payment_id}</p>
+                      </div>
+                    )}
+                    {selectedPurchase.seller_mp_user_id && (
+                      <div>
+                        <p className="text-muted-foreground text-xs">MP User ID Vendedor</p>
+                        <p className="font-mono text-xs">{selectedPurchase.seller_mp_user_id}</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 
-              {selectedPurchase.type === "pack" && selectedPurchase.pack_id && packsMap[selectedPurchase.pack_id] && (
-                <div className="p-4 rounded-xl bg-card border border-border">
-                  <div className="text-xs text-muted-foreground mb-2">Archivo Descargable</div>
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-foreground" />
-                    <a
-                      href={packsMap[selectedPurchase.pack_id].file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm font-bold text-primary hover:underline line-clamp-1"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      Descargar archivo
+              {selectedPurchase.type === "pack" && selectedPurchase.pack_id && (
+                <div className="flex gap-2">
+                  <Link href={`/pack/${selectedPurchase.pack_id}`} target="_blank">
+                    <Button variant="outline" size="sm" className="rounded-full bg-transparent">
+                      <ExternalLink className="h-3 w-3 mr-2" />
+                      Ver Pack
+                    </Button>
+                  </Link>
+                  {packsMap[selectedPurchase.pack_id]?.file_url && (
+                    <a href={packsMap[selectedPurchase.pack_id].file_url} download target="_blank" rel="noreferrer">
+                      <Button variant="outline" size="sm" className="rounded-full bg-transparent">
+                        <Package className="h-3 w-3 mr-2" />
+                        Descargar Archivo
+                      </Button>
                     </a>
-                  </div>
+                  )}
                 </div>
               )}
             </div>

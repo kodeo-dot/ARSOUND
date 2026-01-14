@@ -201,6 +201,7 @@ async function processPackPurchase(payment: PaymentData, metadata: any): Promise
     creator_earnings: metadata.seller_earnings,
     payment_method: "mercado_pago",
     mercado_pago_payment_id: payment.id,
+    seller_mp_user_id: metadata.seller_mp_user_id,
     purchase_code: purchaseCode,
   })
 
