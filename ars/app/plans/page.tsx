@@ -136,7 +136,7 @@ export default function PlansPage() {
         { icon: Download, text: "Descargas ilimitadas", included: true },
         { icon: BarChart3, text: "Acceso a estadísticas + gráficas detalladas", included: true },
         { icon: Star, text: "Soporte premium", included: true },
-        { icon: TrendingUp, text: "Promoción destacada de packs", included: true },
+        { icon: TrendingUp, text: " destacada de packs", included: true },
       ],
       buttonText: "Elegir Plan",
       variant: "default" as const,

@@ -148,7 +148,6 @@ export default function PlansPage() {
         { icon: Percent, text: "Máximo descuento: 100%", included: true },
         { icon: Download, text: "Descargas ilimitadas", included: true },
         { icon: Star, text: "Soporte premium", included: true },
-        { icon: TrendingUp, text: "Promoción destacada de packs", included: true },
       ],
       buttonText: "Elegir Plan",
       variant: "default" as const,
@@ -435,12 +434,7 @@ export default function PlansPage() {
                     <td className="py-4 px-4 text-center bg-orange-500/5">Ilimitadas</td>
                     <td className="py-4 px-4 text-center text-foreground">Ilimitadas</td>
                   </tr>
-                  <tr>
-                    <td className="py-4 px-4 font-semibold text-foreground">Estadísticas</td>
-                    <td className="py-4 px-4 text-center text-muted-foreground">Básicas</td>
-                    <td className="py-4 px-4 text-center bg-orange-500/5">Completas</td>
-                    <td className="py-4 px-4 text-center text-foreground">Avanzadas + gráficas</td>
-                  </tr>
+                
                 </tbody>
               </table>
             </Card>
