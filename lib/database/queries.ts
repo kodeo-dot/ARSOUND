@@ -127,8 +127,8 @@ export async function createPurchase(purchase: {
   seller_id: string
   pack_id: string
   amount: number
-  paid_price: number // Actual price paid (with discount)
-  base_amount: number // Original price before discount
+  paid_price: number
+  base_amount: number
   discount_amount: number
   platform_commission: number
   creator_earnings: number
@@ -136,6 +136,7 @@ export async function createPurchase(purchase: {
   mercado_pago_payment_id?: string
   seller_mp_user_id?: string
   purchase_code: string
+  payment_status?: string
 }): Promise<string | null> {
   const adminSupabase = await createAdminClient()
 
@@ -143,7 +144,8 @@ export async function createPurchase(purchase: {
     .from("purchases")
     .insert({
       ...purchase,
-      status: "completed",
+      status: purchase.payment_status === "approved" ? "completed" : "pending",
+      payment_status: purchase.payment_status || "approved",
     })
     .select("id")
     .single()
@@ -166,6 +168,7 @@ export async function createPlanPurchase(purchase: {
   payment_method: string
   mercado_pago_payment_id?: string
   purchase_code: string
+  payment_status?: string
 }): Promise<string | null> {
   const adminSupabase = await createAdminClient()
 
@@ -175,9 +178,11 @@ export async function createPlanPurchase(purchase: {
       ...purchase,
       pack_id: null,
       seller_id: null,
-      platform_commission: purchase.paid_price, // 100% for platform (NET earnings)
+      platform_commission: purchase.paid_price,
       creator_earnings: 0,
-      status: "completed",
+      status: purchase.payment_status === "approved" ? "completed" : "pending",
+      payment_status: purchase.payment_status || "approved",
+      item_type: "plan",
     })
     .select("id")
     .single()

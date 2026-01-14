@@ -1,4 +1,4 @@
-import { getPaymentDetails, processApprovedPayment } from "@/lib/payments/mercadopago/webhook"
+import { getPaymentDetails, processPayment } from "@/lib/payments/mercadopago/webhook"
 import { successResponse, errorResponse } from "@/lib/utils/response"
 import { logger } from "@/lib/utils/logger"
 import { NextResponse } from "next/server"
@@ -30,17 +30,12 @@ export async function POST(request: Request) {
       return successResponse({ received: true })
     }
 
-    // Process if approved
-    if (payment.status === "approved") {
-      const success = await processApprovedPayment(payment)
+    const success = await processPayment(payment)
 
-      if (success) {
-        logger.info("Payment processed successfully", "MP_WEBHOOK", { paymentId })
-      } else {
-        logger.error("Failed to process payment", "MP_WEBHOOK", { paymentId })
-      }
+    if (success) {
+      logger.info("Payment processed successfully", "MP_WEBHOOK", { paymentId, status: payment.status })
     } else {
-      logger.info("Payment not approved", "MP_WEBHOOK", { paymentId, status: payment.status })
+      logger.error("Failed to process payment", "MP_WEBHOOK", { paymentId, status: payment.status })
     }
 
     return successResponse({ received: true })
