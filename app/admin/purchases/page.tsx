@@ -18,7 +18,6 @@ import {
   DollarSign,
   Package,
   User,
-  FileText,
   Loader2,
   Crown,
 } from "lucide-react"
@@ -540,7 +539,6 @@ export default function AdminPurchasesPage() {
                     src={
                       packsMap[selectedPurchase.pack_id!]?.cover_image_url ||
                       "/placeholder.svg?height=96&width=96" ||
-                      "/placeholder.svg" ||
                       "/placeholder.svg"
                     }
                     alt="Cover"
@@ -572,24 +570,30 @@ export default function AdminPurchasesPage() {
                           : "Fallido"}
                     </Badge>
                   </div>
-                  <div className="text-sm text-muted-foreground space-y-1">
-                    <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4" />
-                      <span className="font-mono text-xs">{selectedPurchase.id}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0"
-                        onClick={() => handleCopyCode(selectedPurchase.id)}
-                      >
-                        {copiedCode === selectedPurchase.id ? (
-                          <Check className="h-3 w-3 text-green-600" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                      </Button>
+                  <div className="space-y-2">
+                    <div className="p-3 rounded-xl bg-muted/50 border border-border">
+                      <div className="text-xs text-muted-foreground mb-1">Código de Compra</div>
+                      <div className="flex items-center gap-2">
+                        <code className="text-base font-bold text-foreground font-mono">
+                          {selectedPurchase.id.slice(0, 8).toUpperCase()}
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={() => handleCopyCode(selectedPurchase.id.slice(0, 8).toUpperCase())}
+                        >
+                          {copiedCode === selectedPurchase.id.slice(0, 8).toUpperCase() ? (
+                            <Check className="h-3 w-3 text-green-600" />
+                          ) : (
+                            <Copy className="h-3 w-3" />
+                          )}
+                        </Button>
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">ID completo: {selectedPurchase.id}</div>
                     </div>
                   </div>
+                  {/* </CHANGE> */}
                 </div>
               </div>
 

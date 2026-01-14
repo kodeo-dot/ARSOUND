@@ -213,18 +213,18 @@ export default function NotificationsPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-10">
+      <div className="border-b bg-card/80 backdrop-blur-md sticky top-0 z-10 shadow-sm">
         <div className="container max-w-4xl py-4 px-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href="/">
-                <Button variant="ghost" size="sm" className="gap-2">
+                <Button variant="ghost" size="sm" className="gap-2 rounded-xl">
                   <ArrowLeft className="h-4 w-4" />
                   Volver
                 </Button>
               </Link>
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-xl">
+                <div className="p-2.5 bg-primary/10 rounded-xl">
                   <Bell className="h-5 w-5 text-primary" />
                 </div>
                 <div>
@@ -238,9 +238,9 @@ export default function NotificationsPage() {
               </div>
             </div>
             {unreadCount > 0 && (
-              <Button variant="outline" size="sm" onClick={markAllAsRead} className="rounded-xl bg-transparent">
-                <Check className="h-4 w-4 mr-2" />
-                Marcar todas
+              <Button variant="outline" size="sm" onClick={markAllAsRead} className="rounded-xl bg-transparent gap-2">
+                <Check className="h-4 w-4" />
+                <span className="hidden sm:inline">Marcar todas</span>
               </Button>
             )}
           </div>
@@ -250,7 +250,7 @@ export default function NotificationsPage() {
       <div className="container max-w-4xl py-8 px-4">
         {notifications.length === 0 ? (
           <div className="text-center py-16">
-            <div className="inline-flex items-center justify-center p-4 bg-muted rounded-2xl mb-4">
+            <div className="inline-flex items-center justify-center p-6 bg-muted/50 rounded-2xl mb-4">
               <Bell className="h-12 w-12 text-muted-foreground" />
             </div>
             <h3 className="text-lg font-black text-foreground mb-2">No tienes notificaciones</h3>
@@ -263,14 +263,16 @@ export default function NotificationsPage() {
           </div>
         ) : (
           <>
-            <div className="space-y-3">
+            <div className="space-y-2">
               {notifications.map((notif) => (
                 <Link
                   key={notif.id}
                   href={getNotificationLink(notif)}
                   onClick={() => !notif.is_read && markAsRead(notif.id)}
-                  className={`block p-5 rounded-2xl border transition-all hover:shadow-sm ${
-                    !notif.is_read ? "bg-primary/5 border-primary/30" : "bg-card border-border hover:border-primary/20"
+                  className={`block p-4 rounded-2xl border transition-all hover:shadow-md ${
+                    !notif.is_read
+                      ? "bg-primary/5 border-primary/30 hover:bg-primary/10"
+                      : "bg-card border-border hover:border-primary/20"
                   }`}
                 >
                   <div className="flex items-start gap-4">
@@ -316,7 +318,7 @@ export default function NotificationsPage() {
                           </p>
                         </>
                       )}
-                      <p className="text-xs text-muted-foreground mt-2">
+                      <p className="text-xs text-muted-foreground mt-1.5">
                         {formatDistanceToNow(new Date(notif.created_at), {
                           addSuffix: true,
                           locale: es,
@@ -326,7 +328,7 @@ export default function NotificationsPage() {
 
                     {!notif.is_read && (
                       <div className="flex-shrink-0">
-                        <div className="w-2 h-2 bg-primary rounded-full" />
+                        <div className="w-2.5 h-2.5 bg-primary rounded-full" />
                       </div>
                     )}
                   </div>

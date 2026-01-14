@@ -193,17 +193,21 @@ export function PackComments({ packId, packOwnerId, isAuthenticated, currentUser
   }
 
   const renderComment = (comment: Comment, isReply = false) => (
-    <div key={comment.id} className={`${isReply ? "ml-12 mt-4" : ""}`}>
-      <Card className={`p-5 rounded-2xl border-border ${isReply ? "bg-muted/30" : "bg-card"}`}>
+    <div key={comment.id} className={`${isReply ? "ml-12 mt-3" : ""}`}>
+      <Card
+        className={`p-5 rounded-2xl border transition-all hover:shadow-sm ${
+          isReply ? "bg-muted/30 border-border/50" : "bg-card border-border"
+        }`}
+      >
         <div className="flex items-start gap-4">
           {comment.user.avatar_url ? (
             <img
               src={comment.user.avatar_url || "/placeholder.svg"}
               alt={comment.user.username}
-              className="h-11 w-11 rounded-xl object-cover flex-shrink-0"
+              className="h-10 w-10 rounded-xl object-cover flex-shrink-0"
             />
           ) : (
-            <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
               {comment.user.username[0].toUpperCase()}
             </div>
           )}
@@ -255,12 +259,12 @@ export function PackComments({ packId, packOwnerId, isAuthenticated, currentUser
         </div>
 
         {replyingTo === comment.id && (
-          <div className="ml-15 mt-4 space-y-3">
+          <div className="ml-14 mt-4 space-y-3">
             <Textarea
               value={replyText}
               onChange={(e) => setReplyText(e.target.value)}
               placeholder="Escribí tu respuesta..."
-              className="min-h-[100px] text-sm rounded-xl resize-none"
+              className="min-h-[100px] text-sm rounded-xl resize-none border-border focus:border-primary"
             />
             <div className="flex gap-2">
               <Button
@@ -278,7 +282,7 @@ export function PackComments({ packId, packOwnerId, isAuthenticated, currentUser
                   setReplyingTo(null)
                   setReplyText("")
                 }}
-                className="rounded-xl h-9 text-xs"
+                className="rounded-xl h-9 text-xs bg-transparent"
               >
                 Cancelar
               </Button>
@@ -289,7 +293,7 @@ export function PackComments({ packId, packOwnerId, isAuthenticated, currentUser
 
       {/* Render replies */}
       {comment.replies && comment.replies.length > 0 && (
-        <div className="space-y-4 mt-4">{comment.replies.map((reply) => renderComment(reply, true))}</div>
+        <div className="space-y-3 mt-3">{comment.replies.map((reply) => renderComment(reply, true))}</div>
       )}
     </div>
   )
@@ -319,27 +323,29 @@ export function PackComments({ packId, packOwnerId, isAuthenticated, currentUser
       </div>
 
       {isAuthenticated && (
-        <Card className="p-6 rounded-2xl border-border bg-card">
+        <Card className="p-6 rounded-2xl border-border bg-card shadow-sm">
           <div className="space-y-4">
             <Textarea
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               placeholder="Dejá tu comentario sobre este pack..."
-              className="min-h-[120px] resize-none rounded-xl"
+              className="min-h-[120px] resize-none rounded-xl border-border focus:border-primary"
             />
-            <Button onClick={handleSubmitComment} disabled={isSubmitting} className="rounded-xl gap-2">
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Publicando...
-                </>
-              ) : (
-                <>
-                  <Send className="h-4 w-4" />
-                  Publicar Comentario
-                </>
-              )}
-            </Button>
+            <div className="flex justify-end">
+              <Button onClick={handleSubmitComment} disabled={isSubmitting} className="rounded-xl gap-2">
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Publicando...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4" />
+                    Publicar Comentario
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </Card>
       )}
@@ -348,7 +354,7 @@ export function PackComments({ packId, packOwnerId, isAuthenticated, currentUser
 
       {comments.length === 0 && (
         <Card className="p-12 rounded-2xl border-border border-dashed text-center bg-muted/20">
-          <div className="inline-flex items-center justify-center p-4 bg-muted rounded-2xl mb-4">
+          <div className="inline-flex items-center justify-center p-4 bg-muted/50 rounded-2xl mb-4">
             <MessageCircle className="h-10 w-10 text-muted-foreground" />
           </div>
           <p className="text-muted-foreground font-medium">
