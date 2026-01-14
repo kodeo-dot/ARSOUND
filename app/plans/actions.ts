@@ -165,6 +165,8 @@ export async function selectPlan(planId: string) {
  * Creates a Mercado Pago preference for pack purchase
  */
 export async function purchasePack(packId: string, discountCode?: string, customPrice?: number) {
+  console.log("[v0] purchasePack called with:", { packId, discountCode, customPrice })
+
   const supabase = await createServerClient()
 
   const {
@@ -172,8 +174,11 @@ export async function purchasePack(packId: string, discountCode?: string, custom
   } = await supabase.auth.getUser()
 
   if (!user) {
+    console.log("[v0] No authenticated user")
     return { success: false, message: "Por favor inicia sesión para continuar" }
   }
+
+  console.log("[v0] User authenticated:", user.id)
 
   const testMode = process.env.MERCADO_PAGO_TEST_MODE === "true"
   const accessToken = testMode ? process.env.MERCADO_PAGO_TEST_ACCESS_TOKEN : process.env.MERCADO_PAGO_ACCESS_TOKEN
@@ -185,15 +190,27 @@ export async function purchasePack(packId: string, discountCode?: string, custom
   }
 
   try {
+    console.log("[v0] Fetching pack from database:", packId)
+
     const { data: pack, error: packError } = await supabase
       .from("packs")
       .select("id, title, price, final_price, user_id, discount_percent, has_discount")
       .eq("id", packId)
       .single()
 
-    if (packError || !pack) {
+    console.log("[v0] Pack query result:", { pack, packError })
+
+    if (packError) {
+      console.error("[v0] Pack query error:", packError)
+      return { success: false, message: `Pack no encontrado - Error: ${packError.message}` }
+    }
+
+    if (!pack) {
+      console.error("[v0] Pack not found in database")
       return { success: false, message: "Pack no encontrado" }
     }
+
+    console.log("[v0] Pack found:", pack.title, "Price:", pack.price)
 
     const { data: sellerProfile, error: sellerError } = await supabase
       .from("profiles")
@@ -202,6 +219,7 @@ export async function purchasePack(packId: string, discountCode?: string, custom
       .single()
 
     if (sellerError || !sellerProfile) {
+      console.error("[v0] No se pudo obtener información del vendedor:", sellerError)
       return { success: false, message: "No se pudo obtener información del vendedor" }
     }
 

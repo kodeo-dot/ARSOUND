@@ -39,15 +39,19 @@ export default function CheckoutPage() {
   useEffect(() => {
     const fetchPack = async () => {
       try {
+        console.log("[v0] Fetching pack with ID:", packId)
+
         const {
           data: { user: authUser },
         } = await supabase.auth.getUser()
 
         if (!authUser) {
+          console.log("[v0] No authenticated user, redirecting to login")
           router.push("/login")
           return
         }
 
+        console.log("[v0] Authenticated user:", authUser.id)
         setUser(authUser)
 
         const { data, error } = await supabase
@@ -64,7 +68,19 @@ export default function CheckoutPage() {
           .eq("id", packId)
           .single()
 
-        if (error) throw error
+        console.log("[v0] Pack query result:", { data, error })
+
+        if (error) {
+          console.error("[v0] Error fetching pack:", error)
+          throw error
+        }
+
+        if (!data) {
+          console.error("[v0] No pack data returned")
+          return
+        }
+
+        console.log("[v0] Pack fetched successfully:", data.title)
         setPack(data)
 
         if (data.profiles?.plan) {
@@ -72,7 +88,7 @@ export default function CheckoutPage() {
           setPlatformCommission(PLAN_FEATURES[data.profiles.plan as PlanType].commission)
         }
       } catch (error) {
-        console.error("Error fetching pack:", error)
+        console.error("[v0] Error in fetchPack:", error)
       } finally {
         setLoading(false)
       }
@@ -104,22 +120,30 @@ export default function CheckoutPage() {
   }, [pack])
 
   const handleConfirmPurchase = async () => {
+    console.log("[v0] Starting purchase for packId:", packId)
     setIsProcessing(true)
 
     try {
       const { purchasePack } = await import("@/app/plans/actions")
+      console.log("[v0] Calling purchasePack with packId:", packId)
+
       const result = await purchasePack(
         packId,
         undefined, // no discount code
       )
 
+      console.log("[v0] purchasePack result:", result)
+
       if (result?.success && result.init_point) {
+        console.log("[v0] Redirecting to payment:", result.init_point)
         window.location.href = result.init_point
       } else {
         console.error("[v0] Payment failed:", result?.message)
+        alert(`Error: ${result?.message || "No se pudo procesar el pago"}`)
       }
     } catch (error) {
       console.error("[v0] Error in handleConfirmPurchase:", error)
+      alert("Error al procesar el pago. Intentá de nuevo.")
     } finally {
       setIsProcessing(false)
     }
