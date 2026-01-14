@@ -146,7 +146,7 @@ export default function AdminPurchasesPage() {
             platform_earnings: Number(p.platform_earnings || p.platform_commission) || 0,
             creator_earnings: Number(p.creator_earnings || p.seller_earnings) || 0,
             commission_percent: Number(p.commission_percent) || 0,
-            status: p.status || "completed",
+            status: p.payment_status || "completed",
             payment_method: p.payment_method,
             mercado_pago_payment_id: p.mercado_pago_payment_id,
             seller_mp_user_id: p.seller_mp_user_id,
