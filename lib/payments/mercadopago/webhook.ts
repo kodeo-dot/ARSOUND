@@ -190,15 +190,24 @@ function parseUserIdFromReference(externalRef?: string): string | null {
 async function processPackPurchase(payment: PaymentData, metadata: any): Promise<boolean> {
   const purchaseCode = `ARSND-${payment.id.substring(0, 8).toUpperCase()}`
 
+  const paidPrice = metadata.final_price || payment.transaction_amount
+  const baseAmount = metadata.original_price || paidPrice
+  const discountAmount = baseAmount - paidPrice
+
+  const platformCommission = metadata.commission_amount || 0
+  const creatorEarnings = paidPrice - platformCommission
+
   // Create purchase record
   const purchaseId = await createPurchase({
     buyer_id: metadata.buyer_id,
     seller_id: metadata.seller_id,
     pack_id: metadata.pack_id,
-    amount: metadata.final_price,
-    discount_amount: metadata.original_price - metadata.final_price,
-    platform_commission: metadata.commission_amount,
-    creator_earnings: metadata.seller_earnings,
+    amount: paidPrice, // Keep amount as paid price for backwards compatibility
+    paid_price: paidPrice, // Actual price paid with discount
+    base_amount: baseAmount, // Original price before discount
+    discount_amount: discountAmount,
+    platform_commission: platformCommission, // NET earnings for platform
+    creator_earnings: creatorEarnings,
     payment_method: "mercado_pago",
     mercado_pago_payment_id: payment.id,
     seller_mp_user_id: metadata.seller_mp_user_id,
@@ -220,7 +229,11 @@ async function processPackPurchase(payment: PaymentData, metadata: any): Promise
     paymentId: payment.id,
     purchaseId,
     packId: metadata.pack_id,
-    amount: metadata.final_price,
+    paidPrice,
+    baseAmount,
+    discountAmount,
+    platformCommission,
+    creatorEarnings,
   })
 
   return true

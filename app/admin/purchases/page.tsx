@@ -33,18 +33,18 @@ interface UnifiedPurchase {
   buyer_id: string
   seller_id?: string
   amount_paid: number
-  discount_percent: number
-  platform_earnings: number
-  seller_earnings: number
+  base_amount: number
+  paid_price: number
+  discount_amount: number
+  platform_commission: number
+  creator_earnings: number
   commission_percent: number
   status: string
   payment_method: string | null
   mercado_pago_payment_id: string | null
   seller_mp_user_id: string | null
   created_at: string
-  // Pack-specific
   pack_id?: string
-  // Plan-specific
   plan_type?: string
 }
 
@@ -122,10 +122,12 @@ export default function AdminPurchasesPage() {
             buyer_id: p.buyer_id,
             seller_id: p.seller_id,
             pack_id: p.pack_id,
-            amount_paid: Number(p.amount_paid) || 0,
-            discount_percent: Number(p.discount_percent) || 0,
-            platform_earnings: Number(p.platform_earnings) || 0,
-            seller_earnings: Number(p.seller_earnings) || 0,
+            amount_paid: Number(p.paid_price || p.amount) || 0,
+            paid_price: Number(p.paid_price || p.amount) || 0,
+            base_amount: Number(p.base_amount || p.amount) || 0,
+            discount_amount: Number(p.discount_amount) || 0,
+            platform_commission: Number(p.platform_commission) || 0,
+            creator_earnings: Number(p.creator_earnings) || 0,
             commission_percent: Number(p.commission_percent) || 0,
             status: p.status || "completed",
             payment_method: p.payment_method,
@@ -140,23 +142,23 @@ export default function AdminPurchasesPage() {
       if (planPurchasesData) {
         planPurchasesData.forEach((p) => {
           console.log("[v0] Plan purchase:", p)
-          // Get plan price from type (in centavos)
           const planPrices: Record<string, number> = {
             de_0_a_hit: 4900,
             studio_plus: 8900,
           }
           const amountPaid = planPrices[p.plan_type] || 0
-          const platformEarnings = Math.round(amountPaid * 0.1)
 
           allPurchases.push({
             id: p.id,
             type: "plan" as PurchaseType,
             buyer_id: p.user_id,
             amount_paid: amountPaid,
-            discount_percent: 0,
-            platform_earnings: platformEarnings,
-            seller_earnings: 0,
-            commission_percent: 10,
+            paid_price: amountPaid,
+            base_amount: amountPaid,
+            discount_amount: 0,
+            platform_commission: amountPaid,
+            creator_earnings: 0,
+            commission_percent: 100,
             status: p.is_active ? "completed" : "expired",
             payment_method: null,
             mercado_pago_payment_id: null,
@@ -280,13 +282,13 @@ export default function AdminPurchasesPage() {
     return matchesSearch && matchesStatus && matchesType
   })
 
-  const totalRevenue = purchases.reduce((sum, p) => sum + (p.amount_paid || 0), 0)
-  const totalCommission = purchases.reduce((sum, p) => sum + (p.platform_earnings || 0), 0)
+  const totalRevenue = purchases.reduce((sum, p) => sum + (p.paid_price || 0), 0)
+  const totalPlatformEarnings = purchases.reduce((sum, p) => sum + (p.platform_commission || 0), 0)
   const completedPurchases = purchases.filter((p) => p.status === "completed").length
 
   console.log("[v0] Total purchases:", purchases.length)
   console.log("[v0] Total revenue:", totalRevenue)
-  console.log("[v0] Total commission:", totalCommission)
+  console.log("[v0] Total platform earnings (NET):", totalPlatformEarnings)
 
   if (loading) {
     return (
@@ -339,8 +341,8 @@ export default function AdminPurchasesPage() {
             </div>
           </div>
           <div>
-            <p className="text-sm text-muted-foreground mb-1">Comisiones Plataforma</p>
-            <p className="text-3xl font-black text-foreground">${formatPrice(totalCommission)}</p>
+            <p className="text-sm text-muted-foreground mb-1">Ganancias Netas Plataforma</p>
+            <p className="text-3xl font-black text-foreground">${formatPrice(totalPlatformEarnings)}</p>
           </div>
         </Card>
       </div>
@@ -473,24 +475,26 @@ export default function AdminPurchasesPage() {
                           <div className="text-lg font-black text-foreground">${formatPrice(purchase.amount_paid)}</div>
                           <div className="text-xs text-muted-foreground">ARS</div>
                         </div>
-                        {purchase.discount_percent > 0 && (
+                        {purchase.discount_amount > 0 && (
                           <div>
-                            <div className="text-sm font-bold text-green-600">{purchase.discount_percent}% OFF</div>
+                            <div className="text-sm font-bold text-green-600">
+                              ${formatPrice(purchase.discount_amount)} OFF
+                            </div>
                             <div className="text-xs text-muted-foreground">Descuento</div>
                           </div>
                         )}
-                        {purchase.platform_earnings > 0 && (
+                        {purchase.platform_commission > 0 && (
                           <div>
                             <div className="text-sm font-bold text-purple-600">
-                              ${formatPrice(purchase.platform_earnings)}
+                              ${formatPrice(purchase.platform_commission)}
                             </div>
                             <div className="text-xs text-muted-foreground">Comisión</div>
                           </div>
                         )}
-                        {purchase.seller_earnings > 0 && (
+                        {purchase.creator_earnings > 0 && (
                           <div>
                             <div className="text-sm font-bold text-blue-600">
-                              ${formatPrice(purchase.seller_earnings)}
+                              ${formatPrice(purchase.creator_earnings)}
                             </div>
                             <div className="text-xs text-muted-foreground">Vendedor</div>
                           </div>
@@ -539,6 +543,7 @@ export default function AdminPurchasesPage() {
                     src={
                       packsMap[selectedPurchase.pack_id!]?.cover_image_url ||
                       "/placeholder.svg?height=96&width=96" ||
+                      "/placeholder.svg" ||
                       "/placeholder.svg"
                     }
                     alt="Cover"
@@ -593,7 +598,6 @@ export default function AdminPurchasesPage() {
                       <div className="text-xs text-muted-foreground mt-1">ID completo: {selectedPurchase.id}</div>
                     </div>
                   </div>
-                  {/* </CHANGE> */}
                 </div>
               </div>
 
@@ -628,14 +632,30 @@ export default function AdminPurchasesPage() {
                   </Card>
                 )}
 
+                {selectedPurchase.discount_amount > 0 && (
+                  <Card className="p-4 rounded-xl">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="p-2 rounded-lg bg-gray-500/10">
+                        <DollarSign className="h-4 w-4 text-gray-600" />
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Precio Base</p>
+                        <p className="font-bold text-lg line-through text-muted-foreground">
+                          ${formatPrice(selectedPurchase.base_amount)} ARS
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                )}
+
                 <Card className="p-4 rounded-xl">
                   <div className="flex items-center gap-3 mb-2">
                     <div className="p-2 rounded-lg bg-green-500/10">
                       <DollarSign className="h-4 w-4 text-green-600" />
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Monto Total</p>
-                      <p className="font-bold text-lg">${formatPrice(selectedPurchase.amount_paid)} ARS</p>
+                      <p className="text-xs text-muted-foreground">Precio Pagado</p>
+                      <p className="font-bold text-lg">${formatPrice(selectedPurchase.paid_price)} ARS</p>
                     </div>
                   </div>
                 </Card>
@@ -646,15 +666,15 @@ export default function AdminPurchasesPage() {
                       <CreditCard className="h-4 w-4 text-purple-600" />
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Comisión Plataforma</p>
+                      <p className="text-xs text-muted-foreground">Ganancia Neta Plataforma</p>
                       <p className="font-bold text-lg">
-                        ${formatPrice(selectedPurchase.platform_earnings)} ({selectedPurchase.commission_percent}%)
+                        ${formatPrice(selectedPurchase.platform_commission)} ({selectedPurchase.commission_percent}%)
                       </p>
                     </div>
                   </div>
                 </Card>
 
-                {selectedPurchase.seller_earnings > 0 && (
+                {selectedPurchase.creator_earnings > 0 && (
                   <Card className="p-4 rounded-xl">
                     <div className="flex items-center gap-3 mb-2">
                       <div className="p-2 rounded-lg bg-blue-500/10">
@@ -662,7 +682,7 @@ export default function AdminPurchasesPage() {
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Ganancia Vendedor</p>
-                        <p className="font-bold text-lg">${formatPrice(selectedPurchase.seller_earnings)} ARS</p>
+                        <p className="font-bold text-lg">${formatPrice(selectedPurchase.creator_earnings)} ARS</p>
                       </div>
                     </div>
                   </Card>
@@ -681,10 +701,11 @@ export default function AdminPurchasesPage() {
                 </Card>
               </div>
 
-              {selectedPurchase.discount_percent > 0 && (
+              {selectedPurchase.discount_amount > 0 && (
                 <Card className="p-4 rounded-xl bg-green-500/5">
                   <p className="text-sm font-bold text-green-600 mb-1">
-                    Descuento aplicado: {selectedPurchase.discount_percent}%
+                    Descuento aplicado: ${formatPrice(selectedPurchase.discount_amount)} (-
+                    {Math.round((selectedPurchase.discount_amount / selectedPurchase.base_amount) * 100)}%)
                   </p>
                 </Card>
               )}

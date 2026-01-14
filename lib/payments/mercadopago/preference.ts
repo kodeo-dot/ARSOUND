@@ -60,10 +60,17 @@ export async function createPackPreference(
   }
 
   const sellerPlan = (sellerProfile.plan as PlanType) || "free"
+
+  const basePrice = pack.price
   let finalPrice = pack.price
   let appliedDiscountPercent = 0
 
-  // Apply discount code if provided
+  if (pack.has_discount && pack.discount_percent > 0) {
+    appliedDiscountPercent = pack.discount_percent
+    finalPrice = Math.floor(basePrice * (1 - appliedDiscountPercent / 100))
+  }
+
+  // Apply discount code if provided (overrides pack discount)
   if (discountCode) {
     const discount = await getDiscountCode(packId, discountCode)
 
@@ -79,7 +86,7 @@ export async function createPackPreference(
       }
 
       appliedDiscountPercent = discount.discount_percent
-      finalPrice = Math.floor(pack.price * (1 - appliedDiscountPercent / 100))
+      finalPrice = Math.floor(basePrice * (1 - appliedDiscountPercent / 100))
 
       // Increment usage
       await incrementDiscountCodeUsage(discount.id)
@@ -95,7 +102,9 @@ export async function createPackPreference(
     packId,
     sellerId: pack.user_id,
     sellerMpUserId: sellerProfile.mp_user_id,
+    basePrice,
     finalPrice,
+    appliedDiscountPercent,
     commissionAmount,
     sellerEarnings,
     sellerPlan,
@@ -107,7 +116,7 @@ export async function createPackPreference(
         id: pack.id,
         title: pack.title,
         quantity: 1,
-        unit_price: finalPrice,
+        unit_price: finalPrice, // Charge the discounted price
         currency_id: "ARS",
         picture_url: pack.cover_url || undefined,
         description: `Sample Pack - ${pack.genre}`,
@@ -137,8 +146,8 @@ export async function createPackPreference(
       commission_percent: calculateCommission(100, sellerPlan) / 100,
       commission_amount: commissionAmount,
       seller_earnings: sellerEarnings,
-      final_price: finalPrice,
-      original_price: pack.price,
+      final_price: finalPrice, // Price actually charged (with discount)
+      original_price: basePrice, // Original price before discount
       discount_percent: appliedDiscountPercent,
       discount_code: discountCode || null,
     },
