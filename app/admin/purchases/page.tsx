@@ -114,14 +114,24 @@ export default function AdminPurchasesPage() {
         console.error("[v0] Error loading purchases:", purchasesError)
       }
 
-      console.log("[v0] All purchases from DB:", allPurchasesData?.length)
+      console.log("[v0] Raw purchases from DB:", allPurchasesData)
+      console.log("[v0] Sample purchase columns:", allPurchasesData?.[0])
 
       // Normalize purchases
       const allPurchases: UnifiedPurchase[] = []
 
       if (allPurchasesData) {
         allPurchasesData.forEach((p) => {
-          console.log("[v0] Purchase from DB:", p)
+          if (!p.paid_price && !p.base_amount) {
+            console.warn("[v0] Purchase missing price data:", {
+              id: p.id,
+              amount: p.amount,
+              paid_price: p.paid_price,
+              base_amount: p.base_amount,
+              platform_commission: p.platform_commission,
+              creator_earnings: p.creator_earnings,
+            })
+          }
 
           // Determine type based on whether it has pack_id or plan_type
           const type = p.pack_id ? "pack" : "plan"
@@ -133,9 +143,11 @@ export default function AdminPurchasesPage() {
             seller_id: p.seller_id,
             pack_id: p.pack_id,
             plan_type: p.plan_type,
+            // Use paid_price if available, fallback to amount
             amount_paid: Number(p.paid_price || p.amount) || 0,
             paid_price: Number(p.paid_price || p.amount) || 0,
-            base_amount: Number(p.base_amount || p.amount) || 0,
+            // Use base_amount if available, fallback to amount + discount
+            base_amount: Number(p.base_amount || p.amount + (p.discount_amount || 0)) || 0,
             discount_amount: Number(p.discount_amount) || 0,
             platform_commission: Number(p.platform_commission) || 0,
             creator_earnings: Number(p.creator_earnings) || 0,
@@ -153,7 +165,13 @@ export default function AdminPurchasesPage() {
       allPurchases.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 
       console.log("[v0] Total unified purchases:", allPurchases.length)
-      console.log("[v0] Sample purchase:", allPurchases[0])
+      console.log("[v0] Sample normalized purchase:", allPurchases[0])
+      console.log("[v0] Purchases with pricing data:", {
+        withPaidPrice: allPurchases.filter((p) => p.paid_price > 0).length,
+        withBaseAmount: allPurchases.filter((p) => p.base_amount > 0).length,
+        withCommission: allPurchases.filter((p) => p.platform_commission > 0).length,
+        withEarnings: allPurchases.filter((p) => p.creator_earnings > 0).length,
+      })
 
       setPurchases(allPurchases)
 
@@ -452,33 +470,35 @@ export default function AdminPurchasesPage() {
 
                       <div className="flex flex-wrap items-center gap-4 mt-3">
                         <div>
-                          <div className="text-lg font-black text-foreground">${formatPrice(purchase.amount_paid)}</div>
-                          <div className="text-xs text-muted-foreground">ARS</div>
+                          <div className="text-lg font-black text-foreground">${formatPrice(purchase.base_amount)}</div>
+                          <div className="text-xs text-muted-foreground">Precio Base</div>
                         </div>
                         {purchase.discount_amount > 0 && (
                           <div>
                             <div className="text-sm font-bold text-green-600">
-                              ${formatPrice(purchase.discount_amount)} OFF
+                              -${formatPrice(purchase.discount_amount)}
                             </div>
                             <div className="text-xs text-muted-foreground">Descuento</div>
                           </div>
                         )}
                         <div>
-                          <div className="text-sm font-bold text-purple-600">${formatPrice(purchase.paid_price)}</div>
-                          <div className="text-xs text-muted-foreground">Ganancia Neta</div>
+                          <div className="text-sm font-bold text-blue-600">${formatPrice(purchase.paid_price)}</div>
+                          <div className="text-xs text-muted-foreground">Pagado</div>
                         </div>
                         <div>
                           <div className="text-sm font-bold text-purple-600">
                             ${formatPrice(purchase.platform_commission)}
                           </div>
-                          <div className="text-xs text-muted-foreground">Comisión</div>
+                          <div className="text-xs text-muted-foreground">Comisión Plataforma</div>
                         </div>
-                        <div>
-                          <div className="text-sm font-bold text-blue-600">
-                            ${formatPrice(purchase.creator_earnings)}
+                        {purchase.type === "pack" && purchase.creator_earnings > 0 && (
+                          <div>
+                            <div className="text-sm font-bold text-green-600">
+                              ${formatPrice(purchase.creator_earnings)}
+                            </div>
+                            <div className="text-xs text-muted-foreground">Ganancia Creador</div>
                           </div>
-                          <div className="text-xs text-muted-foreground">Vendedor</div>
-                        </div>
+                        )}
                       </div>
 
                       <div className="flex gap-2 mt-3">
