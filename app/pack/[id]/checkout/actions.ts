@@ -18,7 +18,7 @@ export async function getDiscountInfo(packId: string) {
 
   const { data: pack } = await supabase
     .from("packs")
-    .select("id, title, base_price, has_discount, discount_percent, final_price, studio_id")
+    .select("id, title, price, has_discount, discount_percent, studio_id")
     .eq("id", packId)
     .single()
 
@@ -31,9 +31,9 @@ export async function getDiscountInfo(packId: string) {
   const userPlan: PlanType = (profile?.plan as PlanType) || "free"
   const planFeatures = PLAN_FEATURES[userPlan]
 
-  let basePrice = pack.base_price
+  let basePrice = pack.price
   if (pack.has_discount && pack.discount_percent > 0) {
-    basePrice = pack.final_price
+    basePrice = Math.floor(pack.price * (1 - pack.discount_percent / 100))
   }
 
   const feePercentage = planFeatures.platformFeePercentage
@@ -52,10 +52,9 @@ export async function getDiscountInfo(packId: string) {
     priceBreakdown,
     packInfo: {
       title: pack.title,
-      base_price: pack.base_price,
+      price: pack.price,
       has_discount: pack.has_discount,
       discount_percent: pack.discount_percent,
-      final_price: pack.final_price,
     },
     userPlan,
     maxPrice: planFeatures.maxPackPrice,
@@ -75,7 +74,7 @@ export async function verifyDiscountCode(packId: string, code: string) {
 
   const { data: pack } = await supabase
     .from("packs")
-    .select("id, base_price, has_discount, discount_percent, final_price, studio_id")
+    .select("id, price, has_discount, discount_percent, studio_id")
     .eq("id", packId)
     .single()
 
@@ -108,9 +107,9 @@ export async function verifyDiscountCode(packId: string, code: string) {
   const userPlan: PlanType = (profile?.plan as PlanType) || "free"
   const planFeatures = PLAN_FEATURES[userPlan]
 
-  let basePrice = pack.base_price
+  let basePrice = pack.price
   if (pack.has_discount && pack.discount_percent > 0) {
-    basePrice = pack.final_price
+    basePrice = Math.floor(pack.price * (1 - pack.discount_percent / 100))
   }
 
   let discountAmount = 0
@@ -187,9 +186,9 @@ export async function getPaymentLink(packId: string, discountCode: string | null
   const userPlan: PlanType = (profile?.plan as PlanType) || "free"
   const planFeatures = PLAN_FEATURES[userPlan]
 
-  let basePrice = pack.base_price
+  let basePrice = pack.price
   if (pack.has_discount && pack.discount_percent > 0) {
-    basePrice = pack.final_price
+    basePrice = Math.floor(pack.price * (1 - pack.discount_percent / 100))
   }
 
   let discountAmount = 0

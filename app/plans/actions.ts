@@ -194,7 +194,7 @@ export async function purchasePack(packId: string, discountCode?: string, custom
 
     const { data: pack, error: packError } = await supabase
       .from("packs")
-      .select("id, title, price, final_price, user_id, discount_percent, has_discount")
+      .select("id, title, price, user_id, discount_percent, has_discount")
       .eq("id", packId)
       .single()
 
@@ -230,34 +230,10 @@ export async function purchasePack(packId: string, discountCode?: string, custom
     let finalPrice = basePrice
     let appliedDiscountPercent = 0
 
-    if (!customPrice && pack.has_discount && pack.final_price) {
-      finalPrice = pack.final_price
-      appliedDiscountPercent = pack.discount_percent || 0
-      console.log("[v0] Using pack final_price from DB:", finalPrice, "discount:", appliedDiscountPercent + "%")
-    }
-
-    // Apply discount code if provided (takes precedence over pack discount)
-    if (discountCode) {
-      const { data: discountData, error: discountError } = await supabase
-        .from("discount_codes")
-        .select("*")
-        .eq("pack_id", packId)
-        .eq("code", discountCode.toUpperCase())
-        .single()
-
-      if (!discountError && discountData) {
-        if (discountData.expires_at && new Date(discountData.expires_at) < new Date()) {
-          return { success: false, message: "El código de descuento ha expirado" }
-        }
-
-        if (discountData.max_uses && discountData.uses_count >= discountData.max_uses) {
-          return { success: false, message: "El código ha alcanzado el límite de usos" }
-        }
-
-        appliedDiscountPercent = discountData.discount_percent
-        finalPrice = Math.floor(basePrice * (1 - appliedDiscountPercent / 100))
-        console.log("[v0] Applying discount code:", appliedDiscountPercent, "%, final price:", finalPrice)
-      }
+    if (!customPrice && pack.has_discount && pack.discount_percent > 0) {
+      finalPrice = Math.floor(pack.price * (1 - pack.discount_percent / 100))
+      appliedDiscountPercent = pack.discount_percent
+      console.log("[v0] Calculating discounted price:", finalPrice, "discount:", appliedDiscountPercent + "%")
     }
 
     const commissionAmount = Math.floor(finalPrice * commission)
