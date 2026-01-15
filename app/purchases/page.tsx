@@ -16,7 +16,8 @@ interface Purchase {
   id: string
   pack_id: string
   amount: number
-  amount_paid: number
+  paid_price: number | null
+  base_amount: number | null
   discount_amount: number | null
   discount_percent: number | null
   platform_earnings: number | null
@@ -181,6 +182,7 @@ export default function PurchasesPage() {
           <div className="space-y-4">
             {purchases.map((purchase) => {
               const pack = packsMap[purchase.pack_id]
+              const displayPrice = purchase.paid_price || purchase.amount
               return (
                 <Card
                   key={purchase.id}
@@ -213,12 +215,10 @@ export default function PurchasesPage() {
 
                       <div className="flex items-center justify-between gap-2 mb-3">
                         <div>
-                          <div className="text-2xl font-black text-foreground">
-                            ${formatPrice(purchase.amount_paid || purchase.amount)}
-                          </div>
+                          <div className="text-2xl font-black text-foreground">${formatPrice(displayPrice)}</div>
                           {purchase.discount_amount && purchase.discount_amount > 0 && (
                             <div className="text-xs text-green-600 font-semibold">
-                              -${formatPrice(purchase.discount_amount)}
+                              Ahorraste ${formatPrice(purchase.discount_amount)}
                             </div>
                           )}
                           <div className="text-xs text-muted-foreground">ARS</div>
@@ -303,9 +303,9 @@ export default function PurchasesPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <div className="text-xs text-muted-foreground mb-1">Precio Final</div>
+                    <div className="text-xs text-muted-foreground mb-1">Precio Pagado</div>
                     <div className="text-lg font-bold text-foreground">
-                      ${formatPrice(selectedPurchase.amount_paid || selectedPurchase.amount)}
+                      ${formatPrice(selectedPurchase.paid_price || selectedPurchase.amount)}
                     </div>
                   </div>
                   <div>
@@ -324,9 +324,17 @@ export default function PurchasesPage() {
 
                 {selectedPurchase.discount_amount && selectedPurchase.discount_amount > 0 && (
                   <div className="p-3 rounded-xl bg-green-500/10 border border-green-500/20">
-                    <div className="text-xs text-muted-foreground mb-1">Descuento Aplicado</div>
-                    <div className="text-sm font-bold text-green-600">
-                      -${formatPrice(selectedPurchase.discount_amount)}
+                    <div className="flex justify-between items-center mb-1">
+                      <div className="text-xs text-muted-foreground">Precio Base</div>
+                      <div className="text-xs font-medium text-muted-foreground line-through">
+                        ${formatPrice(selectedPurchase.base_amount || selectedPurchase.amount)}
+                      </div>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <div className="text-xs text-muted-foreground">Descuento Aplicado</div>
+                      <div className="text-sm font-bold text-green-600">
+                        -${formatPrice(selectedPurchase.discount_amount)}
+                      </div>
                     </div>
                   </div>
                 )}

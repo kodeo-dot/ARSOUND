@@ -90,15 +90,16 @@ export async function createPackPreference(
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://arsound.com.ar"
 
-  const hasSellerToken = sellerProfile.mp_connected && !!sellerProfile.mp_access_token
+  const hasSellerConnected = sellerProfile.mp_connected && !!sellerProfile.mp_user_id
 
-  console.log("[v0] 💰 Creating pack preference with OAuth split", {
+  console.log("[v0] 💰 Creating pack preference with marketplace split", {
     packId,
     packTitle: pack.title,
     sellerId: pack.user_id,
     sellerPlan,
     sellerMpConnected: sellerProfile.mp_connected || false,
-    hasSellerToken,
+    sellerMpUserId: sellerProfile.mp_user_id || null,
+    hasSellerConnected,
     basePrice: `$${basePrice.toFixed(2)}`,
     finalPrice: `$${finalPrice.toFixed(2)}`,
     discount: appliedDiscountPercent > 0 ? `${appliedDiscountPercent}%` : "none",
@@ -106,7 +107,7 @@ export async function createPackPreference(
     commissionPercent: `${((commissionAmount / finalPrice) * 100).toFixed(1)}%`,
     sellerEarnings: `$${sellerEarnings.toFixed(2)}`,
     sellerPercent: `${((sellerEarnings / finalPrice) * 100).toFixed(1)}%`,
-    split: hasSellerToken
+    split: hasSellerConnected
       ? `MP auto-split: Vendedor recibe $${sellerEarnings}, Arsound recibe $${commissionAmount}`
       : `Arsound recibe todo $${finalPrice} (vendedor no conectado)`,
   })
@@ -148,13 +149,23 @@ export async function createPackPreference(
       original_price: basePrice,
       discount_percent: appliedDiscountPercent,
       discount_code: discountCode || null,
-      uses_oauth_split: hasSellerToken,
+      uses_marketplace_split: hasSellerConnected,
     },
   }
 
-  if (hasSellerToken) {
+  if (hasSellerConnected) {
+    const collectorIdNumber = Number.parseInt(sellerProfile.mp_user_id!, 10)
+
+    if (isNaN(collectorIdNumber)) {
+      console.error("[v0] ❌ Invalid seller MP user ID:", sellerProfile.mp_user_id)
+      return await createPreference(preferenceData)
+    }
+
+    preferenceData.collector_id = sellerProfile.mp_user_id
     preferenceData.marketplace_fee = commissionAmount
-    console.log("[v0] ✅ Using seller OAuth token with marketplace_fee", {
+
+    console.log("[v0] ✅ Using marketplace split with platform token", {
+      collector_id: sellerProfile.mp_user_id,
       marketplace_fee: commissionAmount,
       seller_will_receive: sellerEarnings,
       arsound_will_receive: commissionAmount,
@@ -166,11 +177,7 @@ export async function createPackPreference(
     })
   }
 
-  if (hasSellerToken) {
-    return await createPreferenceWithToken(preferenceData, sellerProfile.mp_access_token!)
-  } else {
-    return await createPreference(preferenceData)
-  }
+  return await createPreference(preferenceData)
 }
 
 export async function createPlanPreference(
