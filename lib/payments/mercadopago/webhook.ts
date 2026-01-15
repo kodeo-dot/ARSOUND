@@ -425,12 +425,17 @@ async function processPackPurchase(payment: PaymentData, metadata: any): Promise
   await recordDownload(metadata.buyer_id, metadata.pack_id)
   await incrementPackCounter(metadata.pack_id, "downloads_count")
 
-  if (metadata.uses_oauth_split) {
-    console.log("[v0] ✅ WEBHOOK: OAuth split was used - Mercado Pago already divided the payment automatically", {
-      sellerReceived: `$${creatorEarnings.toFixed(2)}`,
-      arsoundReceived: `$${platformCommission.toFixed(2)}`,
-      note: "No manual transfer needed - MP handled the split",
-    })
+  const usesMarketplaceSplit = metadata.uses_marketplace_split === true
+
+  if (usesMarketplaceSplit) {
+    console.log(
+      "[v0] ✅ WEBHOOK: Marketplace split was used - Mercado Pago already divided the payment automatically",
+      {
+        sellerReceived: `$${creatorEarnings.toFixed(2)}`,
+        arsoundReceived: `$${platformCommission.toFixed(2)}`,
+        note: "No manual transfer needed - MP handled the split",
+      },
+    )
   } else if (metadata.needs_transfer && metadata.seller_mp_user_id && creatorEarnings > 0) {
     console.log("[v0] 💸 WEBHOOK: OAuth split NOT used, attempting manual transfer", {
       sellerMpUserId: metadata.seller_mp_user_id,

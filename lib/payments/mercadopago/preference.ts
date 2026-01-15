@@ -32,7 +32,7 @@ interface PreferenceData {
   }
   external_reference: string
   metadata: PreferenceMetadata
-  collector_id?: string
+  collector_id?: number
   marketplace_fee?: number
   application_fee?: number
 }
@@ -161,11 +161,11 @@ export async function createPackPreference(
       return await createPreference(preferenceData)
     }
 
-    preferenceData.collector_id = sellerProfile.mp_user_id
+    preferenceData.collector_id = collectorIdNumber
     preferenceData.marketplace_fee = commissionAmount
 
     console.log("[v0] ✅ Using marketplace split with platform token", {
-      collector_id: sellerProfile.mp_user_id,
+      collector_id: collectorIdNumber,
       marketplace_fee: commissionAmount,
       seller_will_receive: sellerEarnings,
       arsound_will_receive: commissionAmount,
