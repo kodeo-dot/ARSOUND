@@ -48,14 +48,14 @@ Mercado Pago no divide automáticamente los pagos usando solo `collector_id` y `
 
 Cuando compres un pack, verás en la consola del servidor:
 
-```
+\`\`\`
 [v0] 💰 Creating pack preference - Arsound receives all, will transfer to seller
 [v0] 🎯 WEBHOOK: Processing pack purchase
 [v0] 💵 WEBHOOK: FINAL PAYMENT SPLIT
 [v0] 💸 WEBHOOK: Seller has MP connected, attempting transfer
 [v0] 📤 Transfer request data
 [v0] ✅ Transfer created successfully
-```
+\`\`\`
 
 ### Requisitos para que Funcione
 

@@ -229,7 +229,7 @@ export async function purchasePack(packId: string, discountCode?: string, custom
 
     const { data: sellerProfile, error: sellerError } = await supabase
       .from("profiles")
-      .select("plan")
+      .select("plan, mp_connected, mp_access_token, mp_user_id")
       .eq("id", pack.user_id)
       .single()
 
@@ -241,10 +241,15 @@ export async function purchasePack(packId: string, discountCode?: string, custom
     const sellerPlan = (sellerProfile.plan as PlanType) || "free"
     const commission = PLAN_FEATURES[sellerPlan].commission
 
+    const hasSellerToken = sellerProfile.mp_connected && !!sellerProfile.mp_access_token
+    const sellerAccessToken = sellerProfile.mp_access_token
+
     console.log("[v0] 💰 SELLER PLAN INFO:", {
       sellerId: pack.user_id,
       sellerPlan: sellerPlan,
       commissionRate: `${(commission * 100).toFixed(1)}%`,
+      hasMpConnected: sellerProfile.mp_connected,
+      hasAccessToken: hasSellerToken,
     })
 
     const basePrice = customPrice || pack.price
@@ -277,7 +282,7 @@ export async function purchasePack(packId: string, discountCode?: string, custom
     const origin = await getOrigin()
     console.log("[v0] Final origin being used:", origin)
 
-    const preferenceData = {
+    const preferenceData: any = {
       back_urls: {
         success: `${origin}/payment/success`,
         failure: `${origin}/payment/failure`,
@@ -298,36 +303,54 @@ export async function purchasePack(packId: string, discountCode?: string, custom
         },
       ],
       external_reference: `pack_${user.id}_${packId}`,
-      marketplace_fee: commissionAmount,
-      transfer_data: {
-        amount: sellerEarnings,
-        receiver_account_id: null,
-      },
       metadata: {
         type: "pack_purchase",
         pack_id: packId,
         buyer_id: user.id,
         seller_id: pack.user_id,
+        seller_mp_user_id: sellerProfile.mp_user_id || null,
         seller_plan: sellerPlan,
         commission_percent: commission,
         commission_amount: commissionAmount,
         seller_earnings: sellerEarnings,
         final_price: finalPrice,
-        base_price: basePrice,
+        original_price: basePrice,
         discount_percent: appliedDiscountPercent,
         discount_code: discountCode || null,
         custom_price: customPrice || null,
+        uses_oauth_split: hasSellerToken,
         test_mode: testMode,
       },
     }
 
+    if (hasSellerToken) {
+      preferenceData.marketplace_fee = commissionAmount
+      console.log("[v0] ✅ Using seller OAuth token with marketplace_fee", {
+        marketplace_fee: commissionAmount,
+        seller_will_receive: sellerEarnings,
+        arsound_will_receive: commissionAmount,
+      })
+    } else {
+      console.log("[v0] ⚠️ Seller not connected to MP - Arsound receives all", {
+        total: finalPrice,
+        note: "Seller needs to connect MP account in settings",
+      })
+    }
+
     console.log("[v0] 📦 PREFERENCE METADATA:", JSON.stringify(preferenceData.metadata, null, 2))
+
+    const tokenToUse = hasSellerToken ? sellerAccessToken : accessToken
+
+    console.log(
+      "[v0] 🔑 Using access token:",
+      hasSellerToken ? "Seller's token (OAuth split)" : "Platform token (no split)",
+    )
 
     const response = await fetch("https://api.mercadopago.com/checkout/preferences", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${tokenToUse}`,
       },
       body: JSON.stringify(preferenceData),
     })

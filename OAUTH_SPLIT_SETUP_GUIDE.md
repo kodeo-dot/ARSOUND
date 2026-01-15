@@ -26,7 +26,7 @@ Según la documentación oficial de Mercado Pago para marketplace split payments
 
 ### `lib/payments/mercadopago/preference.ts`
 
-```typescript
+\`\`\`typescript
 // Detecta si el vendedor tiene OAuth conectado
 const hasSellerToken = sellerProfile.mp_connected && !!sellerProfile.mp_access_token
 
@@ -40,11 +40,11 @@ if (hasSellerToken) {
   // Si el vendedor no está conectado, todo va a Arsound
   return await createPreference(preferenceData)
 }
-```
+\`\`\`
 
 ### `lib/payments/mercadopago/webhook.ts`
 
-```typescript
+\`\`\`typescript
 // El webhook detecta si se usó OAuth split
 if (metadata.uses_oauth_split) {
   // MP ya dividió el dinero automáticamente - no hacer nada más
@@ -53,13 +53,13 @@ if (metadata.uses_oauth_split) {
   // Intentar transferencia manual (fallback)
   await createTransferToSeller(...)
 }
-```
+\`\`\`
 
 ## Verificación
 
 Cuando hagas una compra de prueba, verás en la consola del navegador:
 
-```
+\`\`\`
 [v0] 💰 Creating pack preference with OAuth split
   - usesOAuthSplit: true
   - marketplace_fee: $XX.XX
@@ -68,7 +68,7 @@ Cuando hagas una compra de prueba, verás en la consola del navegador:
 [v0] ✅ WEBHOOK: OAuth split was used - Mercado Pago already divided the payment automatically
   - sellerReceived: $YY.YY
   - arsoundReceived: $XX.XX
-```
+\`\`\`
 
 ## Importante
 

@@ -141,7 +141,8 @@ export default function AdminPurchasesPage() {
             seller_id: p.seller_id,
             pack_id: p.pack_id,
             plan_type: p.plan_type,
-            amount_paid: Number(p.amount_paid || p.amount) || 0,
+            // Use paid_price if available, fallback to amount_paid or amount
+            amount_paid: Number(p.paid_price || p.amount_paid || p.amount) || 0,
             discount_amount: Number(p.discount_amount) || 0,
             platform_earnings: Number(p.platform_earnings || p.platform_commission) || 0,
             creator_earnings: Number(p.creator_earnings || p.seller_earnings) || 0,
