@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { PRODUCT_TYPES } from "@/lib/constants/product-types"
+import { PlanBadge } from "@/components/plan-badge"
 
 interface SearchResult {
   packs: Array<{
@@ -28,6 +29,7 @@ interface SearchResult {
     display_name: string | null
     avatar_url: string | null
     packs_count: number
+    plan?: string | null
   }>
   query: string
   totalResults: number
@@ -193,7 +195,10 @@ export function SearchBar() {
                           </div>
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-foreground text-sm">{user.username}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-foreground text-sm">{user.username}</p>
+                            <PlanBadge plan={user.plan} size="xs" />
+                          </div>
                           <p className="text-xs text-muted-foreground">{user.packs_count} packs</p>
                         </div>
                       </Link>

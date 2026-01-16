@@ -7,7 +7,8 @@ import { Star, Package, Users } from "lucide-react"
 import Link from "next/link"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { Loader2 } from "lucide-react"
-import { hasPlanBadge, getPlanBadge } from "@/lib/plans"
+import { hasPlanBadge } from "@/lib/plans"
+import { PlanBadge } from "@/components/plan-badge"
 
 interface ProducerWithPlan {
   id: string
@@ -116,7 +117,6 @@ export function FeaturedProducers() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {producers.map((producer) => {
-            const badge = getPlanBadge(producer.plan_type as any)
             return (
               <Link key={producer.id} href={`/profile/${producer.username}`}>
                 <Card className="p-6 rounded-3xl border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 bg-card cursor-pointer group">
@@ -133,7 +133,7 @@ export function FeaturedProducers() {
                         <h3 className="font-black text-lg text-foreground truncate group-hover:text-primary transition-colors">
                           {producer.username}
                         </h3>
-                        {badge && <span className="text-xl flex-shrink-0">{badge.icon}</span>}
+                        <PlanBadge plan={producer.plan_type} size="sm" />
                       </div>
                       <p className="text-sm text-muted-foreground">@{producer.username}</p>
 

@@ -7,10 +7,10 @@ import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Star, Package, Users, Search, Loader2 } from 'lucide-react'
+import { Star, Package, Users, Search, Loader2 } from "lucide-react"
 import Link from "next/link"
 import { createBrowserClient } from "@/lib/supabase/client"
-import { getPlanBadge } from "@/lib/plans"
+import { PlanBadge } from "@/components/plan-badge"
 
 interface ProducerWithPlan {
   id: string
@@ -52,7 +52,7 @@ export default function ProducersPage() {
           packs_count: producer.packs_count || 0,
           total_sales: producer.total_sales || 0,
           created_at: producer.created_at,
-          plan_type: producer.plan || "free", // Use profiles.plan directly
+          plan_type: producer.plan || "free",
         }))
 
         // Sort producers
@@ -165,7 +165,6 @@ export default function ProducersPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredProducers.length > 0 ? (
                 filteredProducers.map((producer) => {
-                  const badge = getPlanBadge(producer.plan_type as any)
                   return (
                     <Link key={producer.id} href={`/profile/${producer.username}`}>
                       <Card className="p-6 rounded-3xl border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 bg-card cursor-pointer group h-full">
@@ -183,7 +182,7 @@ export default function ProducersPage() {
                                 <h3 className="font-black text-lg text-foreground truncate group-hover:text-primary transition-colors">
                                   {producer.username}
                                 </h3>
-                                {badge && <span className="text-xl flex-shrink-0">{badge.icon}</span>}
+                                <PlanBadge plan={producer.plan_type} size="sm" />
                               </div>
                               <p className="text-sm text-muted-foreground">@{producer.username}</p>
                             </div>

@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     // Search users by username
     const { data: users, error: usersError } = await supabase
       .from("profiles")
-      .select("id, username, display_name, avatar_url, bio, packs_count")
+      .select("id, username, display_name, avatar_url, bio, packs_count, plan")
       .ilike("username", searchTerm)
       .limit(10)
 

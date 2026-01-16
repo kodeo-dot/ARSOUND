@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { MapPin, Calendar, Package, Loader2, UserPlus, Check } from "lucide-react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { getPlanBadge } from "@/lib/plans"
+import { PlanBadge } from "@/components/plan-badge"
 
 interface Profile {
   id: string
@@ -83,10 +83,7 @@ export default function PublicProfilePage() {
         setProfile(null)
       } else {
         setProfile(profileData as Profile)
-
-        const { data: planData } = await supabase.rpc("get_user_plan").eq("user_id", profileData.id).single()
-
-        setUserPlan(planData?.plan_type || "free")
+        setUserPlan(profileData.plan || "free")
       }
     } catch (error) {
       console.error("Error loading profile:", error)
@@ -237,8 +234,6 @@ export default function PublicProfilePage() {
     )
   }
 
-  const planBadge = userPlan ? getPlanBadge(userPlan as any) : null
-
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
@@ -263,9 +258,9 @@ export default function PublicProfilePage() {
             <div className="flex-1 space-y-4">
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-3 mb-2">
                     <h1 className="text-4xl font-black text-foreground">@{profile.username}</h1>
-                    {planBadge && <span className="text-4xl">{planBadge.icon}</span>}
+                    <PlanBadge plan={userPlan} size="lg" />
                   </div>
                   <p className="text-muted-foreground text-lg mb-3">
                     {profile.bio || <span className="text-muted-foreground/60 italic">Sin descripción</span>}

@@ -8,10 +8,10 @@ import { Badge } from "@/components/ui/badge"
 import { Heart } from "lucide-react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { getPlanBadge } from "@/lib/plans"
 import { formatGenreDisplay } from "@/lib/genres"
 import { createBrowserClient } from "@/lib/supabase/client"
 import { PRODUCT_TYPES } from "@/lib/constants/product-types"
+import { PlanBadge } from "@/components/plan-badge"
 
 interface Pack {
   id: string
@@ -138,8 +138,6 @@ export function PackCard({ pack }: PackCardProps) {
   const discountAmount = shouldShowDiscount ? (pack.price * (pack.discount_percent || 0)) / 100 : 0
   const finalPrice = shouldShowDiscount ? pack.price - discountAmount : pack.price
 
-  const planBadge = pack.producer_plan ? getPlanBadge(pack.producer_plan as any) : null
-
   const productTypeLabel =
     pack.product_type && pack.product_type !== "sample_pack"
       ? PRODUCT_TYPES[pack.product_type as keyof typeof PRODUCT_TYPES]?.label
@@ -201,7 +199,7 @@ export function PackCard({ pack }: PackCardProps) {
           </Link>
           <div className="flex items-center gap-2">
             <p className="text-sm text-muted-foreground font-medium">{pack.profiles?.username || "Usuario"}</p>
-            {planBadge && <span className="text-base">{planBadge.icon}</span>}
+            <PlanBadge plan={pack.producer_plan} size="xs" />
           </div>
         </div>
 

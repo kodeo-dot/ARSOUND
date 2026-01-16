@@ -72,6 +72,8 @@ export default function PurchasesPage() {
         .eq("buyer_id", user.id)
         .order("created_at", { ascending: false })
 
+      console.log("[v0] Purchases data from DB:", purchasesData)
+
       if (!purchasesError && purchasesData) {
         setPurchases(purchasesData as any)
 
@@ -182,7 +184,13 @@ export default function PurchasesPage() {
           <div className="space-y-4">
             {purchases.map((purchase) => {
               const pack = packsMap[purchase.pack_id]
-              const displayPrice = purchase.paid_price || purchase.amount
+              const displayPrice = purchase.paid_price ?? purchase.amount ?? 0
+              console.log("[v0] Purchase display:", {
+                id: purchase.id,
+                paid_price: purchase.paid_price,
+                amount: purchase.amount,
+                displayPrice,
+              })
               return (
                 <Card
                   key={purchase.id}

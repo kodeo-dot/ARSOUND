@@ -1,9 +1,10 @@
 export type PlanType = "free" | "de_0_a_hit" | "studio_plus"
 
 export interface PlanBadge {
-  icon: string
+  iconType: "zap" | "crown"
   label: string
   color: string
+  bgColor: string
 }
 
 export interface PlanFeatures {
@@ -73,14 +74,16 @@ export const PLAN_FEATURES: Record<PlanType, PlanFeatures> = {
 export const PLAN_BADGES: Record<PlanType, PlanBadge | null> = {
   free: null,
   de_0_a_hit: {
-    icon: "⚡",
+    iconType: "zap",
     label: "De 0 a Hit",
     color: "text-orange-500",
+    bgColor: "bg-orange-500",
   },
   studio_plus: {
-    icon: "👑",
+    iconType: "crown",
     label: "Studio Plus",
     color: "text-purple-500",
+    bgColor: "bg-purple-500",
   },
 }
 
