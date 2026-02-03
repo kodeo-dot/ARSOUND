@@ -51,6 +51,7 @@
     "input-otp": "latest",
     "lightningcss": "^1.30.2",
     "lucide-react": "^0.454.0",
+    "mercadopago": "^2.12.0",
     "next": "16.0.7",
     "next-themes": "latest",
     "nodemailer": "latest",

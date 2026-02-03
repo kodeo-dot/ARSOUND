@@ -1,31 +1,63 @@
-import { requireSession } from "@/lib/auth/session"
-import { createPackPreference, createPlanPreference } from "@/lib/payments/mercadopago/preference"
-import { successResponse, errorResponse, validationErrorResponse } from "@/lib/utils/response"
-import { handleApiError } from "@/lib/utils/errors"
-import type { CreatePreferenceRequest } from "@/lib/types/api.types"
+import { MercadoPagoConfig, Preference } from 'mercadopago';
+import { createAdminClient } from "@/lib/supabase/server-client"; // Ajustá esta ruta a tu proyecto
 
-export async function POST(request: Request) {
-  try {
-    const user = await requireSession()
-    const body: CreatePreferenceRequest = await request.json()
+export async function createPackPreference(packId: string, buyerId: string, buyerEmail: string) {
+  // Inicializamos el cliente de Supabase con el rol de admin para poder leer el token del vendedor
+  const adminSupabase = await createAdminClient();
 
-    if (!body.packId && !body.planType) {
-      return validationErrorResponse("Se requiere packId o planType", ["packId", "planType"])
-    }
+  // 1. Buscamos los datos del pack y el TOKEN DEL VENDEDOR
+  const { data: pack, error: packError } = await adminSupabase
+    .from("packs")
+    .select(`
+      *,
+      profiles:user_id (mp_seller_token, plan)
+    `)
+    .eq("id", packId)
+    .single();
 
-    let result: { init_point: string; preference_id: string }
+  if (packError || !pack) throw new Error("Pack no encontrado");
 
-    if (body.packId) {
-      result = await createPackPreference(body.packId, user.id, user.email!, body.discountCode)
-    } else if (body.planType) {
-      result = await createPlanPreference(body.planType, user.id, user.email!)
-    } else {
-      return errorResponse("Invalid request", 400)
-    }
+  // Cast para TypeScript (asumiendo que profiles es un objeto y no un array)
+  const sellerProfile = pack.profiles as any; 
+  const sellerToken = sellerProfile?.mp_seller_token;
 
-    return successResponse(result)
-  } catch (error) {
-    const errorDetails = handleApiError(error)
-    return errorResponse(errorDetails.message, errorDetails.statusCode, errorDetails.details)
+  if (!sellerToken) {
+    throw new Error("El productor aún no vinculó su cuenta de Mercado Pago.");
   }
+
+  // 2. Calculamos la comisión
+  // (Asegurate de tener definida getCommissionByPlan o importarla)
+  const commissionPercent = 0.15; // Ejemplo fijo o usá tu función
+  const commissionAmount = Math.round(pack.price * commissionPercent);
+
+  // 3. Inicializamos MP con el TOKEN DEL VENDEDOR
+  const client = new MercadoPagoConfig({ 
+    accessToken: sellerToken 
+  });
+
+  const preference = new Preference(client);
+
+  // 4. Creamos la preferencia
+  const result = await preference.create({
+    body: {
+      items: [
+        {
+          id: pack.id,
+          title: pack.title,
+          unit_price: Number(pack.price),
+          quantity: 1,
+          currency_id: "ARS"
+        }
+      ],
+      marketplace_fee: commissionAmount, 
+      notification_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/mercadopago`,
+      back_urls: {
+        success: `${process.env.NEXT_PUBLIC_APP_URL}/profile?payment=success`,
+        failure: `${process.env.NEXT_PUBLIC_APP_URL}/profile?payment=failed`
+      },
+      auto_return: "approved",
+    }
+  });
+
+  return { init_point: result.init_point, preference_id: result.id };
 }
