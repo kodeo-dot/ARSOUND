@@ -71,7 +71,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="es" className={`${inter.variable} ${geistMono.variable} dark`}>
+    <html lang="es" className={`${inter.variable} ${geistMono.variable}`}>
       <body className="font-sans antialiased">
         <AuthProvider>
           {children}
